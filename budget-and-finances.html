@@ -83,11 +83,6 @@ tr.click:hover td{background:color-mix(in srgb,var(--ledger) 8%,transparent)}
 .cellin{width:86px;padding:4px 6px;border:1px solid var(--rule);border-radius:4px;background:var(--surface);text-align:right}
 .cellin.wide{width:170px;text-align:left}
 .loading{padding:60px;text-align:center;color:var(--muted)}
-#hscroll{position:fixed;bottom:0;height:18px;scrollbar-color:var(--muted) var(--soft);box-shadow:0 -2px 6px rgba(0,0,0,.12);overflow-x:auto;overflow-y:hidden;z-index:40;background:var(--surface);border-top:1px solid var(--rule);padding-bottom:env(safe-area-inset-bottom,0px)}
-#hscroll>div{height:1px}
-.tbl td:first-child,.tbl th:first-child{position:sticky;left:0;z-index:1;background:var(--surface);box-shadow:1px 0 0 var(--rule)}
-.tbl th:first-child{z-index:2;background:var(--soft)}
-.tbl tr.grp td:first-child,.tbl tr.tot td:first-child{background:var(--soft)}
 .home{display:grid;grid-template-columns:minmax(300px,420px) minmax(0,1fr);gap:16px;align-items:start}
 .greet{font-size:1.1rem;margin:0 0 14px;color:var(--muted)}
 .lead{font-size:1.05rem;margin:0 0 16px}
@@ -116,7 +111,7 @@ nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:va
 
 <div id="setupGate" class="gate hidden"><div class="box">
   <h1>Setup needed</h1>
-  <p>This page could not find its settings file. Add a file named <b>firebase-config.js</b> beside this page in the same GitHub repository, with your six Firebase values in it. The Setup Guide shows how.</p>
+  <p>Paste your Firebase web app settings into the FIREBASE_CONFIG block near the bottom of this file, then upload it again. Step 8 of the setup guide shows where.</p>
 </div></div>
 
 <div id="loginGate" class="gate hidden"><div class="box">
@@ -316,17 +311,12 @@ nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:va
   <div class="err" id="eErr"></div>
 </div></div>
 <div id="toast" class="toast hidden" role="status"></div>
-<div id="hscroll" class="hidden" aria-hidden="true"><div></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence, browserSessionPersistence, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, getDoc, getDocs, setDoc, collection, writeBatch, runTransaction, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-/* Firebase settings live in firebase-config.js beside this page, so updated versions of this file never need them pasted in again. */
-const BUILT_IN_CONFIG = {
+/* ================== FIREBASE_CONFIG: paste your web app settings here (setup step 8) ================== */
+const FIREBASE_CONFIG = {
   apiKey: "AIzaSyAGBFJC_VBdy7I3vFFli5xteO7TMmnmmR0",
   authDomain: "budget-and-finances-83ccf.firebaseapp.com",
   projectId: "budget-and-finances-83ccf",
@@ -334,9 +324,11 @@ const BUILT_IN_CONFIG = {
   messagingSenderId: "714445480197",
   appId: "1:714445480197:web:63282f46e0642e3a7d576c"
 };
-let FIREBASE_CONFIG = null;
-try { ({ FIREBASE_CONFIG } = await import('./firebase-config.js?v=' + Date.now())); } catch (e) { FIREBASE_CONFIG = null; }
-if (!FIREBASE_CONFIG) FIREBASE_CONFIG = BUILT_IN_CONFIG;
+/* ======================================================================================================= */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence, browserSessionPersistence, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, getDoc, getDocs, setDoc, collection, writeBatch, runTransaction, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
 const $ = id => document.getElementById(id);
 const show = (id, on=true) => $(id).classList.toggle('hidden', !on);
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -651,7 +643,7 @@ render.month = () => {
     const list = cats.filter(c => c.group === g); if (!list.length) continue;
     const rows = list.map(c => ({ n:c.name, inc:c.type === 'Income', sav:c.type === 'Savings', b:budgetFor(c.name,Y,M-1), a:sumRange(A,c.name,Y,M,M), l:sumRange(A,c.name,Y-1,M,M) })).filter(r => r.b || r.a || r.l);
     if (!rows.length) continue;
-    html += `<tr class="grp"><td>${esc(gl)}</td><td colspan="5"></td></tr>`;
+    html += `<tr class="grp"><td colspan="6">${esc(gl)}</td></tr>`;
     for (const r of rows){
       if (r.inc){ ib += r.b; ia += r.a; } else if (r.sav){ sb += r.b; sa += r.a; } else { tb += r.b; ta += r.a; }
       const rem = r.inc ? r.a - r.b : r.b - r.a, pct = r.b ? Math.min(100, r.a / r.b * 100) : (r.a ? 100 : 0), over = !r.inc && r.a > r.b + 0.5;
@@ -680,7 +672,7 @@ render.budget = () => {
   let html = '';
   for (const [g, gl] of GROUPS){
     const list = cats.filter(c => c.group === g); if (!list.length) continue;
-    html += `<tr class="grp"><td>${esc(gl)}</td><td colspan="13"></td></tr>`;
+    html += `<tr class="grp"><td colspan="14">${esc(gl)}</td></tr>`;
     for (const c of list){
       const vals = MONTHS.map((_,i) => budgetFor(c.name, Y, i));
       html += `<tr data-cat="${esc(c.name)}"><td>${esc(c.name)}</td>` + vals.map((v,i) => `<td><input class="cellin" type="number" step="0.01" data-m="${i}" value="${v ? Math.round(v*100)/100 : ''}"></td>`).join('') + `<td class="n">${money(vals.reduce((a,b)=>a+b,0))}</td></tr>`;
@@ -809,7 +801,7 @@ $('saveSettings').addEventListener('click', async () => {
 
 /* ---------- sign in, access check, idle sign-out ---------- */
 function gate(which){ ['boot','setupGate','loginGate','deniedGate','app'].forEach(id => show(id, id === which)); }
-if (!FIREBASE_CONFIG || String(FIREBASE_CONFIG.apiKey || '').startsWith('PASTE')) { gate('setupGate'); }
+if (String(FIREBASE_CONFIG.apiKey).startsWith('PASTE')) { gate('setupGate'); }
 else {
   const fb = initializeApp(FIREBASE_CONFIG); auth = getAuth(fb); db = getFirestore(fb);
   $('lKeep').checked = localStorage.getItem('bf-keep') === '1';
@@ -843,27 +835,6 @@ else {
   $('signOutBtn').addEventListener('click', out); $('dBack').addEventListener('click', () => gate('loginGate'));
   let idleT; function armIdle(){ if (localStorage.getItem('bf-keep') === '1') return; const reset = () => { clearTimeout(idleT); idleT = setTimeout(out, 30*60*1000); }; ['click','keydown','touchstart'].forEach(ev => document.addEventListener(ev, reset, { passive:true })); reset(); }
 }
-
-/* ---------- horizontal scrollbar pinned to the bottom of the screen ---------- */
-const hs = $('hscroll'), hsIn = hs.firstElementChild; let hsTarget = null;
-function updateHScroll(){
-  const vh = window.innerHeight; let pick = null;
-  for (const el of document.querySelectorAll('.tbl')){
-    if (el.offsetParent === null || el.scrollWidth <= el.clientWidth + 1) continue;
-    const r = el.getBoundingClientRect(); if (r.top < vh - 60 && r.bottom > vh - 2){ pick = el; break; }
-  }
-  hsTarget = pick;
-  if (!pick){ hs.classList.add('hidden'); return; }
-  const r = pick.getBoundingClientRect();
-  hs.style.left = r.left + 'px'; hs.style.width = r.width + 'px'; hsIn.style.width = pick.scrollWidth + 'px';
-  hs.classList.remove('hidden');
-  if (Math.abs(hs.scrollLeft - pick.scrollLeft) > 1) hs.scrollLeft = pick.scrollLeft;
-}
-hs.addEventListener('scroll', () => { if (hsTarget && Math.abs(hsTarget.scrollLeft - hs.scrollLeft) > 1) hsTarget.scrollLeft = hs.scrollLeft; });
-document.addEventListener('scroll', e => { if (e.target === hsTarget && Math.abs(hs.scrollLeft - hsTarget.scrollLeft) > 1) hs.scrollLeft = hsTarget.scrollLeft; }, true);
-window.addEventListener('scroll', updateHScroll, { passive:true }); window.addEventListener('resize', updateHScroll);
-document.addEventListener('click', () => setTimeout(updateHScroll, 50));
-setInterval(updateHScroll, 500);
 </script>
 </body>
 </html>
