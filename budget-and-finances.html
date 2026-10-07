@@ -136,6 +136,7 @@ nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:va
 .overview>.grid{margin-bottom:16px}
 .overview .panel{margin-bottom:16px}
 @media (max-width:900px){.home{grid-template-columns:1fr}}
+@media (min-width:901px) and (max-width:1180px){#hTiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:760px){.g3,.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g2{grid-template-columns:1fr}header.top .stat{display:none}nav.tabs{top:48px}main{padding:14px 10px 90px}}
 </style>
 </head>
@@ -173,7 +174,7 @@ nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:va
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 5</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 6</span>
   <div class="sp"></div>
   <button id="signOutBtn" type="button">Sign out</button>
 </header>
@@ -212,7 +213,10 @@ nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:va
         <div class="meter"><div class="mlab"><span>Bills paid</span><span id="hBillsTxt"></span></div><div class="bar big"><i id="hBillsBar"></i></div></div>
         <div class="meter"><div class="mlab"><span>Everyday spending</span><span id="hDayTxt"></span></div><div class="bar big"><i id="hDayBar"></i><em id="hPace" title="Where spending would be if it were spread evenly through the month"></em></div></div>
       </div>
-      <div class="grid g3" id="hTiles"></div>
+      <div class="grid g4" id="hTiles"></div>
+      <div class="panel"><h3 style="margin-top:0">Account balances</h3>
+        <div class="tbl"><table><thead><tr><th>Account</th><th class="n">Balance</th></tr></thead><tbody id="hAcct"></tbody></table></div>
+        <p class="note" style="margin:8px 0 0">Balances update with every transaction you save.</p></div>
       <div class="panel"><h3 style="margin-top:0">Where this month's money went</h3><div class="chart small"><canvas id="cHomeCats"></canvas></div></div>
       <div class="panel"><h3 style="margin-top:0">Money in and out, last six months</h3><div class="chart small"><canvas id="cHomeTrend"></canvas></div></div>
     </div>
@@ -691,7 +695,11 @@ function renderHome(){
   $('hBillsTxt').textContent = money(T.bills) + (T.billsB ? ' of ' + money(T.billsB) : ''); $('hDayTxt').textContent = money(T.day) + (T.dayB ? ' of ' + money(T.dayB) : '');
   $('hPace').style.left = (elapsed * 100) + '%';
   const b = balances(); const tile = (v, l, c) => `<div class="kpi"><b class="${c||''}">${v}</b><span>${l}</span></div>`;
-  $('hTiles').innerHTML = tile(money(b.cash), 'Cash in checking and savings') + tile(money(b.card), 'Owed on credit cards', b.card > 0 ? 'neg' : '') + tile(money(T.inc), 'Money in this month', 'pos');
+  const cashA = S.config.accounts.filter(a => a.kind !== 'Card'), cardA = S.config.accounts.filter(a => a.kind === 'Card');
+  const arow = (a, v, cls) => `<tr><td>${esc(a.name)}</td><td class="n ${cls||''}">${money(v, true)}</td></tr>`;
+  $('hAcct').innerHTML = '<tr class="grp"><td>Checking and savings</td><td></td></tr>' + cashA.map(a => arow(a, b.bal[a.name], b.bal[a.name] < 0 ? 'neg' : '')).join('') +
+    '<tr class="grp"><td>Credit cards (amount owed)</td><td></td></tr>' + cardA.map(a => arow(a, -b.bal[a.name], -b.bal[a.name] > 0.005 ? 'neg' : '')).join('');
+  $('hTiles').innerHTML = tile(money(b.cash), 'Cash in checking and savings') + tile(money(b.card), 'Owed on credit cards', b.card > 0 ? 'neg' : '') + tile(money(T.inc), 'Money in this month', 'pos') + tile(money(T.out), 'Money out this month', 'neg');
   const ink = css('--ink'), rule = css('--rule'), muted = css('--muted');
   if (window.Chart){ Chart.defaults.color = muted; Chart.defaults.borderColor = rule; Chart.defaults.font.family = '"Public Sans", system-ui, sans-serif'; }
   const top = Object.entries(T.byCat).sort((a,b) => b[1] - a[1]).slice(0, 6);
