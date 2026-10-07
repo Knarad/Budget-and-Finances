@@ -103,6 +103,17 @@ details.more summary{cursor:pointer;color:var(--ledger);font-size:.9rem}
 nav.subtabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 18px;align-items:center}
 .sublabel{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 4px 0 8px;font-weight:700}
 .sublabel:first-child{margin-left:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.chips label{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--rule);border-radius:16px;padding:5px 10px;font-size:.88rem;cursor:pointer;background:var(--surface)}
+details.ms{border:1px solid var(--rule);border-radius:6px;background:var(--surface)}
+details.ms summary{padding:9px 12px;cursor:pointer;font-size:.92rem}
+details.ms .msin{padding:8px 12px 12px;max-height:320px;overflow:auto;border-top:1px solid var(--rule)}
+details.ms .msbtn{margin-bottom:8px}
+details.ms .mg{font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:8px 0 4px;font-weight:700}
+details.ms label{display:flex;gap:8px;align-items:center;padding:3px 0;font-size:.9rem}
+#pvTable td.cell{cursor:pointer}
+#pvTable td.cell:hover{outline:2px solid var(--focus);outline-offset:-2px}
+#pvTable td.sel{outline:2px solid var(--ledger);outline-offset:-2px}
 .ver{font-size:.75rem;opacity:.75;border:1px solid rgba(255,255,255,.4);border-radius:10px;padding:1px 8px}
 #rpBody h3.rh{font-size:1.05rem;margin:22px 0 8px}
 #rpBody p.rp{max-width:80ch;margin:10px 0}
@@ -162,7 +173,7 @@ nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:va
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 4</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 5</span>
   <div class="sp"></div>
   <button id="signOutBtn" type="button">Sign out</button>
 </header>
@@ -223,6 +234,7 @@ nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:va
   <button data-tab="forecast" aria-selected="false">Forecast</button>
   <button data-tab="debt" aria-selected="false">Debt</button>
   <button data-tab="goals" aria-selected="false">Goals</button>
+  <button data-tab="pivot" aria-selected="false">Pivot explorer</button>
   <span class="sublabel">Workbook</span>
   <button data-tab="report" aria-selected="false">Workbook report</button>
   <span class="sublabel">Records</span>
@@ -232,6 +244,47 @@ nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:va
   <button data-tab="budget" aria-selected="false">Budget</button>
   <button data-tab="data" aria-selected="false">Data and Settings</button>
 </nav>
+
+<section id="tab-pivot" class="hidden">
+  <h2>Pivot explorer</h2>
+  <p class="note" style="margin-top:-6px">Choose what to put in rows and columns, filter to the dates, categories, and accounts you care about, and select any number in the table to see the transactions behind it.</p>
+  <div class="panel">
+    <div class="row">
+      <div><label class="f" for="pvPreset">Dates</label><select class="t" id="pvPreset">
+        <option value="mtd">This month</option><option value="lastm">Last month</option><option value="ytd" selected>This year to date</option><option value="lasty">Last year</option><option value="l12">Last 12 months</option><option value="all">All time</option><option value="custom">Custom range</option></select></div>
+      <div><label class="f" for="pvFrom">From</label><input class="t" id="pvFrom" type="date"></div>
+      <div><label class="f" for="pvTo">To</label><input class="t" id="pvTo" type="date"></div>
+    </div>
+    <div class="row">
+      <div><label class="f" for="pvRows">Rows</label><select class="t" id="pvRows"></select></div>
+      <div><label class="f" for="pvCols">Columns</label><select class="t" id="pvCols"></select></div>
+      <div><label class="f" for="pvVal">Show</label><select class="t" id="pvVal">
+        <option value="sum">Total amount</option><option value="net">Net: income minus spending</option><option value="count">Number of transactions</option><option value="avg">Average per transaction</option><option value="share">Share of the grand total</option><option value="permonth">Average per month</option></select></div>
+      <div><label class="f" for="pvChart">Chart</label><select class="t" id="pvChart"><option value="auto">Automatic</option><option value="bar">Bars</option><option value="stack">Stacked bars</option><option value="line">Lines</option><option value="none">No chart</option></select></div>
+    </div>
+    <div class="row" style="align-items:start">
+      <div><span class="f" style="display:block">Types</span><div id="pvTypes" class="chips"></div></div>
+      <div><span class="f" style="display:block">Categories</span><details class="ms" id="pvCatBox"><summary id="pvCatSum">All categories</summary><div class="msin"><div class="msbtn"><button type="button" class="btn sec small" data-all="pvCatList">Select all</button> <button type="button" class="btn sec small" data-none="pvCatList">Clear</button></div><div id="pvCatList"></div></div></details></div>
+      <div><span class="f" style="display:block">Accounts</span><details class="ms" id="pvAcctBox"><summary id="pvAcctSum">All accounts</summary><div class="msin"><div class="msbtn"><button type="button" class="btn sec small" data-all="pvAcctList">Select all</button> <button type="button" class="btn sec small" data-none="pvAcctList">Clear</button></div><div id="pvAcctList"></div></div></details></div>
+      <div><label class="f" for="pvSearch">Description contains</label><input class="t" id="pvSearch" type="search" placeholder="For example: Walmart"></div>
+    </div>
+    <div class="row">
+      <div><label class="f" for="pvSort">Sort rows by</label><select class="t" id="pvSort"><option value="auto">Automatic</option><option value="total">Largest total first</option><option value="name">Name or date order</option></select></div>
+      <div><label class="f" for="pvTop">Rows shown</label><select class="t" id="pvTop"><option value="0">All</option><option value="5">Top 5</option><option value="10">Top 10</option><option value="20">Top 20</option></select></div>
+      <div><label class="check" style="margin-top:28px"><input type="checkbox" id="pvHeat" checked> Shade cells by size</label></div>
+      <div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap"><button class="btn sec" id="pvReset" type="button">Reset</button><button class="btn sec" id="pvExport" type="button">Export to Excel</button></div>
+    </div>
+  </div>
+  <div class="grid g4" id="pvKpis"></div>
+  <div class="panel" id="pvChartBox" style="margin-top:16px"><div class="chart tall"><canvas id="pvCanvas"></canvas></div></div>
+  <div class="tbl" id="pvTblBox"><table id="pvTable"></table></div>
+  <p class="note" id="pvNote"></p>
+  <div id="pvDrill" class="panel hidden" style="margin-top:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h3 style="margin:0" id="pvDrillTitle"></h3><button class="btn sec small" id="pvDrillClose" type="button">Close</button></div>
+    <div class="tbl" style="margin-top:10px"><table><thead><tr><th>Date</th><th>Account</th><th class="n">Amount</th><th>Description</th><th>Category</th></tr></thead><tbody id="pvDrillBody"></tbody></table></div>
+    <p class="note">Select a transaction to edit it.</p>
+  </div>
+</section>
 
 <section id="tab-report" class="hidden">
   <h2>Workbook report</h2>
@@ -894,7 +947,8 @@ function ensureDefaults(){
       { name:'PNC consolidation loan', kind:'Loan', account:'', balance:16260.86, asOf:'2026-10-06', apr:14.34, payment:421.97 }].filter(d => d.kind === 'Loan' || has(d.account));
   }
   if (!Array.isArray(S.config.goals)){
-    S.config.goals = has('Savings - PNC Reserve (trip fund)') ? [{ name:'Europe trip, bill due January 2027', target:5846, date:'2027-01-15', account:'Savings - PNC Reserve (trip fund)', saved:0 }] : [];
+    const res = has('Savings - PNC Reserve') ? 'Savings - PNC Reserve' : (has('Savings - PNC Reserve (trip fund)') ? 'Savings - PNC Reserve (trip fund)' : '');
+    S.config.goals = res ? [{ name:'Europe trip, bill due January 2027', target:5846, date:'2027-01-15', account:res, saved:0 }] : [];
   }
 }
 function lineOpts(yfmt){ const rule = css('--rule'); return { responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false}, plugins:{ legend:{position:'bottom'}, tooltip:{ callbacks:{ label:c => ' ' + c.dataset.label + ': ' + money(c.parsed.y ?? c.parsed.x) } } }, scales:{ y:{ ticks:{ callback:v => money(v) }, grid:{ color:rule } }, x:{ grid:{ display:false } } } }; }
@@ -1256,6 +1310,185 @@ render.report = async () => {
   $('rpTabs').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { drawReportTab(+b.dataset.i); window.scrollTo(0, $('tab-report').offsetTop - 60); }));
   drawReportTab(Math.min(rpCurrent, REPORT.tabs.length - 1));
 };
+/* ================= Renames that carry through every record ================= */
+async function applyRenames(acctMap, catMap){
+  const ra = n => acctMap[n] || n, rc = n => catMap[n] || n, anyA = Object.keys(acctMap).length, anyC = Object.keys(catMap).length;
+  const cfg = S.config;
+  cfg.accounts = cfg.accounts.map(a => Object.assign({}, a, { name:ra(a.name) }));
+  cfg.categories = cfg.categories.map(c => Object.assign({}, c, { name:rc(c.name) }));
+  cfg.rules = cfg.rules.map(r => Object.assign({}, r, { cat:rc(r.cat), to:ra(r.to) }));
+  cfg.goals = (cfg.goals || []).map(g => Object.assign({}, g, { account:ra(g.account) }));
+  cfg.debts = (cfg.debts || []).map(d => Object.assign({}, d, { account:ra(d.account) }));
+  const batch = writeBatch(db); batch.set(ref('meta','config'), cfg);
+  if (anyC){ S.budget.rows = S.budget.rows.map(r => Object.assign({}, r, { cat:rc(r.cat) })); batch.set(ref('meta','budget'), { rows:S.budget.rows }); }
+  if (anyA || anyC){
+    for (const [k, rows] of Object.entries(S.months)){
+      let changed = false;
+      const next = rows.map(t => { const n = Object.assign({}, t, { account:ra(t.account), to:ra(t.to), cat:rc(t.cat) }); if (n.account !== t.account || n.to !== t.to || n.cat !== t.cat) changed = true; return n; });
+      if (changed){ S.months[k] = next; batch.set(ref('months', k), { rows:next }); }
+    }
+  }
+  await batch.commit(); rebuildTx();
+}
+async function migrations(){
+  const has = n => S.config.accounts.some(a => a.name === n);
+  if (has('Savings - PNC Reserve (trip fund)') && !has('Savings - PNC Reserve')){
+    try { await applyRenames({ 'Savings - PNC Reserve (trip fund)':'Savings - PNC Reserve' }, {}); toast('Renamed the reserve account'); } catch (e) {}
+  }
+}
+
+/* ================= Pivot explorer ================= */
+const dowNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+function mondayOf(iso){ const d = new Date(iso + 'T00:00:00'); const off = (d.getDay() + 6) % 7; d.setDate(d.getDate() - off); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+const groupLabel = g => (GROUPS.find(x => x[0] === g) || [g, g || 'Transfer'])[1];
+const PV_DIMS = {
+  category:{ label:'Category', key:t => catUsed(t) || '(Uncategorized)' },
+  group:{ label:'Group', key:t => groupLabel(groupOf(catUsed(t))) },
+  type:{ label:'Type', key:t => typeOf(catUsed(t)) || 'Unknown' },
+  account:{ label:'Account', key:t => t.account },
+  desc:{ label:'Description', key:t => normDesc(t.desc) || '(blank)' },
+  year:{ label:'Year', key:t => t.date.slice(0,4), time:'year' },
+  quarter:{ label:'Quarter', key:t => t.date.slice(0,4) + ' Q' + (Math.floor((+t.date.slice(5,7) - 1) / 3) + 1), time:'quarter' },
+  month:{ label:'Month', key:t => ym(t.date), fmt:monthLabel, time:'month' },
+  moy:{ label:'Month of year (all years)', key:t => t.date.slice(5,7), fmt:k => MONTHS[+k - 1], time:'moy' },
+  week:{ label:'Week, starting Monday', key:t => mondayOf(t.date), fmt:k => 'Week of ' + fmtDate(k), time:'week' },
+  day:{ label:'Day', key:t => t.date, fmt:fmtDate, time:'day' },
+  dow:{ label:'Day of week', key:t => String((new Date(t.date + 'T00:00:00').getDay() + 6) % 7), fmt:k => dowNames[+k], time:'dow' }
+};
+const PV_TYPES = ['Income','Expense','Savings','Transfer'];
+let PV = null, pvDescLabel = {};
+function pvDefaults(){ return { preset:'ytd', from:'', to:'', rows:'category', cols:'month', val:'sum', chart:'auto', types:['Expense'], cats:null, accts:null, search:'', sort:'auto', top:'0', heat:true }; }
+function pvLoadState(){ try { PV = Object.assign(pvDefaults(), JSON.parse(localStorage.getItem('bf-pivot') || '{}')); } catch (e){ PV = pvDefaults(); } }
+function pvSaveState(){ try { localStorage.setItem('bf-pivot', JSON.stringify(PV)); } catch (e){} }
+function presetRange(p){
+  const n = new Date(), y = n.getFullYear(), m = n.getMonth(), iso = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  if (p === 'mtd') return [iso(new Date(y,m,1)), todayISO()];
+  if (p === 'lastm') return [iso(new Date(y,m-1,1)), iso(new Date(y,m,0))];
+  if (p === 'ytd') return [y + '-01-01', todayISO()];
+  if (p === 'lasty') return [(y-1) + '-01-01', (y-1) + '-12-31'];
+  if (p === 'l12') return [iso(new Date(y,m-11,1)), todayISO()];
+  if (p === 'all') return [S.tx.length ? S.tx[0].date : todayISO(), S.tx.length ? S.tx[S.tx.length-1].date : todayISO()];
+  return [PV.from || (y + '-01-01'), PV.to || todayISO()];
+}
+function pvBuildControls(){
+  const dimOpts = Object.entries(PV_DIMS).map(([k,d]) => `<option value="${k}">${esc(d.label)}</option>`).join('');
+  $('pvRows').innerHTML = dimOpts; $('pvCols').innerHTML = '<option value="">Nothing (one column)</option>' + dimOpts;
+  $('pvTypes').innerHTML = PV_TYPES.map(t => `<label><input type="checkbox" value="${t}"${PV.types.includes(t) ? ' checked' : ''}> ${t}</label>`).join('');
+  let html = ''; for (const [g, gl] of GROUPS.concat([['Transfer','Transfers']])){ const list = S.config.categories.filter(c => (c.group || 'Transfer') === g); if (!list.length) continue;
+    html += `<div class="mg">${esc(gl)}</div>` + list.map(c => `<label><input type="checkbox" value="${esc(c.name)}"${!PV.cats || PV.cats.includes(c.name) ? ' checked' : ''}> ${esc(c.name)}</label>`).join(''); }
+  $('pvCatList').innerHTML = html;
+  $('pvAcctList').innerHTML = S.config.accounts.map(a => `<label><input type="checkbox" value="${esc(a.name)}"${!PV.accts || PV.accts.includes(a.name) ? ' checked' : ''}> ${esc(a.name)}</label>`).join('');
+  $('pvPreset').value = PV.preset; $('pvRows').value = PV.rows; $('pvCols').value = PV.cols; $('pvVal').value = PV.val; $('pvChart').value = PV.chart; $('pvSearch').value = PV.search; $('pvSort').value = PV.sort; $('pvTop').value = PV.top; $('pvHeat').checked = PV.heat;
+  const [f, t] = presetRange(PV.preset); $('pvFrom').value = f; $('pvTo').value = t;
+  $('tab-pivot').dataset.built = '1';
+}
+function pvReadControls(){
+  const checked = id => [...$(id).querySelectorAll('input:checked')].map(i => i.value), all = id => $(id).querySelectorAll('input').length;
+  const cats = checked('pvCatList'), accts = checked('pvAcctList');
+  Object.assign(PV, { preset:$('pvPreset').value, from:$('pvFrom').value, to:$('pvTo').value, rows:$('pvRows').value, cols:$('pvCols').value, val:$('pvVal').value, chart:$('pvChart').value, types:checked('pvTypes'), cats:cats.length === all('pvCatList') ? null : cats, accts:accts.length === all('pvAcctList') ? null : accts, search:$('pvSearch').value.trim(), sort:$('pvSort').value, top:$('pvTop').value, heat:$('pvHeat').checked });
+  $('pvCatSum').textContent = !PV.cats ? 'All categories' : PV.cats.length === 0 ? 'No categories' : PV.cats.length <= 3 ? PV.cats.join(', ') : PV.cats.length + ' categories';
+  $('pvAcctSum').textContent = !PV.accts ? 'All accounts' : PV.accts.length === 0 ? 'No accounts' : PV.accts.length <= 2 ? PV.accts.join(', ') : PV.accts.length + ' accounts';
+  pvSaveState();
+}
+function pvFiltered(){
+  const q = PV.search.toLowerCase(), cats = PV.cats ? new Set(PV.cats) : null, accts = PV.accts ? new Set(PV.accts) : null, types = new Set(PV.types);
+  return S.tx.filter(t => { if (t.date < PV.from || t.date > PV.to) return false; const c = catUsed(t); if (!types.has(typeOf(c) || 'Unknown')) return false;
+    if (cats && !cats.has(c)) return false; if (accts && !accts.has(t.account)) return false; if (q && !(t.desc || '').toLowerCase().includes(q)) return false; return true; });
+}
+const monthsBetween = (a, b) => { if (!a || !b || a > b) return 0; return (+b.slice(0,4) - +a.slice(0,4)) * 12 + (+b.slice(5,7) - +a.slice(5,7)) + 1; };
+function periodBounds(dim, key){
+  if (dim === 'year') return [key + '-01-01', key + '-12-31'];
+  if (dim === 'quarter'){ const y = key.slice(0,4), q = +key.slice(-1); const m1 = (q - 1) * 3 + 1, m3 = m1 + 2; return [`${y}-${String(m1).padStart(2,'0')}-01`, `${y}-${String(m3).padStart(2,'0')}-31`]; }
+  if (dim === 'month') return [key + '-01', key + '-31'];
+  return null;
+}
+function pvCompute(){
+  const rows = pvFiltered(), rd = PV_DIMS[PV.rows], cd = PV.cols ? PV_DIMS[PV.cols] : null;
+  pvDescLabel = {}; for (const t of rows){ const k = normDesc(t.desc); if (!pvDescLabel[k]) pvDescLabel[k] = t.desc; }
+  const cell = {}, rT = {}, cT = {}, gT = { sum:0, net:0, count:0 }, add = (o, t, sg) => { o.sum += t.amount; o.net += sg * t.amount; o.count++; };
+  const mk = () => ({ sum:0, net:0, count:0 });
+  for (const t of rows){ const ty = typeOf(catUsed(t)), sg = ty === 'Income' ? 1 : (ty === 'Transfer' ? 0 : -1);
+    const r = rd.key(t), c = cd ? cd.key(t) : '_'; ((cell[r] ||= {})[c] ||= mk()); add(cell[r][c], t, sg); add(rT[r] ||= mk(), t, sg); add(cT[c] ||= mk(), t, sg); add(gT, t, sg); }
+  const span = monthsBetween(PV.from, PV.to);
+  const value = (o, colKey) => { if (!o || !o.count) return null;
+    if (PV.val === 'sum') return o.sum; if (PV.val === 'net') return o.net; if (PV.val === 'count') return o.count; if (PV.val === 'avg') return o.sum / o.count;
+    if (PV.val === 'share') return gT.sum ? o.sum / gT.sum : 0;
+    if (PV.val === 'permonth'){ let m = span; if (cd && colKey && colKey !== '_'){ const b = periodBounds(PV.cols, colKey); if (b) m = monthsBetween(b[0] > PV.from ? b[0] : PV.from, b[1] < PV.to ? b[1] : PV.to); } return m ? o.sum / m : o.sum; } return o.sum; };
+  const label = (d, k) => d === PV_DIMS.desc ? (pvDescLabel[k] || k) : (d.fmt ? d.fmt(k) : k);
+  let rKeys = Object.keys(rT), cKeys = cd ? Object.keys(cT) : ['_'];
+  const mag = k => Math.abs(PV.val === 'net' ? rT[k].net : (PV.val === 'count' ? rT[k].count : rT[k].sum));
+  if (PV.sort === 'total' || (PV.sort === 'auto' && !rd.time)) rKeys.sort((a,b) => mag(b) - mag(a));
+  else if (rd.time) rKeys.sort(); else rKeys.sort((a,b) => String(label(rd,a)).localeCompare(String(label(rd,b))));
+  if (cd){ if (cd.time) cKeys.sort(); else cKeys.sort((a,b) => Math.abs(cT[b].sum) - Math.abs(cT[a].sum)); }
+  let other = null; const top = +PV.top;
+  if (top && rKeys.length > top){ const rest = rKeys.slice(top); rKeys = rKeys.slice(0, top); other = { cells:{}, tot:mk() };
+    for (const r of rest){ for (const c of cKeys){ const o = cell[r][c]; if (!o) continue; const t = (other.cells[c] ||= mk()); t.sum += o.sum; t.net += o.net; t.count += o.count; } const o = rT[r]; other.tot.sum += o.sum; other.tot.net += o.net; other.tot.count += o.count; }
+    other.keys = rest; }
+  return { rows, rd, cd, cell, rT, cT, gT, rKeys, cKeys, other, value, label };
+}
+function pvFmt(v){ if (v === null || v === undefined) return ''; if (PV.val === 'count') return Math.round(v).toLocaleString('en-US'); if (PV.val === 'share') return (v * 100).toFixed(1) + '%'; return money(v, Math.abs(v) < 100); }
+let PVR = null;
+render.pivot = () => {
+  if (!PV) pvLoadState();
+  if (!$('tab-pivot').dataset.built) pvBuildControls();
+  pvReadControls();
+  const R = PVR = pvCompute(), { rd, cd, rKeys, cKeys, value, label } = R;
+  const tot = R.gT, monthsN = monthsBetween(PV.from, PV.to);
+  const kk = (v,l) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`;
+  $('pvKpis').innerHTML = kk(money(tot.sum), 'Total of matching transactions') + kk(tot.count.toLocaleString('en-US'), 'Transactions') + kk(tot.count ? money(tot.sum / tot.count, true) : '', 'Average transaction') + kk(monthsN ? money(tot.sum / monthsN) : '', `Average per month over ${monthsN} months`);
+  if (!R.rows.length){ $('pvTable').innerHTML = '<tbody><tr><td class="muted">No transactions match these filters.</td></tr></tbody>'; show('pvChartBox', false); $('pvNote').textContent = ''; return; }
+  // table
+  const vals = []; for (const r of rKeys) for (const c of cKeys){ const v = value((R.cell[r] || {})[c], c); if (v !== null) vals.push(Math.abs(v)); }
+  const mx = Math.max(1e-9, ...vals), heat = v => { if (!PV.heat || v === null) return ''; const a = Math.min(0.55, Math.abs(v) / mx * 0.55); return `background:color-mix(in srgb, ${v < 0 ? 'var(--out)' : 'var(--ledger)'} ${Math.round(a*100)}%, transparent)`; };
+  const colHead = cd ? cKeys.map(c => `<th class="n">${esc(label(cd, c))}</th>`).join('') : `<th class="n">${esc($('pvVal').selectedOptions[0].text)}</th>`;
+  let html = `<thead><tr><th>${esc(rd.label)}</th>${colHead}${cd ? '<th class="n">Total</th>' : ''}</tr></thead><tbody>`;
+  rKeys.forEach((r, i) => { html += `<tr><td>${esc(label(rd, r))}</td>` + cKeys.map((c, j) => { const v = value((R.cell[r] || {})[c], c); return `<td class="n cell" data-r="${i}" data-c="${j}" style="${heat(v)}">${pvFmt(v)}</td>`; }).join('') + (cd ? `<td class="n cell" data-r="${i}" data-c="-1"><b>${pvFmt(value(R.rT[r], null))}</b></td>` : '') + '</tr>'; });
+  if (R.other) html += `<tr><td>All other (${R.other.keys.length})</td>` + cKeys.map((c, j) => `<td class="n cell" data-r="other" data-c="${j}">${pvFmt(value(R.other.cells[c], c))}</td>`).join('') + (cd ? `<td class="n cell" data-r="other" data-c="-1"><b>${pvFmt(value(R.other.tot, null))}</b></td>` : '') + '</tr>';
+  html += `<tr class="tot"><td>Total</td>` + cKeys.map((c, j) => `<td class="n cell" data-r="-1" data-c="${j}">${pvFmt(value(R.cT[c], c))}</td>`).join('') + (cd ? `<td class="n cell" data-r="-1" data-c="-1">${pvFmt(value(R.gT, null))}</td>` : '') + '</tr></tbody>';
+  $('pvTable').innerHTML = html;
+  $('pvNote').textContent = `${R.rows.length.toLocaleString('en-US')} transactions from ${fmtDate(PV.from)} to ${fmtDate(PV.to)}.` + (PV.types.includes('Transfer') ? ' Transfers include card payments and moves between your own accounts, so they are not spending.' : '') + ' Select any number to see the transactions behind it.';
+  // chart
+  let mode = PV.chart; if (mode === 'auto') mode = !cd ? 'bar' : (cd.time ? (cKeys.length > 12 ? 'line' : 'bar') : 'stack');
+  show('pvChartBox', mode !== 'none');
+  if (mode !== 'none'){
+    const P = PALETTE().concat(['#B5651D','#5B8C5A','#9A4C95','#2E86AB']), seriesKeys = rKeys.slice(0, 10);
+    let cfg;
+    if (!cd){ cfg = { type:'bar', data:{ labels:rKeys.map(r => label(rd, r)), datasets:[{ label:$('pvVal').selectedOptions[0].text, data:rKeys.map(r => value(R.rT[r], null)), backgroundColor:P[0] }] },
+      options:Object.assign(lineOpts(), { indexAxis:rKeys.length > 8 ? 'y' : 'x', plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:c => ' ' + pvFmt(c.parsed[rKeys.length > 8 ? 'x' : 'y']) } } }, scales:{ [rKeys.length > 8 ? 'x' : 'y']:{ ticks:{ callback:v => pvFmt(v) }, grid:{ color:css('--rule') } }, [rKeys.length > 8 ? 'y' : 'x']:{ grid:{ display:false }, ticks:{ color:css('--ink') } } } }) }; }
+    else { cfg = { type:mode === 'line' ? 'line' : 'bar', data:{ labels:cKeys.map(c => label(cd, c)), datasets:seriesKeys.map((r, i) => ({ label:label(rd, r), data:cKeys.map(c => value((R.cell[r] || {})[c], c) ?? 0), backgroundColor:P[i % P.length], borderColor:P[i % P.length], pointRadius:2, tension:.2 })) },
+      options:Object.assign(lineOpts(), { plugins:{ legend:{ position:'bottom' }, tooltip:{ callbacks:{ label:c => ' ' + c.dataset.label + ': ' + pvFmt(c.parsed.y) } } }, scales:{ x:{ stacked:mode === 'stack', grid:{ display:false } }, y:{ stacked:mode === 'stack', ticks:{ callback:v => pvFmt(v) }, grid:{ color:css('--rule') } } } }) }; }
+    mkChart('pvCanvas', cfg);
+  }
+  show('pvDrill', false); updateHScroll();
+};
+function pvDrill(ri, ci){
+  const R = PVR; if (!R) return;
+  const rKeys = ri === 'other' ? R.other.keys : (+ri < 0 ? null : [R.rKeys[+ri]]), cKey = +ci < 0 || !R.cd ? null : R.cKeys[+ci];
+  const list = R.rows.filter(t => (!rKeys || rKeys.includes(R.rd.key(t))) && (cKey === null || R.cd.key(t) === cKey)).sort((a,b) => a.date < b.date ? 1 : -1);
+  const rl = ri === 'other' ? 'All other' : (rKeys ? R.label(R.rd, rKeys[0]) : 'All rows'), cl = cKey === null ? (R.cd ? 'all columns' : '') : R.label(R.cd, cKey);
+  $('pvDrillTitle').textContent = `${rl}${cl ? ', ' + cl : ''}: ${list.length} transactions totaling ${money(list.reduce((s,t) => s + t.amount, 0), true)}`;
+  $('pvDrillBody').innerHTML = list.slice(0, 500).map(t => `<tr class="click" data-id="${t.id}"><td>${fmtDate(t.date)}</td><td>${esc(t.account)}</td><td class="n">${money(t.amount,true)}</td><td class="wrap">${esc(t.desc)}</td><td>${esc(catUsed(t))}</td></tr>`).join('') + (list.length > 500 ? '<tr><td colspan="5" class="muted">Showing the latest 500.</td></tr>' : '');
+  document.querySelectorAll('#pvTable td.sel').forEach(x => x.classList.remove('sel'));
+  const td = document.querySelector(`#pvTable td[data-r="${ri}"][data-c="${ci}"]`); if (td) td.classList.add('sel');
+  show('pvDrill'); $('pvDrill').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+$('pvTable').addEventListener('click', e => { const td = e.target.closest('td.cell'); if (td) pvDrill(td.dataset.r, td.dataset.c); });
+$('pvDrillClose').addEventListener('click', () => show('pvDrill', false));
+$('pvPreset').addEventListener('change', () => { if ($('pvPreset').value !== 'custom'){ const [f, t] = presetRange($('pvPreset').value); $('pvFrom').value = f; $('pvTo').value = t; } render.pivot(); });
+['pvFrom','pvTo'].forEach(id => $(id).addEventListener('change', () => { $('pvPreset').value = 'custom'; render.pivot(); }));
+['pvRows','pvCols','pvVal','pvChart','pvSort','pvTop','pvHeat'].forEach(id => $(id).addEventListener('change', () => render.pivot()));
+$('pvSearch').addEventListener('input', () => { clearTimeout($('pvSearch')._t); $('pvSearch')._t = setTimeout(() => render.pivot(), 250); });
+['pvTypes','pvCatList','pvAcctList'].forEach(id => $(id).addEventListener('change', () => render.pivot()));
+document.querySelectorAll('[data-all],[data-none]').forEach(b => b.addEventListener('click', () => { const id = b.dataset.all || b.dataset.none; $(id).querySelectorAll('input').forEach(i => i.checked = !!b.dataset.all); render.pivot(); }));
+$('pvReset').addEventListener('click', () => { PV = pvDefaults(); pvSaveState(); delete $('tab-pivot').dataset.built; render.pivot(); });
+$('pvExport').addEventListener('click', () => {
+  const R = PVR; if (!R || !window.XLSX) return;
+  const head = [R.rd.label].concat(R.cd ? R.cKeys.map(c => R.label(R.cd, c)).concat(['Total']) : [$('pvVal').selectedOptions[0].text]);
+  const body = R.rKeys.map(r => [R.label(R.rd, r)].concat(R.cKeys.map(c => R.value((R.cell[r] || {})[c], c) ?? '')).concat(R.cd ? [R.value(R.rT[r], null)] : []));
+  if (R.other) body.push([`All other (${R.other.keys.length})`].concat(R.cKeys.map(c => R.value(R.other.cells[c], c) ?? '')).concat(R.cd ? [R.value(R.other.tot, null)] : []));
+  body.push(['Total'].concat(R.cKeys.map(c => R.value(R.cT[c], c) ?? '')).concat(R.cd ? [R.value(R.gT, null)] : []));
+  const ws = XLSX.utils.aoa_to_sheet([head].concat(body)); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Pivot'); XLSX.writeFile(wb, `Pivot ${todayISO()}.xlsx`);
+});
 /* ---------- Data: import ---------- */
 function serialToISO(v){
   if (v == null || v === '') return '';
@@ -1352,8 +1585,8 @@ const inp = (v, cls, type) => `<input class="cellin ${cls||''}" type="${type||'t
 const delBtn = '<button class="btn sec small" data-del type="button">Remove</button>';
 function renderSettings(){
   const accts = S.config.accounts.map(a => a.name), cats = S.config.categories.map(c => c.name);
-  $('sAcct').innerHTML = S.config.accounts.map(a => `<tr><td>${inp(a.name,'wide')}</td><td>${sel(KIND,a.kind)}</td><td>${inp(a.owner)}</td><td class="n">${inp(a.openBal,'','number')}</td><td>${inp(a.openDate,'wide','date')}</td><td>${delBtn}</td></tr>`).join('');
-  $('sCat').innerHTML = S.config.categories.map(c => `<tr><td>${inp(c.name,'wide')}</td><td>${sel(TYPES,c.type)}</td><td>${sel(GRPS,c.group)}</td><td>${delBtn}</td></tr>`).join('');
+  $('sAcct').innerHTML = S.config.accounts.map(a => `<tr data-orig="${esc(a.name)}"><td>${inp(a.name,'wide')}</td><td>${sel(KIND,a.kind)}</td><td>${inp(a.owner)}</td><td class="n">${inp(a.openBal,'','number')}</td><td>${inp(a.openDate,'wide','date')}</td><td>${delBtn}</td></tr>`).join('');
+  $('sCat').innerHTML = S.config.categories.map(c => `<tr data-orig="${esc(c.name)}"><td>${inp(c.name,'wide')}</td><td>${sel(TYPES,c.type)}</td><td>${sel(GRPS,c.group)}</td><td>${delBtn}</td></tr>`).join('');
   const cardAccts = S.config.accounts.filter(a => a.kind === 'Card').map(a => a.name);
   $('sDebt').innerHTML = (S.config.debts || []).map(d => `<tr><td>${inp(d.name,'wide')}</td><td>${sel(['Card','Loan'],d.kind)}</td><td>${sel(['',...cardAccts],d.account,'wide')}</td><td class="n">${inp(d.balance,'','number')}</td><td>${inp(d.asOf,'wide','date')}</td><td class="n">${inp(d.apr,'','number')}</td><td class="n">${inp(d.payment,'','number')}</td><td>${delBtn}</td></tr>`).join('');
   $('sGoal').innerHTML = (S.config.goals || []).map(g => `<tr><td>${inp(g.name,'wide')}</td><td class="n">${inp(g.target,'','number')}</td><td>${inp(g.date,'wide','date')}</td><td>${sel(['',...accts],g.account,'wide')}</td><td class="n">${inp(g.saved,'','number')}</td><td>${delBtn}</td></tr>`).join('');
@@ -1381,7 +1614,10 @@ $('saveSettings').addEventListener('click', async () => {
   const dupe = list => list.find((x,i) => list.indexOf(x) !== i);
   const da = dupe(accounts.map(a => a.name)), dc = dupe(categories.map(c => c.name));
   if (da || dc){ $('setMsg').textContent = 'Each name must be unique: ' + (da || dc); return; }
-  try { const cfg = Object.assign({}, S.config, { accounts, categories, rules, debts, goals }); await setDoc(ref('meta','config'), cfg); S.config = cfg; $('setMsg').textContent = ''; toast('Settings saved'); renderAll(); renderSettings(); }
+  const acctMap = {}, catMap = {};
+  [...$('sAcct').rows].forEach(r => { const o = r.dataset.orig, n = r.querySelector('input').value.trim(); if (o && n && o !== n) acctMap[o] = n; });
+  [...$('sCat').rows].forEach(r => { const o = r.dataset.orig, n = r.querySelector('input').value.trim(); if (o && n && o !== n) catMap[o] = n; });
+  try { const cfg = Object.assign({}, S.config, { accounts, categories, rules, debts, goals }); S.config = cfg; await applyRenames(acctMap, catMap); $('setMsg').textContent = ''; toast(Object.keys(acctMap).length + Object.keys(catMap).length ? 'Settings saved and renames applied everywhere' : 'Settings saved'); renderAll(); renderSettings(); }
   catch (err){ $('setMsg').textContent = 'Could not save: ' + (err.code || err.message); }
 });
 
@@ -1394,7 +1630,7 @@ else {
   onAuthStateChanged(auth, async user => {
     if (!user){ gate('loginGate'); $('lEmail').focus(); return; }
     gate('boot');
-    try { await loadAll(); gate('app'); resetForm(false); renderAll(); armIdle(); }
+    try { await loadAll(); await migrations(); gate('app'); resetForm(false); renderAll(); armIdle(); }
     catch (err){
       if (err.code === 'permission-denied'){ await signOut(auth); gate('deniedGate'); }
       else { $('boot').textContent = 'Could not load data: ' + (err.code || err.message); }
