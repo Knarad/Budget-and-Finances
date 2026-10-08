@@ -177,7 +177,7 @@ nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:va
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 7</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 8</span>
   <div class="sp"></div>
   <button id="signOutBtn" type="button">Sign out</button>
 </header>
@@ -969,8 +969,8 @@ function ensureDefaults(){
   const has = n => S.config.accounts.some(a => a.name === n);
   if (!Array.isArray(S.config.debts)){
     S.config.debts = [
-      { name:'Chase Amazon (J)', kind:'Card', account:'Card - Chase Amazon (J)', balance:0, asOf:'', apr:25, payment:0 },
-      { name:'Capital One (J)', kind:'Card', account:'Card - Capital One (J)', balance:0, asOf:'', apr:25, payment:0 },
+      { name:'Chase Amazon (J)', kind:'Card', account:'Card - Chase Amazon (J)', balance:0, asOf:'', apr:25.99, payment:0 },
+      { name:'Capital One (J)', kind:'Card', account:'Card - Capital One (J)', balance:0, asOf:'', apr:28.24, payment:0 },
       { name:'PNC personal loan', kind:'Loan', account:'', balance:20239.93, asOf:'2026-10-06', apr:13.34, payment:573.17 },
       { name:'PNC consolidation loan', kind:'Loan', account:'', balance:16260.86, asOf:'2026-10-06', apr:14.34, payment:421.97 }].filter(d => d.kind === 'Loan' || has(d.account));
   }
@@ -1360,6 +1360,10 @@ async function applyRenames(acctMap, catMap){
 }
 async function migrations(){
   const has = n => S.config.accounts.some(a => a.name === n);
+  const RATES = { 'Card - Chase Amazon (J)':25.99, 'Card - Capital One (J)':28.24 };
+  let changed = false;
+  for (const d of (S.config.debts || [])){ if (d.kind === 'Card' && RATES[d.account] && +d.apr === 25){ d.apr = RATES[d.account]; changed = true; } }
+  if (changed){ try { await setDoc(ref('meta','config'), S.config); toast('Card rates updated from the statements'); } catch (e) {} }
   if (has('Savings - PNC Reserve (trip fund)') && !has('Savings - PNC Reserve')){
     try { await applyRenames({ 'Savings - PNC Reserve (trip fund)':'Savings - PNC Reserve' }, {}); toast('Renamed the reserve account'); } catch (e) {}
   }
