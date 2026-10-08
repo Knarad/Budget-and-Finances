@@ -177,7 +177,7 @@ nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:va
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 8</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 9</span>
   <div class="sp"></div>
   <button id="signOutBtn" type="button">Sign out</button>
 </header>
@@ -360,7 +360,7 @@ nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:va
 
 <section id="tab-forecast" class="hidden">
   <h2>Forecast</h2>
-  <p class="note" style="margin-top:-6px">Projects cash forward from today's balance using the budget: what is still expected this month, then each following month's budgeted income less budgeted spending. Card balances are held where they are today.</p>
+  <p class="note" style="margin-top:-6px">Projects cash forward from today's balance using the budget: what is still expected this month, then each following month's budgeted income less budgeted spending. Past the last budget year, the latest budget carries forward with the pay raises from Data and Settings applied. Card balances are held where they are today.</p>
   <div class="grid g3" id="fcKpis"></div>
   <div class="panel" style="margin-top:16px"><h3 style="margin-top:0">Projected cash at each month end</h3><div class="chart"><canvas id="fcChart"></canvas></div></div>
   <div class="tbl"><table><thead><tr><th>Month</th><th class="n">Budgeted income</th><th class="n">Budgeted spending and savings</th><th class="n">Net</th><th class="n">Projected cash at month end</th><th>Large items</th></tr></thead><tbody id="fcBody"></tbody></table></div>
@@ -456,7 +456,7 @@ nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:va
   <div class="panel"><div class="row">
     <div><label class="f" for="bYear">Year</label><select class="t" id="bYear"></select></div>
     <div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap"><button class="btn" id="bSave" type="button">Save budget</button><button class="btn sec" id="bCopy" type="button">Copy this year to next year</button></div>
-  </div><p class="note" style="margin:10px 0 0">Enter each amount in the month it is paid. Income rows are money expected in.</p></div>
+  </div><p class="note" style="margin:10px 0 0">Enter each amount in the month it is paid. Income rows are money expected in. Copying a year forward applies the pay raises set in Data and Settings.</p></div>
   <div class="tbl"><table><thead id="bHead"></thead><tbody id="bBody"></tbody></table></div>
 </section>
 
@@ -496,6 +496,12 @@ nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:va
     <p class="note">Cards: pick the card account and its rate; the balance comes from the account. Loans: enter the balance on a known date, the rate, and the monthly payment.</p>
     <div class="tbl"><table><thead><tr><th>Debt</th><th>Kind</th><th>Card account</th><th class="n">Loan balance</th><th>As of</th><th class="n">Rate %</th><th class="n">Loan payment</th><th></th></tr></thead><tbody id="sDebt"></tbody></table></div>
     <div style="margin-top:10px"><button class="btn sec small" id="addDebt" type="button">Add debt</button></div>
+  </div>
+  <div class="panel">
+    <h3 style="margin-top:0">Pay raises</h3>
+    <p class="note">Expected yearly increases in take-home pay. They are applied when a budget year is copied forward, in the Forecast beyond the budget years, and to third paychecks in the payoff planner.</p>
+    <div class="tbl"><table><thead><tr><th>Income category</th><th class="n">Increase each year, %</th><th>Takes effect in</th><th>Note</th><th></th></tr></thead><tbody id="sRaise"></tbody></table></div>
+    <div style="margin-top:10px"><button class="btn sec small" id="addRaise" type="button">Add raise</button></div>
   </div>
   <div class="panel">
     <h3 style="margin-top:0">Savings goals</h3>
@@ -935,7 +941,7 @@ $('bSave').addEventListener('click', async () => {
 $('bCopy').addEventListener('click', async () => {
   const Y = +$('bYear').value, N = Y + 1;
   if (S.budget.rows.some(r => +r.year === N) && !confirm(`Replace the existing ${N} budget with a copy of ${Y}?`)) return;
-  const rows = readBudgetGrid(Y).filter(r => +r.year !== N); rows.filter(r => +r.year === Y).forEach(r => rows.push({ cat:r.cat, year:N, m:r.m.slice() }));
+  const rows = readBudgetGrid(Y).filter(r => +r.year !== N); rows.filter(r => +r.year === Y).forEach(r => { const rz = raiseFor(r.cat); rows.push({ cat:r.cat, year:N, m:r.m.map(v => rz ? Math.round(v * (1 + rz.pct / 100) * 100) / 100 : v) }); });
   try { await setDoc(ref('meta','budget'), { rows }); S.budget.rows = rows; fillSelects(); $('bYear').value = N; render.budget(); toast(`Copied to ${N}`); } catch (err){ alert('Could not save: ' + (err.code || err.message)); }
 });
 /* ================= ANALYSIS: shared helpers ================= */
@@ -954,10 +960,13 @@ function agg(){ // totals by month key for type, group, category
   return { T, G, C };
 }
 const getv = (o, key, k) => ((o[key] || {})[k] || 0);
+const raiseFor = cat => (S.config.raises || []).find(r => r.cat === cat && +r.pct);
+function raisesBetween(r, fromY, fromM, toY, toM){ // count raise dates crossed moving from (fromY,fromM) to (toY,toM)
+  let n = 0; for (let y = fromY; y <= toY; y++){ const crossed = (y > fromY || fromM < r.month) && (y < toY || toM >= r.month); if (crossed) n++; } return n; }
 function budgetMonth(k){ // budget totals for a month key, falling back to the latest budget year for that month
   const yrs = [...new Set(S.budget.rows.map(r => +r.year))].sort(); let y = +k.slice(0,4); if (!yrs.includes(y)) y = yrs.filter(v => v <= y).pop() || yrs[0];
-  const m = +k.slice(5,7) - 1, out = { inc:0, exp:0, sav:0, cats:{} };
-  for (const r of S.budget.rows){ if (+r.year !== y) continue; const v = +r.m[m] || 0; const ty = typeOf(r.cat); if (ty === 'Income') out.inc += v; else if (ty === 'Expense') out.exp += v; else if (ty === 'Savings') out.sav += v; out.cats[r.cat] = v; }
+  const m = +k.slice(5,7) - 1, out = { inc:0, exp:0, sav:0, cats:{} }, ky = +k.slice(0,4);
+  for (const r of S.budget.rows){ if (+r.year !== y) continue; let v = +r.m[m] || 0; const rz = ky > y ? raiseFor(r.cat) : null; if (rz) v *= Math.pow(1 + rz.pct / 100, ky - y); const ty = typeOf(r.cat); if (ty === 'Income') out.inc += v; else if (ty === 'Expense') out.exp += v; else if (ty === 'Savings') out.sav += v; out.cats[r.cat] = v; }
   return out;
 }
 function fillExtra(){
@@ -973,6 +982,9 @@ function ensureDefaults(){
       { name:'Capital One (J)', kind:'Card', account:'Card - Capital One (J)', balance:0, asOf:'', apr:28.24, payment:0 },
       { name:'PNC personal loan', kind:'Loan', account:'', balance:20239.93, asOf:'2026-10-06', apr:13.34, payment:573.17 },
       { name:'PNC consolidation loan', kind:'Loan', account:'', balance:16260.86, asOf:'2026-10-06', apr:14.34, payment:421.97 }].filter(d => d.kind === 'Loan' || has(d.account));
+  }
+  if (!Array.isArray(S.config.raises)){
+    S.config.raises = S.config.categories.some(c => c.name === 'Paycheck K') ? [{ cat:'Paycheck K', pct:2.5, month:5, note:'Take-home raise each May; raises usually run 3.5 to 4%, with 1 to 1.5 points going to added 401(k) contributions' }] : [];
   }
   if (!Array.isArray(S.config.goals)){
     const res = has('Savings - PNC Reserve') ? 'Savings - PNC Reserve' : (has('Savings - PNC Reserve (trip fund)') ? 'Savings - PNC Reserve (trip fund)' : '');
@@ -1144,7 +1156,7 @@ function paycheckPattern(){ // biweekly third-paycheck months from the most freq
 function lumpFor(refund, third){
   const pat = third ? paycheckPattern() : null, now = new Date();
   return m => { const d = new Date(now.getFullYear(), now.getMonth() + m, 1); let v = (d.getMonth() === 1 ? refund : 0);
-    if (pat){ let c = 0, x = new Date(pat.last); while (x < new Date(d.getFullYear(), d.getMonth()+1, 1)){ if (x.getFullYear() === d.getFullYear() && x.getMonth() === d.getMonth()) c++; x = new Date(x.getTime() + 14*864e5); } if (c >= 3) v += pat.amt; }
+    if (pat){ let c = 0, x = new Date(pat.last); while (x < new Date(d.getFullYear(), d.getMonth()+1, 1)){ if (x.getFullYear() === d.getFullYear() && x.getMonth() === d.getMonth()) c++; x = new Date(x.getTime() + 14*864e5); } if (c >= 3){ const rz = raiseFor('Paycheck K'); v += pat.amt * (rz ? Math.pow(1 + rz.pct / 100, raisesBetween(rz, now.getFullYear(), now.getMonth() + 1, d.getFullYear(), d.getMonth() + 1)) : 1); } }
     return v; };
 }
 const futLabel = m => { const n = new Date(); const d = new Date(n.getFullYear(), n.getMonth() + m, 1); return MONTHS[d.getMonth()] + ' ' + d.getFullYear(); };
@@ -1363,7 +1375,14 @@ async function migrations(){
   const RATES = { 'Card - Chase Amazon (J)':25.99, 'Card - Capital One (J)':28.24 };
   let changed = false;
   for (const d of (S.config.debts || [])){ if (d.kind === 'Card' && RATES[d.account] && +d.apr === 25){ d.apr = RATES[d.account]; changed = true; } }
-  if (changed){ try { await setDoc(ref('meta','config'), S.config); toast('Card rates updated from the statements'); } catch (e) {} }
+  S.config.flags = S.config.flags || {};
+  if (!S.config.flags.kRaise2027){
+    const row = S.budget.rows.find(r => r.cat === 'Paycheck K' && +r.year === 2027);
+    if (row){ let did = false; row.m = row.m.map((v,i) => { if (i < 4 || !v) return v; const checks = Math.round(v / 2082.87); if (checks >= 1 && Math.abs(v - checks * 2082.87) < 1){ did = true; return Math.round(v * 1.025 * 100) / 100; } return v; });
+      if (did){ try { await setDoc(ref('meta','budget'), { rows:S.budget.rows }); } catch (e) {} } }
+    S.config.flags.kRaise2027 = true; changed = true;
+  }
+  if (changed){ try { await setDoc(ref('meta','config'), S.config); } catch (e) {} }
   if (has('Savings - PNC Reserve (trip fund)') && !has('Savings - PNC Reserve')){
     try { await applyRenames({ 'Savings - PNC Reserve (trip fund)':'Savings - PNC Reserve' }, {}); toast('Renamed the reserve account'); } catch (e) {}
   }
@@ -1622,6 +1641,8 @@ function renderSettings(){
   const cardAccts = S.config.accounts.filter(a => a.kind === 'Card').map(a => a.name);
   $('sDebt').innerHTML = (S.config.debts || []).map(d => `<tr><td>${inp(d.name,'wide')}</td><td>${sel(['Card','Loan'],d.kind)}</td><td>${sel(['',...cardAccts],d.account,'wide')}</td><td class="n">${inp(d.balance,'','number')}</td><td>${inp(d.asOf,'wide','date')}</td><td class="n">${inp(d.apr,'','number')}</td><td class="n">${inp(d.payment,'','number')}</td><td>${delBtn}</td></tr>`).join('');
   $('sGoal').innerHTML = (S.config.goals || []).map(g => `<tr><td>${inp(g.name,'wide')}</td><td class="n">${inp(g.target,'','number')}</td><td>${inp(g.date,'wide','date')}</td><td>${sel(['',...accts],g.account,'wide')}</td><td class="n">${inp(g.saved,'','number')}</td><td>${delBtn}</td></tr>`).join('');
+  const incCats = S.config.categories.filter(c => c.type === 'Income').map(c => c.name), monOpts = MONTHS;
+  $('sRaise').innerHTML = (S.config.raises || []).map(r => `<tr><td>${sel(incCats, r.cat, 'wide')}</td><td class="n">${inp(r.pct,'','number')}</td><td>${sel(monOpts, MONTHS[(+r.month||5)-1])}</td><td>${inp(r.note || '','wide')}</td><td>${delBtn}</td></tr>`).join('');
   $('sRule').innerHTML = S.config.rules.map(r => `<tr><td>${inp(r.key,'wide')}</td><td>${sel(cats,r.cat,'wide')}</td><td>${sel(['',...accts],r.to,'wide')}</td><td><button class="btn sec small" data-up type="button">Up</button> <button class="btn sec small" data-down type="button">Down</button> ${delBtn}</td></tr>`).join('');
 }
 render.data = renderSettings;
@@ -1632,6 +1653,7 @@ document.addEventListener('click', e => {
   if (b.hasAttribute('data-down') && tr.nextElementSibling) tr.parentNode.insertBefore(tr.nextElementSibling, tr);
 });
 $('addAcct').addEventListener('click', () => $('sAcct').insertAdjacentHTML('beforeend', `<tr><td>${inp('','wide')}</td><td>${sel(KIND,'Card')}</td><td>${inp('')}</td><td class="n">${inp(0,'','number')}</td><td>${inp(todayISO(),'wide','date')}</td><td>${delBtn}</td></tr>`));
+$('addRaise').addEventListener('click', () => { const incCats = S.config.categories.filter(c => c.type === 'Income').map(c => c.name); $('sRaise').insertAdjacentHTML('beforeend', `<tr><td>${sel(incCats, incCats[0], 'wide')}</td><td class="n">${inp(2.5,'','number')}</td><td>${sel(MONTHS,'May')}</td><td>${inp('','wide')}</td><td>${delBtn}</td></tr>`); });
 $('addDebt').addEventListener('click', () => { const cardAccts = S.config.accounts.filter(a => a.kind === 'Card').map(a => a.name); $('sDebt').insertAdjacentHTML('beforeend', `<tr><td>${inp('','wide')}</td><td>${sel(['Card','Loan'],'Loan')}</td><td>${sel(['',...cardAccts],'','wide')}</td><td class="n">${inp(0,'','number')}</td><td>${inp(todayISO(),'wide','date')}</td><td class="n">${inp(0,'','number')}</td><td class="n">${inp(0,'','number')}</td><td>${delBtn}</td></tr>`); });
 $('addGoal').addEventListener('click', () => { const accts = S.config.accounts.map(a => a.name); $('sGoal').insertAdjacentHTML('beforeend', `<tr><td>${inp('','wide')}</td><td class="n">${inp(0,'','number')}</td><td>${inp('','wide','date')}</td><td>${sel(['',...accts],'','wide')}</td><td class="n">${inp(0,'','number')}</td><td>${delBtn}</td></tr>`); });
 $('addCat').addEventListener('click', () => $('sCat').insertAdjacentHTML('beforeend', `<tr><td>${inp('','wide')}</td><td>${sel(TYPES,'Expense')}</td><td>${sel(GRPS,'Everyday')}</td><td>${delBtn}</td></tr>`));
@@ -1643,13 +1665,14 @@ $('saveSettings').addEventListener('click', async () => {
   const rules = [...$('sRule').rows].map(r => { const f = r.querySelectorAll('input,select'); return { key:f[0].value, cat:f[1].value, to:f[2].value }; }).filter(r => r.key.trim() && r.cat);
   const debts = [...$('sDebt').rows].map(r => { const f = r.querySelectorAll('input,select'); return { name:val(f[0]), kind:f[1].value, account:f[2].value, balance:+f[3].value || 0, asOf:f[4].value, apr:+f[5].value || 0, payment:+f[6].value || 0 }; }).filter(d => d.name);
   const goals = [...$('sGoal').rows].map(r => { const f = r.querySelectorAll('input,select'); return { name:val(f[0]), target:+f[1].value || 0, date:f[2].value, account:f[3].value, saved:+f[4].value || 0 }; }).filter(g => g.name);
+  const raises = [...$('sRaise').rows].map(r => { const f = r.querySelectorAll('input,select'); return { cat:f[0].value, pct:+f[1].value || 0, month:MONTHS.indexOf(f[2].value) + 1, note:f[3].value.trim() }; }).filter(r => r.cat && r.pct);
   const dupe = list => list.find((x,i) => list.indexOf(x) !== i);
   const da = dupe(accounts.map(a => a.name)), dc = dupe(categories.map(c => c.name));
   if (da || dc){ $('setMsg').textContent = 'Each name must be unique: ' + (da || dc); return; }
   const acctMap = {}, catMap = {};
   [...$('sAcct').rows].forEach(r => { const o = r.dataset.orig, n = r.querySelector('input').value.trim(); if (o && n && o !== n) acctMap[o] = n; });
   [...$('sCat').rows].forEach(r => { const o = r.dataset.orig, n = r.querySelector('input').value.trim(); if (o && n && o !== n) catMap[o] = n; });
-  try { const cfg = Object.assign({}, S.config, { accounts, categories, rules, debts, goals }); S.config = cfg; await applyRenames(acctMap, catMap); $('setMsg').textContent = ''; toast(Object.keys(acctMap).length + Object.keys(catMap).length ? 'Settings saved and renames applied everywhere' : 'Settings saved'); renderAll(); renderSettings(); }
+  try { const cfg = Object.assign({}, S.config, { accounts, categories, rules, debts, goals, raises }); S.config = cfg; await applyRenames(acctMap, catMap); $('setMsg').textContent = ''; toast(Object.keys(acctMap).length + Object.keys(catMap).length ? 'Settings saved and renames applied everywhere' : 'Settings saved'); renderAll(); renderSettings(); }
   catch (err){ $('setMsg').textContent = 'Could not save: ' + (err.code || err.message); }
 });
 
