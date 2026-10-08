@@ -114,6 +114,9 @@ details.ms label{display:flex;gap:8px;align-items:center;padding:3px 0;font-size
 #pvTable td.cell{cursor:pointer}
 #pvTable td.cell:hover{outline:2px solid var(--focus);outline-offset:-2px}
 #pvTable td.sel{outline:2px solid var(--ledger);outline-offset:-2px}
+tr.pending td{font-style:italic}
+tr.pending td.n{color:var(--muted)}
+input.post{width:18px;height:18px;cursor:pointer;accent-color:var(--in)}
 .ver{font-size:.75rem;opacity:.75;border:1px solid rgba(255,255,255,.4);border-radius:10px;padding:1px 8px}
 #rpBody h3.rh{font-size:1.05rem;margin:22px 0 8px}
 #rpBody p.rp{max-width:80ch;margin:10px 0}
@@ -174,7 +177,7 @@ nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:va
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 6</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 7</span>
   <div class="sp"></div>
   <button id="signOutBtn" type="button">Sign out</button>
 </header>
@@ -215,15 +218,16 @@ nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:va
       </div>
       <div class="grid g4" id="hTiles"></div>
       <div class="panel"><h3 style="margin-top:0">Account balances</h3>
-        <div class="tbl"><table><thead><tr><th>Account</th><th class="n">Balance</th></tr></thead><tbody id="hAcct"></tbody></table></div>
-        <p class="note" style="margin:8px 0 0">Balances update with every transaction you save.</p></div>
+        <div class="tbl"><table><thead><tr><th>Account</th><th class="n">Balance</th><th class="n">Posted at the bank</th></tr></thead><tbody id="hAcct"></tbody></table></div>
+        <p class="note" style="margin:8px 0 0">Balance includes pending entries. Posted at the bank leaves pending entries out, so it should match the balance shown in the bank or card app.</p></div>
       <div class="panel"><h3 style="margin-top:0">Where this month's money went</h3><div class="chart small"><canvas id="cHomeCats"></canvas></div></div>
       <div class="panel"><h3 style="margin-top:0">Money in and out, last six months</h3><div class="chart small"><canvas id="cHomeTrend"></canvas></div></div>
     </div>
   </div>
-  <h3>Recently added</h3>
-  <div class="tbl"><table><thead><tr><th>Date</th><th>Account</th><th class="n">Amount</th><th>Description</th><th>Category</th></tr></thead><tbody id="recentBody"></tbody></table></div>
-  <p class="note">Select a row to fix or delete it.</p>
+  <h3>Last two weeks</h3>
+  <p class="note" id="recentSum" style="margin:-4px 0 10px"></p>
+  <div class="tbl"><table><thead><tr><th>Posted</th><th>Date</th><th>Account</th><th class="n">Amount</th><th>Description</th><th>Category</th></tr></thead><tbody id="recentBody"></tbody></table></div>
+  <p class="note">Every transaction dated in the last 14 days. New entries start as pending; check the box once the transaction has posted at the bank. Select anywhere else on a row to fix or delete it.</p>
 </section>
 
 <section id="view-details" class="hidden">
@@ -405,7 +409,7 @@ nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:va
     <div><label class="f" for="lCat">Category</label><select class="t" id="lCat"></select></div>
     <div style="flex:2 1 220px"><label class="f" for="lSearch">Search description</label><input class="t" id="lSearch" type="search"></div>
   </div><p class="note" id="lSummary" style="margin:12px 0 0"></p></div>
-  <div class="tbl"><table><thead><tr><th>Date</th><th>Account</th><th class="n">Amount</th><th>Description</th><th>Category</th><th>To account</th><th>Status</th></tr></thead><tbody id="listBody"></tbody></table></div>
+  <div class="tbl"><table><thead><tr><th>Posted</th><th>Date</th><th>Account</th><th class="n">Amount</th><th>Description</th><th>Category</th><th>To account</th><th>Status</th></tr></thead><tbody id="listBody"></tbody></table></div>
   <p class="note">Select a row to edit or delete it. History rows are dated on or before the account opening date; they count in summaries but do not change balances.</p>
 </section>
 
@@ -518,6 +522,7 @@ nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:va
     <div><label class="f" for="eTo">To account</label><select class="t" id="eTo"></select></div>
   </div>
   <label class="f" for="eNotes">Notes</label><input class="t" id="eNotes">
+  <label class="check"><input type="checkbox" id="ePosted"> Posted at the bank</label>
   <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
     <button class="btn" id="eSave" type="button">Save changes</button>
     <button class="btn danger" id="eDel" type="button">Delete</button>
@@ -591,10 +596,11 @@ function status(t){
   if (to && !acctInfo(to)) return 'To account is not on the list';
   return 'OK';
 }
-function balances(){
+function balances(postedOnly){
   const bal = {};
   for (const a of S.config.accounts) bal[a.name] = a.kind === 'Card' ? -(+a.openBal || 0) : (+a.openBal || 0);
   for (const t of S.tx){
+    if (postedOnly && !isPosted(t)) continue;
     const c = catUsed(t), ty = typeOf(c), a = acctInfo(t.account);
     if (a && !(a.openDate && t.date <= a.openDate)) bal[t.account] += ty === 'Income' ? t.amount : -t.amount;
     const to = toUsed(t), b = acctInfo(to);
@@ -628,7 +634,8 @@ function rebuildTx(){
   for (const k of Object.keys(S.months)) for (const r of S.months[k]) S.tx.push(r);
   S.tx.sort((a,b) => a.date === b.date ? (a.seq||0)-(b.seq||0) : (a.date < b.date ? -1 : 1));
 }
-function cleanRow(r){ return { id:r.id, date:r.date, account:r.account||'', amount:Math.round((+r.amount||0)*100)/100, desc:r.desc||'', cat:r.cat||'', to:r.to||'', notes:r.notes||'', created:r.created||0, seq:r.seq||0 }; }
+const isPosted = t => t.posted === undefined ? !t.created : !!t.posted;
+function cleanRow(r){ return { id:r.id, date:r.date, account:r.account||'', amount:Math.round((+r.amount||0)*100)/100, desc:r.desc||'', cat:r.cat||'', to:r.to||'', notes:r.notes||'', created:r.created||0, seq:r.seq||0, posted:isPosted(r) }; }
 async function addTx(row){
   row = cleanRow(row); const k = ym(row.date);
   await setDoc(ref('months', k), { rows: arrayUnion(row) }, { merge:true });
@@ -696,9 +703,10 @@ function renderHome(){
   $('hPace').style.left = (elapsed * 100) + '%';
   const b = balances(); const tile = (v, l, c) => `<div class="kpi"><b class="${c||''}">${v}</b><span>${l}</span></div>`;
   const cashA = S.config.accounts.filter(a => a.kind !== 'Card'), cardA = S.config.accounts.filter(a => a.kind === 'Card');
-  const arow = (a, v, cls) => `<tr><td>${esc(a.name)}</td><td class="n ${cls||''}">${money(v, true)}</td></tr>`;
-  $('hAcct').innerHTML = '<tr class="grp"><td>Checking and savings</td><td></td></tr>' + cashA.map(a => arow(a, b.bal[a.name], b.bal[a.name] < 0 ? 'neg' : '')).join('') +
-    '<tr class="grp"><td>Credit cards (amount owed)</td><td></td></tr>' + cardA.map(a => arow(a, -b.bal[a.name], -b.bal[a.name] > 0.005 ? 'neg' : '')).join('');
+  const bp = balances(true);
+  const arow = (a, v, cls) => { const pv = a.kind === 'Card' ? -bp.bal[a.name] : bp.bal[a.name]; return `<tr><td>${esc(a.name)}</td><td class="n ${cls||''}">${money(v, true)}</td><td class="n muted">${money(pv, true)}</td></tr>`; };
+  $('hAcct').innerHTML = '<tr class="grp"><td>Checking and savings</td><td></td><td></td></tr>' + cashA.map(a => arow(a, b.bal[a.name], b.bal[a.name] < 0 ? 'neg' : '')).join('') +
+    '<tr class="grp"><td>Credit cards (amount owed)</td><td></td><td></td></tr>' + cardA.map(a => arow(a, -b.bal[a.name], -b.bal[a.name] > 0.005 ? 'neg' : '')).join('');
   $('hTiles').innerHTML = tile(money(b.cash), 'Cash in checking and savings') + tile(money(b.card), 'Owed on credit cards', b.card > 0 ? 'neg' : '') + tile(money(T.inc), 'Money in this month', 'pos') + tile(money(T.out), 'Money out this month', 'neg');
   const ink = css('--ink'), rule = css('--rule'), muted = css('--muted');
   if (window.Chart){ Chart.defaults.color = muted; Chart.defaults.borderColor = rule; Chart.defaults.font.family = '"Public Sans", system-ui, sans-serif'; }
@@ -741,21 +749,33 @@ $('txForm').addEventListener('submit', async e => {
   catch (err){ $('fErr').textContent = 'Could not save: ' + (err.code || err.message); }
   finally { $('saveBtn').disabled = false; }
 });
+function postBox(t){ return `<input type="checkbox" class="post" data-post="${t.id}" aria-label="Posted at the bank"${isPosted(t) ? ' checked' : ''}>`; }
 function renderRecent(){
-  const rows = S.tx.filter(t => t.created).sort((a,b) => b.created - a.created).slice(0,6);
-  $('recentBody').innerHTML = rows.length ? rows.map(t => `<tr class="click" data-id="${t.id}"><td>${fmtDate(t.date)}</td><td>${esc(t.account)}</td><td class="n">${money(t.amount,true)}</td><td class="wrap">${esc(t.desc)}</td><td>${esc(catUsed(t))}</td></tr>`).join('') : '<tr><td colspan="5" class="muted">Nothing added yet. Entries you save appear here.</td></tr>';
+  const d = new Date(); d.setDate(d.getDate() - 13); const from = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  const rows = S.tx.filter(t => t.date >= from).sort((a,b) => a.date === b.date ? (b.created || 0) - (a.created || 0) : (a.date < b.date ? 1 : -1));
+  const pend = rows.filter(t => !isPosted(t));
+  $('recentSum').textContent = rows.length ? `${rows.length} transactions since ${fmtDate(from)}. ${pend.length ? pend.length + ' still pending, totaling ' + money(pend.reduce((s,t) => s + t.amount, 0), true) + '.' : 'Everything has posted.'}` : '';
+  $('recentBody').innerHTML = rows.length ? rows.map(t => `<tr class="click${isPosted(t) ? '' : ' pending'}" data-id="${t.id}"><td>${postBox(t)}</td><td>${fmtDate(t.date)}</td><td>${esc(t.account)}</td><td class="n">${money(t.amount,true)}</td><td class="wrap">${esc(t.desc)}</td><td>${esc(catUsed(t))}</td></tr>`).join('') : '<tr><td colspan="6" class="muted">No transactions in the last two weeks.</td></tr>';
 }
+document.addEventListener('change', async e => {
+  const cb = e.target.closest('input.post'); if (!cb) return;
+  const t = S.tx.find(x => x.id === cb.dataset.post); if (!t) return;
+  cb.disabled = true;
+  try { await updateTx(t, Object.assign({}, t, { posted:cb.checked })); toast(cb.checked ? 'Marked as posted' : 'Marked as pending'); renderAll(); }
+  catch (err){ cb.checked = !cb.checked; toast('Could not update: ' + (err.code || err.message)); }
+  finally { cb.disabled = false; }
+});
 /* ---------- edit modal ---------- */
 let editing = null;
 function openEdit(id){
   const t = S.tx.find(x => x.id === id); if (!t) return; editing = t;
-  $('eDate').value = t.date; $('eAcct').value = t.account; $('eAmt').value = t.amount; $('eDesc').value = t.desc; $('eCat').value = t.cat; $('eTo').value = t.to; $('eNotes').value = t.notes; $('eErr').textContent = '';
+  $('eDate').value = t.date; $('eAcct').value = t.account; $('eAmt').value = t.amount; $('eDesc').value = t.desc; $('eCat').value = t.cat; $('eTo').value = t.to; $('eNotes').value = t.notes; $('ePosted').checked = isPosted(t); $('eErr').textContent = '';
   show('modal'); $('eDesc').focus();
 }
-document.addEventListener('click', e => { const tr = e.target.closest('tr.click'); if (tr && tr.dataset.id) openEdit(tr.dataset.id); });
+document.addEventListener('click', e => { if (e.target.closest('input.post')) return; const tr = e.target.closest('tr.click'); if (tr && tr.dataset.id) openEdit(tr.dataset.id); });
 $('eCancel').addEventListener('click', () => { show('modal', false); editing = null; });
 $('eSave').addEventListener('click', async () => {
-  const n = Object.assign({}, editing, { date:$('eDate').value, account:$('eAcct').value, amount:+$('eAmt').value, desc:$('eDesc').value.trim(), cat:$('eCat').value, to:$('eTo').value, notes:$('eNotes').value.trim() });
+  const n = Object.assign({}, editing, { date:$('eDate').value, account:$('eAcct').value, amount:+$('eAmt').value, desc:$('eDesc').value.trim(), cat:$('eCat').value, to:$('eTo').value, notes:$('eNotes').value.trim(), posted:$('ePosted').checked });
   const st = status(n); if (st !== 'OK' && st !== 'History'){ $('eErr').textContent = st; return; }
   try { await updateTx(editing, n); show('modal', false); toast('Updated'); renderAll(); } catch (err){ $('eErr').textContent = 'Could not save: ' + (err.code || err.message); }
 });
@@ -787,7 +807,7 @@ render.list = () => {
   let inc = 0, out = 0; for (const t of rows){ const ty = typeOf(catUsed(t)); if (ty === 'Income') inc += t.amount; else if (ty === 'Expense' || ty === 'Savings') out += t.amount; }
   $('lSummary').textContent = `${rows.length} transactions. Income ${money(inc,true)}. Spending and savings ${money(out,true)}. Transfers excluded from both.`;
   const shown = rows.slice().reverse().slice(0, 600);
-  $('listBody').innerHTML = shown.map(t => { const s = status(t); return `<tr class="click${s==='History'?' hist':''}" data-id="${t.id}"><td>${fmtDate(t.date)}</td><td>${esc(t.account)}</td><td class="n">${money(t.amount,true)}</td><td class="wrap">${esc(t.desc)}</td><td>${esc(catUsed(t))}</td><td>${esc(toUsed(t))}</td><td>${statusTag(s)}</td></tr>`; }).join('') + (rows.length > 600 ? '<tr><td colspan="7" class="muted">Showing the latest 600. Narrow the filters to see more.</td></tr>' : '');
+  $('listBody').innerHTML = shown.map(t => { const s = status(t); return `<tr class="click${s==='History'?' hist':''}${isPosted(t)?'':' pending'}" data-id="${t.id}"><td>${postBox(t)}</td><td>${fmtDate(t.date)}</td><td>${esc(t.account)}</td><td class="n">${money(t.amount,true)}</td><td class="wrap">${esc(t.desc)}</td><td>${esc(catUsed(t))}</td><td>${esc(toUsed(t))}</td><td>${statusTag(s)}</td></tr>`; }).join('') + (rows.length > 600 ? '<tr><td colspan="8" class="muted">Showing the latest 600. Narrow the filters to see more.</td></tr>' : '');
 };
 ['lMonth','lAcct','lCat'].forEach(id => $(id).addEventListener('change', render.list)); $('lSearch').addEventListener('input', render.list);
 /* ---------- Dashboard ---------- */
