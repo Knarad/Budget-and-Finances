@@ -118,6 +118,17 @@ tr.pending td{font-style:italic}
 tr.pending td.n{color:var(--muted)}
 input.post{width:18px;height:18px;cursor:pointer;accent-color:var(--in)}
 #baBody details{margin-top:16px}
+#baBody .tbl{overflow:visible;overflow-x:clip}
+#baBody td:not(:first-child),#baBody th:not(:first-child){transform:translateX(calc(-1 * var(--bx, 0px)))}
+#baBody td:first-child{position:relative;left:auto;z-index:2}
+#baBody th:first-child{left:auto}
+#baBody thead th{position:sticky;top:calc(var(--stickTop, 104px) + 44px);z-index:3;box-shadow:0 1px 0 var(--rule)}
+#baBody thead th:first-child{z-index:4}
+#baBody summary{position:sticky;top:var(--stickTop, 104px);z-index:5;height:44px;box-sizing:border-box;display:flex;align-items:center}
+#baBody details:not([open]) summary{position:static}
+#baBody table{table-layout:fixed;width:max-content;min-width:100%}
+#baBody th,#baBody td{width:118px;min-width:118px;max-width:118px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#baBody th:first-child,#baBody td:first-child{width:250px;min-width:250px;max-width:250px}
 #baBody summary{cursor:pointer;font-weight:700;font-size:1.05rem;padding:10px 12px;background:var(--green, #2F5D50);background:var(--ledger);color:#fff;border-radius:6px}
 #baBody table td.yt,#baBody table th.yt{background:var(--soft);font-weight:700;border-left:2px solid var(--rule)}
 #baBody table td.c{cursor:pointer}
@@ -185,7 +196,7 @@ nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:va
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 14</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 16</span>
   <div class="sp"></div>
   <button id="signOutBtn" type="button">Sign out</button>
 </header>
@@ -1890,7 +1901,7 @@ function baTable(title, rows, cols, acctKey, skipTransfers){
   const firstK = cols[0].k, lastK = cols.filter(c => c.k).pop().k;
   const cell = (r, c) => c.y ? Object.entries(r.m).filter(([k]) => k.slice(0,4) === c.y && k >= firstK && k <= lastK).reduce((s,[,v]) => s + v, 0) : (r.m[c.k] || 0);
   const fmt = v => Math.abs(v) < 0.005 ? '<span class="z">-</span>' : money(v, true);
-  let h = `<div class="tbl"><table><thead><tr><th>Category</th>${cols.map(c => `<th class="n${c.y ? ' yt' : ''}">${c.label}</th>`).join('')}</tr></thead><tbody>`;
+  let h = `<div class="tbl"><table><colgroup><col style="width:250px">${cols.map(() => '<col style="width:118px">').join('')}</colgroup><thead><tr><th>Category</th>${cols.map(c => `<th class="n${c.y ? ' yt' : ''}">${c.label}</th>`).join('')}</tr></thead><tbody>`;
   const tot = { in:{ m:{} }, out:{ m:{} }, net:{ m:{} } };
   for (const [name, r] of rows){
     const base = name.replace(/ \(received\)$/,''), ty = typeOf(base), recv = name !== base;
@@ -2122,9 +2133,23 @@ else {
 }
 
 /* ---------- horizontal scrollbar pinned to the bottom of the screen ---------- */
-const hs = $('hscroll'), hsIn = hs.firstElementChild; let hsTarget = null;
+const hs = $('hscroll'), hsIn = hs.firstElementChild; let hsTarget = null, hsGroup = null, hsSyncing = false;
+function syncGroup(x, src){ if (!hsGroup) return; hsSyncing = true; for (const el of hsGroup) if (el !== src && Math.abs(el.scrollLeft - x) > 0.5) el.scrollLeft = x; if (src !== hs && Math.abs(hs.scrollLeft - x) > 0.5) hs.scrollLeft = x; hsSyncing = false; }
 function updateHScroll(){
-  const vh = window.innerHeight; let pick = null;
+  const vh = window.innerHeight;
+  const ba = $('tab-byacct');
+  if (ba && ba.offsetParent !== null){ // one shared bar moves every table on Accounts by month
+    const top = [...document.querySelectorAll('header.top, nav.tabs')].reduce((m, el) => Math.max(m, el.getBoundingClientRect().bottom), 0);
+    $('baBody').style.setProperty('--stickTop', Math.max(0, Math.round(top)) + 'px');
+    const boxes = [...ba.querySelectorAll('#baBody .tbl')].filter(el => el.offsetParent !== null); hsGroup = null;
+    if (!boxes.length){ hs.classList.add('hidden'); hsTarget = null; return; }
+    const maxW = Math.max(...boxes.map(el => el.querySelector('table').offsetWidth)), cw = boxes[0].clientWidth;
+    if (maxW <= cw + 1){ hs.classList.add('hidden'); hsTarget = null; $('baBody').style.setProperty('--bx', '0px'); return; }
+    hs.style.left = boxes[0].getBoundingClientRect().left + 'px'; hs.style.width = cw + 'px'; hsIn.style.width = maxW + 'px';
+    hs.classList.remove('hidden'); hsTarget = 'ba';
+    const x = Math.min(hs.scrollLeft, maxW - cw); $('baBody').style.setProperty('--bx', Math.max(0, x) + 'px'); return;
+  }
+  hsGroup = null; let pick = null;
   for (const el of document.querySelectorAll('.tbl')){
     if (el.offsetParent === null || el.scrollWidth <= el.clientWidth + 1) continue;
     const r = el.getBoundingClientRect(); if (r.top < vh - 60 && r.bottom > vh - 2){ pick = el; break; }
@@ -2136,11 +2161,16 @@ function updateHScroll(){
   hs.classList.remove('hidden');
   if (Math.abs(hs.scrollLeft - pick.scrollLeft) > 1) hs.scrollLeft = pick.scrollLeft;
 }
-hs.addEventListener('scroll', () => { if (hsTarget && Math.abs(hsTarget.scrollLeft - hs.scrollLeft) > 1) hsTarget.scrollLeft = hs.scrollLeft; });
-document.addEventListener('scroll', e => { if (e.target === hsTarget && Math.abs(hs.scrollLeft - hsTarget.scrollLeft) > 1) hs.scrollLeft = hsTarget.scrollLeft; }, true);
+hs.addEventListener('scroll', () => { if (hsSyncing) return; if (hsTarget === 'ba'){ $('baBody').style.setProperty('--bx', hs.scrollLeft + 'px'); return; } if (hsTarget === 'group') syncGroup(hs.scrollLeft, hs); else if (hsTarget && Math.abs(hsTarget.scrollLeft - hs.scrollLeft) > 1) hsTarget.scrollLeft = hs.scrollLeft; });
+document.addEventListener('scroll', e => { if (hsSyncing) return; if (hsTarget === 'group' && hsGroup && hsGroup.includes(e.target)){ syncGroup(e.target.scrollLeft, e.target); return; } if (e.target === hsTarget && Math.abs(hs.scrollLeft - hsTarget.scrollLeft) > 1) hs.scrollLeft = hsTarget.scrollLeft; }, true);
 window.addEventListener('scroll', updateHScroll, { passive:true }); window.addEventListener('resize', updateHScroll);
 document.addEventListener('click', () => setTimeout(updateHScroll, 50));
 setInterval(updateHScroll, 500);
+$('baBody').addEventListener('wheel', e => { const dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : (e.shiftKey ? e.deltaY : 0); if (!dx || hsTarget !== 'ba') return; e.preventDefault(); hs.scrollLeft += dx; }, { passive:false });
+let baTouch = null;
+$('baBody').addEventListener('touchstart', e => { if (e.touches.length === 1) baTouch = { x:e.touches[0].clientX, y:e.touches[0].clientY, s:hs.scrollLeft, dir:null }; }, { passive:true });
+$('baBody').addEventListener('touchmove', e => { if (!baTouch || hsTarget !== 'ba') return; const dx = e.touches[0].clientX - baTouch.x, dy = e.touches[0].clientY - baTouch.y; if (!baTouch.dir) baTouch.dir = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'; if (baTouch.dir === 'x'){ e.preventDefault(); hs.scrollLeft = baTouch.s - dx; } }, { passive:false });
+$('baBody').addEventListener('touchend', () => { baTouch = null; });
 </script>
 </body>
 </html>
