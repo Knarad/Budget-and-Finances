@@ -117,6 +117,13 @@ details.ms label{display:flex;gap:8px;align-items:center;padding:3px 0;font-size
 tr.pending td{font-style:italic}
 tr.pending td.n{color:var(--muted)}
 input.post{width:18px;height:18px;cursor:pointer;accent-color:var(--in)}
+#baBody details{margin-top:16px}
+#baBody summary{cursor:pointer;font-weight:700;font-size:1.05rem;padding:10px 12px;background:var(--green, #2F5D50);background:var(--ledger);color:#fff;border-radius:6px}
+#baBody table td.yt,#baBody table th.yt{background:var(--soft);font-weight:700;border-left:2px solid var(--rule)}
+#baBody table td.c{cursor:pointer}
+#baBody table td.c:hover{outline:2px solid var(--focus);outline-offset:-2px}
+#baBody tr.sum td{font-weight:700;border-top:2px solid var(--rule)}
+#baBody td.z{color:var(--muted)}
 .ver{font-size:.75rem;opacity:.75;border:1px solid rgba(255,255,255,.4);border-radius:10px;padding:1px 8px}
 #rpBody h3.rh{font-size:1.05rem;margin:22px 0 8px}
 #rpBody p.rp{max-width:80ch;margin:10px 0}
@@ -132,6 +139,7 @@ input.post{width:18px;height:18px;cursor:pointer;accent-color:var(--in)}
 .ins .card h4{margin:0 0 4px;font-size:1rem}
 .ins .card p{margin:0;color:var(--ink)}
 tr.soon td{background:color-mix(in srgb,var(--card) 14%,transparent)}
+.tbl tr.soon td:first-child{background:color-mix(in srgb,var(--card) 14%,var(--surface))}
 nav.subtabs button{border:1px solid var(--rule);background:var(--surface);border-radius:20px;padding:7px 14px;cursor:pointer;color:var(--muted);font-weight:600;font-size:.9rem}
 nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:var(--btnbg);color:var(--btnfg)}
 .entry h2{margin-top:0}
@@ -177,7 +185,7 @@ nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:va
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 9</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 14</span>
   <div class="sp"></div>
   <button id="signOutBtn" type="button">Sign out</button>
 </header>
@@ -218,8 +226,8 @@ nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:va
       </div>
       <div class="grid g4" id="hTiles"></div>
       <div class="panel"><h3 style="margin-top:0">Account balances</h3>
-        <div class="tbl"><table><thead><tr><th>Account</th><th class="n">Balance</th><th class="n">Posted at the bank</th></tr></thead><tbody id="hAcct"></tbody></table></div>
-        <p class="note" style="margin:8px 0 0">Balance includes pending entries. Posted at the bank leaves pending entries out, so it should match the balance shown in the bank or card app.</p></div>
+        <div class="tbl"><table><thead><tr><th>Account</th><th class="n">Balance</th><th class="n">Posted at the bank</th><th></th></tr></thead><tbody id="hAcct"></tbody></table></div>
+        <p class="note" style="margin:8px 0 0">Balance includes pending entries. Posted at the bank leaves pending entries out, so it should match the balance shown in the bank or card app. If it does not, use True up to enter the bank's balance; the difference is saved as a Balance Adjustment row on that account. On a card, a positive adjustment means more is owed.</p></div>
       <div class="panel"><h3 style="margin-top:0">Where this month's money went</h3><div class="chart small"><canvas id="cHomeCats"></canvas></div></div>
       <div class="panel"><h3 style="margin-top:0">Money in and out, last six months</h3><div class="chart small"><canvas id="cHomeTrend"></canvas></div></div>
     </div>
@@ -242,7 +250,9 @@ nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:va
   <button data-tab="forecast" aria-selected="false">Forecast</button>
   <button data-tab="debt" aria-selected="false">Debt</button>
   <button data-tab="goals" aria-selected="false">Goals</button>
+  <button data-tab="byacct" aria-selected="false">Accounts by month</button>
   <button data-tab="pivot" aria-selected="false">Pivot explorer</button>
+  <button data-tab="recon" aria-selected="false">Reconcile</button>
   <span class="sublabel">Workbook</span>
   <button data-tab="report" aria-selected="false">Workbook report</button>
   <span class="sublabel">Records</span>
@@ -252,6 +262,51 @@ nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:va
   <button data-tab="budget" aria-selected="false">Budget</button>
   <button data-tab="data" aria-selected="false">Data and Settings</button>
 </nav>
+
+<section id="tab-byacct" class="hidden">
+  <h2>Accounts by month</h2>
+  <p class="note" style="margin-top:-6px">Every category, month by month, for each bank account and card, with a total column for each year. Money moved between your own accounts shows on both sides: under its category on the account it left, and as "(received)" on the account it went to. The consolidated table at the bottom adds up every account, with those internal moves kept out of its totals. Select any amount to see the transactions behind it.</p>
+  <div class="panel"><div class="row">
+    <div><label class="f" for="baFrom">From</label><select class="t" id="baFrom"></select></div>
+    <div><label class="f" for="baTo">Through</label><select class="t" id="baTo"></select></div>
+    <div><label class="check" style="margin-top:28px"><input type="checkbox" id="baAll"> Show every category, even with no activity</label></div>
+    <div><label class="check" style="margin-top:28px"><input type="checkbox" id="baEmpty"> Show accounts with no activity</label></div>
+    <div style="display:flex;align-items:end"><button class="btn sec" id="baExport" type="button">Export to Excel</button></div>
+  </div></div>
+  <div id="baDrill" class="panel hidden" style="margin-top:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h3 style="margin:0" id="baDrillTitle"></h3><button class="btn sec small" id="baDrillClose" type="button">Close</button></div>
+    <div class="tbl" style="margin-top:10px"><table><thead><tr><th>Date</th><th>Account</th><th class="n">Amount</th><th>Description</th><th>Category</th></tr></thead><tbody id="baDrillBody"></tbody></table></div>
+  </div>
+  <div id="baBody"></div>
+</section>
+
+<section id="tab-recon" class="hidden">
+  <h2>Reconcile and variances</h2>
+  <p class="note" style="margin-top:-6px">Find where an account’s balance went wrong, fix the entry that caused it, and remove the variance. Every variance and its correction is kept below so patterns show up over time.</p>
+  <div class="grid g4" id="rcKpis"></div>
+  <h3>Accounts</h3>
+  <div class="tbl"><table><thead><tr><th>Account</th><th class="n">App posted balance</th><th class="n">Open variance</th><th>Last true-up</th><th></th></tr></thead><tbody id="rcAccts"></tbody></table></div>
+
+  <div class="panel" id="rcWork" style="margin-top:18px">
+    <h3 style="margin-top:0" id="rcTitle">Reconcile an account</h3>
+    <div class="row">
+      <div><label class="f" for="rcAcct">Account</label><select class="t" id="rcAcct"></select></div>
+      <div><label class="f" for="rcFrom">From</label><input class="t" id="rcFrom" type="date"></div>
+      <div><label class="f" for="rcTo">Through</label><input class="t" id="rcTo" type="date"></div>
+      <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap"><button class="btn sec small" id="rcBack" type="button">Go back 14 more days</button><button class="btn sec small" id="rcAdd" type="button">Add a missing transaction</button></div>
+    </div>
+    <p class="note" style="margin:10px 0 0">Step 1: open the bank or card statement for these dates. Step 2: tick Matched for each entry that appears on the statement with the same amount. Step 3: fix anything that does not match by selecting the row, or add what is missing. The variance box below updates as you go.</p>
+    <div class="grid g4" id="rcSum" style="margin-top:12px"></div>
+    <div id="rcHints"></div>
+    <div class="tbl" style="margin-top:12px"><table><thead><tr><th>Matched</th><th>Posted</th><th>Date</th><th>Description</th><th>Category</th><th class="n" id="rcAmtHd">Change</th><th class="n">Running balance</th></tr></thead><tbody id="rcBody"></tbody></table></div>
+    <div class="panel" id="rcResolve" style="margin-top:16px;background:var(--soft)"></div>
+  </div>
+
+  <h3>Variance history</h3>
+  <div class="grid g4" id="rcHistKpis"></div>
+  <div class="panel" style="margin-top:12px"><h3 style="margin-top:0">What has caused variances</h3><div class="chart"><canvas id="rcCauseChart"></canvas></div></div>
+  <div class="tbl"><table><thead><tr><th>Found</th><th>Account</th><th class="n">Variance</th><th>Status</th><th>Cause</th><th>Correcting entries</th><th>Resolved</th><th>Note</th></tr></thead><tbody id="rcLog"></tbody></table></div>
+</section>
 
 <section id="tab-pivot" class="hidden">
   <h2>Pivot explorer</h2>
@@ -515,12 +570,51 @@ nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:va
 </main>
 </div>
 
+<div id="ncModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="ncTitle"><div class="box">
+  <h2 id="ncTitle">Add a new category</h2>
+  <label class="f" for="ncName">Category name</label><input class="t" id="ncName" placeholder="For example: Home Decor">
+  <label class="f" for="ncGroup">What kind of money is it?</label>
+  <select class="t" id="ncGroup">
+    <option value="Everyday">Everyday spending (groceries, eating out, household items)</option>
+    <option value="Fixed">Fixed bill (same amount every month)</option>
+    <option value="Variable bill">Variable bill (recurring, amount changes)</option>
+    <option value="One-time">One-time or project spending</option>
+    <option value="Savings">Savings</option>
+    <option value="Income">Income</option>
+    <option value="Transfer">Transfer between my own accounts</option>
+  </select>
+  <label class="check" style="margin-top:12px"><input type="checkbox" id="ncRuleOn" checked> Pick this category automatically when the description contains</label>
+  <input class="t" id="ncRuleKey" placeholder="For example: home decoration">
+  <label class="f" for="ncBudget">Monthly budget (optional)</label><input class="t" id="ncBudget" type="number" step="0.01" min="0" placeholder="0.00">
+  <p class="note" style="margin:6px 0 0">A monthly budget is added from this month forward in each budget year. It can be changed any time on the Budget screen.</p>
+  <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+    <button class="btn" id="ncSave" type="button">Add category</button>
+    <button class="btn sec" id="ncCancel" type="button">Cancel</button>
+  </div>
+  <div class="err" id="ncErr"></div>
+</div></div>
+<div id="tuModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="tuTitle"><div class="box">
+  <h2 id="tuTitle">True up an account</h2>
+  <p id="tuAcctName" style="margin:0 0 10px;font-weight:700"></p>
+  <p class="note" id="tuNow" style="margin:0 0 12px"></p>
+  <div class="row">
+    <div><label class="f" for="tuBank" id="tuBankLbl">Balance at the bank</label><input class="t" id="tuBank" type="number" step="0.01"></div>
+    <div><label class="f" for="tuDate">As of</label><input class="t" id="tuDate" type="date"></div>
+  </div>
+  <label class="f" for="tuNote">Note (optional)</label><input class="t" id="tuNote" placeholder="For example: matched to the PNC app">
+  <p id="tuVar" style="margin:12px 0 0;font-weight:700"></p>
+  <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+    <button class="btn" id="tuSave" type="button">Save true-up</button>
+    <button class="btn sec" id="tuCancel" type="button">Cancel</button>
+  </div>
+  <div class="err" id="tuErr"></div>
+</div></div>
 <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="mTitle"><div class="box">
   <h2 id="mTitle">Edit transaction</h2>
   <div class="row">
     <div><label class="f" for="eDate">Date</label><input class="t" id="eDate" type="date"></div>
     <div><label class="f" for="eAcct">Account</label><select class="t" id="eAcct"></select></div>
-    <div><label class="f" for="eAmt">Amount</label><input class="t" id="eAmt" type="number" step="0.01" min="0.01"></div>
+    <div><label class="f" for="eAmt">Amount</label><input class="t" id="eAmt" type="number" step="0.01"></div>
   </div>
   <label class="f" for="eDesc">Description</label><input class="t" id="eDesc">
   <div class="row">
@@ -591,7 +685,7 @@ const catUsed = t => t.cat || ((ruleMatch(t.desc, false) || {}).cat || '');
 const toUsed = t => t.to || (typeOf(catUsed(t)) === 'Transfer' ? ((ruleMatch(t.desc, true) || {}).to || '') : '');
 const isHistory = t => { const a = acctInfo(t.account); return !!(a && a.openDate && t.date <= a.openDate); };
 function status(t){
-  if (!t.date || !t.account || !(t.amount > 0)) return 'Missing date, account, or amount';
+  if (!t.date || !t.account || !(t.amount > 0 || (typeOf(catUsed(t)) === 'Adjustment' && t.amount))) return 'Missing date, account, or amount';
   if (!acctInfo(t.account)) return 'Account is not on the list';
   const c = catUsed(t); if (!c) return 'Pick a category';
   if (!catInfo(c)) return 'Category is not on the list';
@@ -608,7 +702,7 @@ function balances(postedOnly){
   for (const t of S.tx){
     if (postedOnly && !isPosted(t)) continue;
     const c = catUsed(t), ty = typeOf(c), a = acctInfo(t.account);
-    if (a && !(a.openDate && t.date <= a.openDate)) bal[t.account] += ty === 'Income' ? t.amount : -t.amount;
+    if (a && !(a.openDate && t.date <= a.openDate)) bal[t.account] += ty === 'Adjustment' ? (a.kind === 'Card' ? -t.amount : t.amount) : (ty === 'Income' ? t.amount : -t.amount);
     const to = toUsed(t), b = acctInfo(to);
     if (ty === 'Transfer' && b && !(b.openDate && t.date <= b.openDate)) bal[to] += t.amount;
   }
@@ -631,6 +725,7 @@ async function loadAll(){
   if (cfg.exists()){ S.config = Object.assign({accounts:[],categories:[],rules:[],lastExport:0}, cfg.data()); ensureDefaults(); }
   const bud = await getDoc(ref('meta','budget'));
   if (bud.exists()) S.budget = bud.data();
+  try { const vl = await getDoc(ref('meta','varianceLog')); S.vlog = vl.exists() ? (vl.data().entries || []) : []; } catch (e) { S.vlog = []; }
   const snap = await getDocs(collection(db, 'households', 'main', 'months'));
   S.months = {}; snap.forEach(d => { S.months[d.id] = (d.data().rows || []); });
   rebuildTx();
@@ -641,7 +736,7 @@ function rebuildTx(){
   S.tx.sort((a,b) => a.date === b.date ? (a.seq||0)-(b.seq||0) : (a.date < b.date ? -1 : 1));
 }
 const isPosted = t => t.posted === undefined ? !t.created : !!t.posted;
-function cleanRow(r){ return { id:r.id, date:r.date, account:r.account||'', amount:Math.round((+r.amount||0)*100)/100, desc:r.desc||'', cat:r.cat||'', to:r.to||'', notes:r.notes||'', created:r.created||0, seq:r.seq||0, posted:isPosted(r) }; }
+function cleanRow(r){ return { id:r.id, date:r.date, account:r.account||'', amount:Math.round((+r.amount||0)*100)/100, desc:r.desc||'', cat:r.cat||'', to:r.to||'', notes:r.notes||'', created:r.created||0, seq:r.seq||0, posted:isPosted(r), recon:r.recon||'' }; }
 async function addTx(row){
   row = cleanRow(row); const k = ym(row.date);
   await setDoc(ref('months', k), { rows: arrayUnion(row) }, { merge:true });
@@ -665,10 +760,10 @@ async function deleteTx(row){
 /* ---------- shared UI ---------- */
 function opts(list, blank){ return (blank !== undefined ? `<option value="">${esc(blank)}</option>` : '') + list.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join(''); }
 function fillSelects(){
-  const accts = S.config.accounts.map(a => a.name), cats = S.config.categories.map(c => c.name);
+  const accts = S.config.accounts.map(a => a.name), cats = S.config.categories.map(c => c.name).sort((x,y) => x.localeCompare(y));
   const keepVal = (id, html) => { const el = $(id), v = el.value; el.innerHTML = html; if ([...el.options].some(o => o.value === v)) el.value = v; };
-  keepVal('fAcct', opts(accts, 'Choose an account')); keepVal('fTo', opts(accts, 'None')); keepVal('fCat', opts(cats, 'Let a rule decide'));
-  keepVal('eAcct', opts(accts)); keepVal('eTo', opts(accts, 'None')); keepVal('eCat', opts(cats, 'Let a rule decide'));
+  keepVal('fAcct', opts(accts, 'Choose an account')); keepVal('fTo', opts(accts, 'None')); keepVal('fCat', opts(cats, 'Let a rule decide') + '<option value="__new">+ Add a new category</option>');
+  keepVal('eAcct', opts(accts)); keepVal('eTo', opts(accts, 'None')); keepVal('eCat', opts(cats, 'Let a rule decide') + '<option value="__new">+ Add a new category</option>');
   keepVal('lAcct', opts(accts, 'All accounts')); keepVal('lCat', opts(cats, 'All categories'));
   const descs = [...new Set(S.tx.slice(-800).map(t => t.desc).filter(Boolean))].sort();
   $('descList').innerHTML = descs.map(d => `<option value="${esc(d)}">`).join('');
@@ -710,9 +805,9 @@ function renderHome(){
   const b = balances(); const tile = (v, l, c) => `<div class="kpi"><b class="${c||''}">${v}</b><span>${l}</span></div>`;
   const cashA = S.config.accounts.filter(a => a.kind !== 'Card'), cardA = S.config.accounts.filter(a => a.kind === 'Card');
   const bp = balances(true);
-  const arow = (a, v, cls) => { const pv = a.kind === 'Card' ? -bp.bal[a.name] : bp.bal[a.name]; return `<tr><td>${esc(a.name)}</td><td class="n ${cls||''}">${money(v, true)}</td><td class="n muted">${money(pv, true)}</td></tr>`; };
-  $('hAcct').innerHTML = '<tr class="grp"><td>Checking and savings</td><td></td><td></td></tr>' + cashA.map(a => arow(a, b.bal[a.name], b.bal[a.name] < 0 ? 'neg' : '')).join('') +
-    '<tr class="grp"><td>Credit cards (amount owed)</td><td></td><td></td></tr>' + cardA.map(a => arow(a, -b.bal[a.name], -b.bal[a.name] > 0.005 ? 'neg' : '')).join('');
+  const arow = (a, v, cls) => { const pv = a.kind === 'Card' ? -bp.bal[a.name] : bp.bal[a.name]; return `<tr><td>${esc(a.name)}</td><td class="n ${cls||''}">${money(v, true)}</td><td class="n muted">${money(pv, true)}</td><td class="n"><button class="btn sec small" type="button" data-trueup="${esc(a.name)}">True up</button></td></tr>`; };
+  $('hAcct').innerHTML = '<tr class="grp"><td>Checking and savings</td><td></td><td></td><td></td></tr>' + cashA.map(a => arow(a, b.bal[a.name], b.bal[a.name] < 0 ? 'neg' : '')).join('') +
+    '<tr class="grp"><td>Credit cards (amount owed)</td><td></td><td></td><td></td></tr>' + cardA.map(a => arow(a, -b.bal[a.name], -b.bal[a.name] > 0.005 ? 'neg' : '')).join('');
   $('hTiles').innerHTML = tile(money(b.cash), 'Cash in checking and savings') + tile(money(b.card), 'Owed on credit cards', b.card > 0 ? 'neg' : '') + tile(money(T.inc), 'Money in this month', 'pos') + tile(money(T.out), 'Money out this month', 'neg');
   const ink = css('--ink'), rule = css('--rule'), muted = css('--muted');
   if (window.Chart){ Chart.defaults.color = muted; Chart.defaults.borderColor = rule; Chart.defaults.font.family = '"Public Sans", system-ui, sans-serif'; }
@@ -742,12 +837,41 @@ function resetForm(keep){
   $('fDate').value = keep ? d : todayISO(); if (keep) $('fAcct').value = a; suggest();
 }
 $('fDesc').addEventListener('input', suggest);
-$('fCat').addEventListener('change', () => { catTouched = $('fCat').value !== ''; suggest(); });
+let ncFor = null, ncPrev = '';
+function openNewCat(selId){
+  ncFor = selId; const desc = (selId === 'fCat' ? $('fDesc').value : $('eDesc').value).trim();
+  const seg = desc.split(' - ')[0].trim();
+  $('ncName').value = ''; $('ncGroup').value = 'Everyday'; $('ncRuleKey').value = seg; $('ncRuleOn').checked = !!seg; $('ncBudget').value = ''; $('ncErr').textContent = '';
+  show('ncModal'); $('ncName').focus();
+}
+function closeNewCat(revert){ show('ncModal', false); if (revert && ncFor){ $(ncFor).value = ncPrev; } ncFor = null; }
+['fCat','eCat'].forEach(id => { const el = $(id); el.addEventListener('focus', () => { if (el.value !== '__new') ncPrev = el.value; }); el.addEventListener('change', () => { if (el.value === '__new') openNewCat(id); else ncPrev = el.value; }); });
+$('ncCancel').addEventListener('click', () => closeNewCat(true));
+$('ncSave').addEventListener('click', async () => {
+  const name = $('ncName').value.trim().replace(/\s+/g, ' '); const group = $('ncGroup').value;
+  if (!name){ $('ncErr').textContent = 'Give the category a name.'; return; }
+  if (name === '__new' || S.config.categories.some(c => c.name.toLowerCase() === name.toLowerCase())){ $('ncErr').textContent = 'A category with that name already exists.'; return; }
+  const type = group === 'Income' ? 'Income' : group === 'Savings' ? 'Savings' : group === 'Transfer' ? 'Transfer' : 'Expense';
+  S.config.categories.push({ name, type, group:group === 'Transfer' ? 'Transfer' : group });
+  const key = $('ncRuleKey').value.trim();
+  if ($('ncRuleOn').checked && key) S.config.rules.push({ key, cat:name, to:'' });
+  const amt = +$('ncBudget').value || 0, now = new Date(), cy = now.getFullYear(), cm = now.getMonth();
+  try {
+    await setDoc(ref('meta','config'), S.config);
+    if (amt > 0){ const years = [...new Set(S.budget.rows.map(r => +r.year))].filter(y => y >= cy);
+      for (const y of years){ S.budget.rows.push({ cat:name, year:y, m:Array.from({ length:12 }, (_, i) => (y > cy || i >= cm) ? amt : 0) }); }
+      await setDoc(ref('meta','budget'), { rows:S.budget.rows }); }
+    const target = ncFor; closeNewCat(false); renderAll(); $(target).value = name; ncPrev = name;
+    if (target === 'fCat'){ catTouched = true; suggest(); }
+    toast('Added ' + name);
+  } catch (err){ S.config.categories = S.config.categories.filter(c => c.name !== name); S.config.rules = S.config.rules.filter(r => r.cat !== name); $('ncErr').textContent = 'Could not save: ' + (err.code || err.message); }
+});
+$('fCat').addEventListener('change', () => { if ($('fCat').value === '__new') return; catTouched = $('fCat').value !== ''; suggest(); });
 $('fTo').addEventListener('change', () => { toTouched = true; });
 $('clearBtn').addEventListener('click', () => resetForm(false));
 $('txForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const row = { id:uid(), date:$('fDate').value, account:$('fAcct').value, amount:+$('fAmt').value, desc:$('fDesc').value.trim(), cat:$('fCat').value, to:$('fTo').disabled ? '' : $('fTo').value, notes:$('fNotes').value.trim(), created:Date.now(), seq:Date.now() };
+  const row = { id:uid(), date:$('fDate').value, account:$('fAcct').value, amount:+$('fAmt').value, desc:$('fDesc').value.trim(), cat:$('fCat').value === '__new' ? '' : $('fCat').value, to:$('fTo').disabled ? '' : $('fTo').value, notes:$('fNotes').value.trim(), created:Date.now(), seq:Date.now() };
   const st = status(row);
   if (st !== 'OK' && st !== 'History'){ $('fErr').textContent = st; return; }
   $('saveBtn').disabled = true;
@@ -771,17 +895,48 @@ document.addEventListener('change', async e => {
   catch (err){ cb.checked = !cb.checked; toast('Could not update: ' + (err.code || err.message)); }
   finally { cb.disabled = false; }
 });
+/* ---------- true-up ---------- */
+let tuAcct = null;
+function tuPosted(name){ const a = acctInfo(name), b = balances(true); return a && a.kind === 'Card' ? -b.bal[name] : b.bal[name]; }
+function tuUpdate(){
+  const a = acctInfo(tuAcct); if (!a) return; const cur = tuPosted(tuAcct), v = $('tuBank').value === '' ? null : +$('tuBank').value;
+  if (v === null || isNaN(v)){ $('tuVar').textContent = ''; return; }
+  const d = Math.round((v - cur) * 100) / 100;
+  $('tuVar').textContent = d === 0 ? 'No difference; nothing needs to be saved.' : `Variance: ${d > 0 ? '+' : '-'}${money(Math.abs(d), true)} ${a.kind === 'Card' ? (d > 0 ? 'more owed than the app shows' : 'less owed than the app shows') : (d > 0 ? 'more than the app shows' : 'less than the app shows')}`;
+  $('tuVar').style.color = d === 0 ? '' : (a.kind === 'Card' ? (d > 0 ? 'var(--out)' : 'var(--in)') : (d > 0 ? 'var(--in)' : 'var(--out)'));
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-trueup]'); if (!b) return;
+  tuAcct = b.dataset.trueup; const a = acctInfo(tuAcct); const cur = tuPosted(tuAcct);
+  $('tuAcctName').textContent = tuAcct; $('tuBankLbl').textContent = a.kind === 'Card' ? 'Amount owed at the bank' : 'Balance at the bank';
+  $('tuNow').textContent = `The app shows ${money(cur, true)} ${a.kind === 'Card' ? 'owed' : ''} posted. Enter what the bank or card app shows right now.`.replace('  ', ' ');
+  $('tuBank').value = cur.toFixed(2); $('tuDate').value = todayISO(); $('tuNote').value = ''; $('tuErr').textContent = ''; tuUpdate(); show('tuModal'); $('tuBank').select(); });
+['tuBank'].forEach(id => $(id).addEventListener('input', tuUpdate));
+$('tuCancel').addEventListener('click', () => show('tuModal', false));
+$('tuSave').addEventListener('click', async () => {
+  const a = acctInfo(tuAcct); if (!a) return; const v = +$('tuBank').value; if ($('tuBank').value === '' || isNaN(v)){ $('tuErr').textContent = 'Enter the balance shown at the bank.'; return; }
+  const cur = tuPosted(tuAcct), d = Math.round((v - cur) * 100) / 100; if (d === 0){ show('tuModal', false); toast('Already matches the bank'); return; }
+  if (!S.config.categories.some(c => c.name === 'Balance Adjustment')){ S.config.categories.push({ name:'Balance Adjustment', type:'Adjustment', group:'Adjustment' }); await setDoc(ref('meta','config'), S.config); }
+  const row = { id:uid(), date:$('tuDate').value || todayISO(), account:tuAcct, amount:d, desc:`True-up to bank balance of ${money(v, true)} (variance ${d > 0 ? '+' : '-'}${money(Math.abs(d), true)})`, cat:'Balance Adjustment', to:'', notes:$('tuNote').value.trim(), created:Date.now(), seq:Date.now(), posted:true };
+  try { await addTx(row);
+    S.vlog = S.vlog || []; S.vlog.push({ id:uid(), adjId:row.id, account:tuAcct, found:row.date, created:Date.now(), bankBal:v, appBal:Math.round(cur * 100) / 100, amount:d, status:'open', note:row.notes, cause:'', corrections:[], resolvedOn:'' });
+    await setDoc(ref('meta','varianceLog'), { entries:S.vlog });
+    show('tuModal', false); toast('True-up saved. Open Reconcile under Details and analysis to find the cause.'); renderAll(); } catch (err){ $('tuErr').textContent = 'Could not save: ' + (err.code || err.message); }
+});
+
 /* ---------- edit modal ---------- */
 let editing = null;
 function openEdit(id){
-  const t = S.tx.find(x => x.id === id); if (!t) return; editing = t;
+  const t = S.tx.find(x => x.id === id); if (!t) return; editing = t; $('mTitle').textContent = 'Edit transaction'; $('eDel').classList.remove('hidden');
   $('eDate').value = t.date; $('eAcct').value = t.account; $('eAmt').value = t.amount; $('eDesc').value = t.desc; $('eCat').value = t.cat; $('eTo').value = t.to; $('eNotes').value = t.notes; $('ePosted').checked = isPosted(t); $('eErr').textContent = '';
   show('modal'); $('eDesc').focus();
 }
 document.addEventListener('click', e => { if (e.target.closest('input.post')) return; const tr = e.target.closest('tr.click'); if (tr && tr.dataset.id) openEdit(tr.dataset.id); });
 $('eCancel').addEventListener('click', () => { show('modal', false); editing = null; });
 $('eSave').addEventListener('click', async () => {
-  const n = Object.assign({}, editing, { date:$('eDate').value, account:$('eAcct').value, amount:+$('eAmt').value, desc:$('eDesc').value.trim(), cat:$('eCat').value, to:$('eTo').value, notes:$('eNotes').value.trim(), posted:$('ePosted').checked });
+  if (!editing){ const row = { id:uid(), date:$('eDate').value, account:$('eAcct').value, amount:+$('eAmt').value, desc:$('eDesc').value.trim(), cat:$('eCat').value === '__new' ? '' : $('eCat').value, to:$('eTo').value, notes:$('eNotes').value.trim(), created:Date.now(), seq:Date.now(), posted:$('ePosted').checked };
+    const st = status(row); if (st !== 'OK'){ $('eErr').textContent = st; return; }
+    try { await addTx(row); show('modal', false); $('eDel').classList.remove('hidden'); $('mTitle').textContent = 'Edit transaction'; toast('Added'); renderAll(); } catch (err){ $('eErr').textContent = 'Could not save: ' + (err.code || err.message); } return; }
+  const n = Object.assign({}, editing, { date:$('eDate').value, account:$('eAcct').value, amount:+$('eAmt').value, desc:$('eDesc').value.trim(), cat:$('eCat').value === '__new' ? editing.cat : $('eCat').value, to:$('eTo').value, notes:$('eNotes').value.trim(), posted:$('ePosted').checked });
   const st = status(n); if (st !== 'OK' && st !== 'History'){ $('eErr').textContent = st; return; }
   try { await updateTx(editing, n); show('modal', false); toast('Updated'); renderAll(); } catch (err){ $('eErr').textContent = 'Could not save: ' + (err.code || err.message); }
 });
@@ -1383,6 +1538,16 @@ async function migrations(){
     S.config.flags.kRaise2027 = true; changed = true;
   }
   if (changed){ try { await setDoc(ref('meta','config'), S.config); } catch (e) {} }
+  const hasCat = n => S.config.categories.some(c => c.name === n);
+  S.vlog = S.vlog || [];
+  const known = new Set(S.vlog.map(e => e.adjId)); let addedLog = false;
+  for (const t of S.tx){ if (typeOf(catUsed(t)) !== 'Adjustment' || known.has(t.id)) continue;
+    S.vlog.push({ id:uid(), adjId:t.id, account:t.account, found:t.date, created:t.created || Date.now(), bankBal:null, appBal:null, amount:t.amount, status:'open', note:t.notes || '', cause:'', corrections:[], resolvedOn:'' }); addedLog = true; }
+  if (addedLog){ try { await setDoc(ref('meta','varianceLog'), { entries:S.vlog }); } catch (e) {} }
+  if (!hasCat('Balance Adjustment')){ S.config.categories.push({ name:'Balance Adjustment', type:'Adjustment', group:'Adjustment' }); try { await setDoc(ref('meta','config'), S.config); } catch (e) {} }
+  if (hasCat('Personal and Other') && !hasCat('Other')){
+    try { await applyRenames({}, { 'Personal and Other':'Other' }); toast('Renamed Personal and Other to Other'); } catch (e) {}
+  }
   if (has('Savings - PNC Reserve (trip fund)') && !has('Savings - PNC Reserve')){
     try { await applyRenames({ 'Savings - PNC Reserve (trip fund)':'Savings - PNC Reserve' }, {}); toast('Renamed the reserve account'); } catch (e) {}
   }
@@ -1406,7 +1571,7 @@ const PV_DIMS = {
   day:{ label:'Day', key:t => t.date, fmt:fmtDate, time:'day' },
   dow:{ label:'Day of week', key:t => String((new Date(t.date + 'T00:00:00').getDay() + 6) % 7), fmt:k => dowNames[+k], time:'dow' }
 };
-const PV_TYPES = ['Income','Expense','Savings','Transfer'];
+const PV_TYPES = ['Income','Expense','Savings','Transfer','Adjustment'];
 let PV = null, pvDescLabel = {};
 function pvDefaults(){ return { preset:'ytd', from:'', to:'', rows:'category', cols:'month', val:'sum', chart:'auto', types:['Expense'], cats:null, accts:null, search:'', sort:'auto', top:'0', heat:true }; }
 function pvLoadState(){ try { PV = Object.assign(pvDefaults(), JSON.parse(localStorage.getItem('bf-pivot') || '{}')); } catch (e){ PV = pvDefaults(); } }
@@ -1425,7 +1590,7 @@ function pvBuildControls(){
   const dimOpts = Object.entries(PV_DIMS).map(([k,d]) => `<option value="${k}">${esc(d.label)}</option>`).join('');
   $('pvRows').innerHTML = dimOpts; $('pvCols').innerHTML = '<option value="">Nothing (one column)</option>' + dimOpts;
   $('pvTypes').innerHTML = PV_TYPES.map(t => `<label><input type="checkbox" value="${t}"${PV.types.includes(t) ? ' checked' : ''}> ${t}</label>`).join('');
-  let html = ''; for (const [g, gl] of GROUPS.concat([['Transfer','Transfers']])){ const list = S.config.categories.filter(c => (c.group || 'Transfer') === g); if (!list.length) continue;
+  let html = ''; for (const [g, gl] of GROUPS.concat([['Transfer','Transfers'],['Adjustment','Adjustments']])){ const list = S.config.categories.filter(c => (c.group || 'Transfer') === g).sort((x,y) => x.name.localeCompare(y.name)); if (!list.length) continue;
     html += `<div class="mg">${esc(gl)}</div>` + list.map(c => `<label><input type="checkbox" value="${esc(c.name)}"${!PV.cats || PV.cats.includes(c.name) ? ' checked' : ''}> ${esc(c.name)}</label>`).join(''); }
   $('pvCatList').innerHTML = html;
   $('pvAcctList').innerHTML = S.config.accounts.map(a => `<label><input type="checkbox" value="${esc(a.name)}"${!PV.accts || PV.accts.includes(a.name) ? ' checked' : ''}> ${esc(a.name)}</label>`).join('');
@@ -1458,7 +1623,7 @@ function pvCompute(){
   pvDescLabel = {}; for (const t of rows){ const k = normDesc(t.desc); if (!pvDescLabel[k]) pvDescLabel[k] = t.desc; }
   const cell = {}, rT = {}, cT = {}, gT = { sum:0, net:0, count:0 }, add = (o, t, sg) => { o.sum += t.amount; o.net += sg * t.amount; o.count++; };
   const mk = () => ({ sum:0, net:0, count:0 });
-  for (const t of rows){ const ty = typeOf(catUsed(t)), sg = ty === 'Income' ? 1 : (ty === 'Transfer' ? 0 : -1);
+  for (const t of rows){ const ty = typeOf(catUsed(t)), sg = ty === 'Income' ? 1 : ((ty === 'Transfer' || ty === 'Adjustment') ? 0 : -1);
     const r = rd.key(t), c = cd ? cd.key(t) : '_'; ((cell[r] ||= {})[c] ||= mk()); add(cell[r][c], t, sg); add(rT[r] ||= mk(), t, sg); add(cT[c] ||= mk(), t, sg); add(gT, t, sg); }
   const span = monthsBetween(PV.from, PV.to);
   const value = (o, colKey) => { if (!o || !o.count) return null;
@@ -1539,6 +1704,249 @@ $('pvExport').addEventListener('click', () => {
   if (R.other) body.push([`All other (${R.other.keys.length})`].concat(R.cKeys.map(c => R.value(R.other.cells[c], c) ?? '')).concat(R.cd ? [R.value(R.other.tot, null)] : []));
   body.push(['Total'].concat(R.cKeys.map(c => R.value(R.cT[c], c) ?? '')).concat(R.cd ? [R.value(R.gT, null)] : []));
   const ws = XLSX.utils.aoa_to_sheet([head].concat(body)); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Pivot'); XLSX.writeFile(wb, `Pivot ${todayISO()}.xlsx`);
+});
+/* ================= Reconcile and variances ================= */
+const CAUSES = ['Missing transaction','Wrong amount','Duplicate entry','Wrong account','Wrong direction (in versus out)','Bank fee or interest','Timing or pending','Other'];
+let RC = { acct:'', base:null, snap:null };
+const isAdj = t => typeOf(catUsed(t)) === 'Adjustment';
+const touches = (t, name) => t.account === name || (toUsed(t) === name && typeOf(catUsed(t)) === 'Transfer');
+function effectOn(t, name){ // change to the balance as the bank shows it (cash: money in is +; card: amount owed going up is +)
+  const a = acctInfo(name); if (!a) return 0; let internal = 0; const ty = typeOf(catUsed(t));
+  if (t.account === name) internal += ty === 'Adjustment' ? (a.kind === 'Card' ? -t.amount : t.amount) : (ty === 'Income' ? t.amount : -t.amount);
+  if (ty === 'Transfer' && toUsed(t) === name) internal += t.amount;
+  return a.kind === 'Card' ? -internal : internal;
+}
+function bankBal(name, thru, opts){ // bank-perspective balance through a date
+  opts = opts || {}; const a = acctInfo(name); if (!a) return 0;
+  let v = +a.openBal || 0;
+  for (const t of S.tx){ if (thru && t.date > thru) continue; if (opts.noAdj && isAdj(t)) continue; if (opts.postedOnly && !isPosted(t)) continue;
+    if (a.openDate && t.date <= a.openDate) continue; if (touches(t, name)) v += effectOn(t, name); }
+  return Math.round(v * 100) / 100;
+}
+const openEntries = name => (S.vlog || []).filter(e => e.account === name && e.status === 'open');
+const openVariance = name => Math.round(openEntries(name).reduce((s,e) => s + (+e.amount || 0), 0) * 100) / 100;
+const lastTrue = name => (S.vlog || []).filter(e => e.account === name).sort((a,b) => (b.created||0) - (a.created||0))[0];
+const dIso = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+const addDays = (iso, n) => { const d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() + n); return dIso(d); };
+const brief = t => t ? `${fmtDate(t.date)} ${t.desc} ${money(t.amount, true)}${t.account ? ' (' + t.account.replace(/^(Checking|Savings|Card) - /,'') + ')' : ''}` : '';
+function startSession(name){
+  RC.acct = name; RC.base = bankBal(name, null, { noAdj:true });
+  RC.snap = new Map(S.tx.filter(t => touches(t, name) && !isAdj(t)).map(t => [t.id, JSON.stringify(cleanRow(t))]));
+}
+function sessionChanges(){
+  if (!RC.snap) return [];
+  const now = new Map(S.tx.filter(t => touches(t, RC.acct) && !isAdj(t)).map(t => [t.id, t])), out = [];
+  for (const [id, js] of RC.snap){ const before = JSON.parse(js), cur = S.tx.find(t => t.id === id);
+    if (!cur) out.push({ action:'Deleted', before, after:null });
+    else if (JSON.stringify(cleanRow(cur)) !== js){ const diff = ['date','account','amount','desc','cat','to'].filter(k => String(before[k]) !== String(cleanRow(cur)[k]));
+      if (diff.length) out.push({ action:'Edited', before, after:cleanRow(cur), fields:diff }); } }
+  for (const [id, t] of now){ if (!RC.snap.has(id)) out.push({ action:'Added', before:null, after:cleanRow(t) }); }
+  return out;
+}
+function describeChange(c){
+  if (c.action === 'Added') return 'Added ' + brief(c.after);
+  if (c.action === 'Deleted') return 'Deleted ' + brief(c.before);
+  const parts = c.fields.map(f => f === 'amount' ? `amount ${money(c.before.amount, true)} to ${money(c.after.amount, true)}` : `${f === 'desc' ? 'description' : f === 'cat' ? 'category' : f === 'to' ? 'to account' : f} "${c.before[f] || 'blank'}" to "${c.after[f] || 'blank'}"`);
+  return `Edited ${fmtDate(c.before.date)} ${c.before.desc}: ${parts.join('; ')}`;
+}
+function rcHints(name, rows, variance){
+  const out = [], v = Math.abs(variance), cents = Math.round(v * 100);
+  if (!v) return out;
+  const amtEq = rows.filter(t => Math.abs(Math.abs(t.amount) - v) < 0.005);
+  if (amtEq.length) out.push(`An entry for exactly ${money(v, true)} is in this window (${amtEq.map(t => fmtDate(t.date) + ' ' + t.desc).join('; ')}). If it is not on the statement, it may be a duplicate or belong to another account.`);
+  else out.push(`No entry equals ${money(v, true)}. If the statement shows a ${money(v, true)} item that is not listed here, it is missing; use Add a missing transaction.`);
+  const half = rows.filter(t => Math.abs(Math.abs(t.amount) * 2 - v) < 0.005);
+  if (half.length) out.push(`The variance is exactly twice ${half.map(t => fmtDate(t.date) + ' ' + t.desc + ' (' + money(t.amount, true) + ')').join('; ')}. An entry recorded in the wrong direction, money in instead of out, doubles its effect.`);
+  if (cents % 9 === 0){
+    const swaps = []; for (const t of rows){ const s = String(Math.round(Math.abs(t.amount) * 100)); for (let i = 0; i < s.length - 1; i++){ const sw = s.slice(0,i) + s[i+1] + s[i] + s.slice(i+2); if (Math.abs(+sw - +s) === cents) swaps.push(`${fmtDate(t.date)} ${t.desc}: ${money(t.amount, true)} may really be ${money(+sw / 100, true)}`); } }
+    out.push(swaps.length ? 'Possible transposed digits: ' + swaps.join('; ') + '.' : `The variance divides evenly by 9, which is typical of two swapped digits in an amount. Check amounts carefully against the statement.`);
+  }
+  const dups = []; for (let i = 0; i < rows.length; i++) for (let j = i + 1; j < rows.length; j++){ const a = rows[i], b = rows[j];
+    if (Math.abs(a.amount - b.amount) < 0.005 && Math.abs(new Date(a.date) - new Date(b.date)) <= 3 * 864e5 && !isAdj(a) && !isAdj(b)) dups.push(`${a.desc} ${money(a.amount, true)} on ${fmtDate(a.date)} and ${fmtDate(b.date)}`); }
+  if (dups.length) out.push('Possible duplicates: ' + dups.slice(0,4).join('; ') + '.');
+  const stale = rows.filter(t => !isPosted(t) && (Date.now() - new Date(t.date + 'T00:00:00')) > 7 * 864e5);
+  if (stale.length) out.push(`${stale.length} entr${stale.length === 1 ? 'y is' : 'ies are'} still pending after more than a week. A pending charge sometimes posts for a different amount, such as a restaurant tip or a gas station hold.`);
+  return out;
+}
+render.recon = () => {
+  const accts = S.config.accounts;
+  if (!RC.acct || !acctInfo(RC.acct)){ const withVar = accts.find(a => openVariance(a.name)); startSession((withVar || accts[0] || {}).name || ''); }
+  if (!$('rcFrom').value){ $('rcTo').value = todayISO(); $('rcFrom').value = addDays(todayISO(), -13); }
+  const kk = (v,l,c) => `<div class="kpi"><b class="${c||''}">${v}</b><span>${l}</span></div>`;
+  const openAll = (S.vlog || []).filter(e => e.status === 'open'), resolvedAll = (S.vlog || []).filter(e => e.status !== 'open');
+  $('rcKpis').innerHTML = kk(openAll.length, 'Open variances', openAll.length ? 'neg' : 'pos') + kk(money(openAll.reduce((s,e) => s + Math.abs(+e.amount || 0), 0), true), 'Open variance, total size') + kk(resolvedAll.length, 'Variances resolved so far', 'pos') + kk(new Set(openAll.map(e => e.account)).size, 'Accounts needing attention');
+  $('rcAccts').innerHTML = accts.map(a => { const ov = openVariance(a.name), lt = lastTrue(a.name);
+    return `<tr${a.name === RC.acct ? ' class="soon"' : ''}><td>${esc(a.name)}</td><td class="n">${money(bankBal(a.name, null, { postedOnly:true }), true)}</td><td class="n ${ov ? 'neg' : ''}">${ov ? (ov > 0 ? '+' : '-') + money(Math.abs(ov), true) : 'None'}</td><td>${lt ? fmtDate(lt.found) : ''}</td><td class="n"><button class="btn sec small" type="button" data-rc="${esc(a.name)}">Reconcile</button> <button class="btn sec small" type="button" data-trueup="${esc(a.name)}">True up</button></td></tr>`; }).join('');
+  $('rcAcct').innerHTML = opts(accts.map(a => a.name)); $('rcAcct').value = RC.acct;
+  const name = RC.acct, a = acctInfo(name); if (!a) return;
+  $('rcTitle').textContent = 'Reconcile ' + name; $('rcAmtHd').textContent = a.kind === 'Card' ? 'Change to amount owed' : 'Money in or out';
+  const from = $('rcFrom').value, to = $('rcTo').value;
+  const rows = S.tx.filter(t => touches(t, name) && t.date >= from && t.date <= to);
+  const open = bankBal(name, addDays(from, -1));
+  let run = open;
+  const pre = t => a.openDate && t.date <= a.openDate;
+  $('rcBody').innerHTML = rows.length ? rows.map(t => { const e = effectOn(t, name); if (!pre(t)) run += e; const adj = isAdj(t);
+    return `<tr class="click${isPosted(t) ? '' : ' pending'}${adj ? ' soon' : ''}" data-id="${t.id}"><td>${adj ? '' : `<input type="checkbox" class="post rcm" data-rcm="${t.id}"${t.recon ? ' checked' : ''} aria-label="Matched on the statement">`}</td><td>${postBox(t)}</td><td>${fmtDate(t.date)}</td><td class="wrap">${esc(t.desc)}${adj ? ' <b>(variance)</b>' : ''}${pre(t) ? ' <span class="muted">(before the opening balance; does not affect it)</span>' : ''}</td><td>${esc(catUsed(t))}</td><td class="n ${e < 0 ? (a.kind === 'Card' ? 'pos' : 'neg') : (a.kind === 'Card' ? 'neg' : 'pos')}">${e >= 0 ? '+' : '-'}${money(Math.abs(e), true)}</td><td class="n">${money(run, true)}</td></tr>`; }).join('') : '<tr><td colspan="7" class="muted">No entries for this account in these dates.</td></tr>';
+  const matched = rows.filter(t => t.recon && !isAdj(t)).length, real = rows.filter(t => !isAdj(t)).length;
+  const ov = openVariance(name), changes = sessionChanges(), effect = Math.round((bankBal(name, null, { noAdj:true }) - (RC.base ?? 0)) * 100) / 100, remaining = Math.round((ov - effect) * 100) / 100;
+  $('rcSum').innerHTML = kk(money(open, true), `${a.kind === 'Card' ? 'Owed' : 'Balance'} at the start of ${fmtDate(from)}`) + kk(money(bankBal(name, to), true), `${a.kind === 'Card' ? 'Owed' : 'Balance'} at the end of ${fmtDate(to)}`) + kk(`${matched} of ${real}`, 'Entries ticked as matched') + kk(ov ? (ov > 0 ? '+' : '-') + money(Math.abs(ov), true) : 'None', 'Open variance on this account', ov ? 'neg' : 'pos');
+  const hints = rcHints(name, rows.filter(t => !isAdj(t) && !pre(t)), remaining || ov);
+  $('rcHints').innerHTML = ov && remaining ? `<div class="ins" style="margin-top:12px">${hints.map(h => `<div class="card warn"><h4>Where to look</h4><p>${esc(h)}</p></div>`).join('')}</div>` : '';
+  let rz = `<h3 style="margin-top:0">Variance</h3>`;
+  if (!ov && !changes.length){ rz += `<p style="margin:0">This account has no open variance. If the statement still does not match the app, use True up to record the difference, then come back here to find it.</p>`; }
+  else {
+    rz += `<div class="grid g3" style="margin-bottom:12px">${kk((ov >= 0 ? '+' : '-') + money(Math.abs(ov), true), 'Open variance from true-ups')}${kk((effect >= 0 ? '+' : '-') + money(Math.abs(effect), true), 'Explained by your corrections so far')}${kk(Math.abs(remaining) < 0.005 ? 'Fully explained' : (remaining >= 0 ? '+' : '-') + money(Math.abs(remaining), true), 'Still unexplained', Math.abs(remaining) < 0.005 ? 'pos' : 'neg')}</div>`;
+    rz += changes.length ? `<p style="margin:0 0 6px"><b>Corrections made since you opened this account:</b></p><ul style="margin:0 0 10px 18px;padding:0">${changes.map(c => `<li>${esc(describeChange(c))}</li>`).join('')}</ul>` : `<p style="margin:0 0 10px">No corrections yet. Fix the entry that caused the variance by selecting its row, or add what is missing.</p>`;
+    rz += `<div class="row"><div><label class="f" for="rcCause">What caused it?</label><select class="t" id="rcCause">${CAUSES.map(c => `<option>${c}</option>`).join('')}</select></div><div><label class="f" for="rcNote">Note</label><input class="t" id="rcNote" placeholder="For example: typed 25.10 instead of 52.10"></div></div>`;
+    rz += `<div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">`;
+    if (ov && Math.abs(remaining) < 0.005) rz += `<button class="btn" id="rcResolveBtn" type="button">Remove the variance and save the record</button>`;
+    else if (ov && changes.length) rz += `<button class="btn" id="rcPartBtn" type="button">Save progress: reduce the variance to ${(remaining >= 0 ? '+' : '-') + money(Math.abs(remaining), true)}</button>`;
+    if (ov) rz += `<button class="btn sec" id="rcAcceptBtn" type="button">Accept the variance as is</button>`;
+    rz += `</div><p class="note" style="margin:8px 0 0">Accepting keeps the variance entry on the account permanently and closes it in the history, for differences that cannot be traced.</p>`;
+  }
+  $('rcResolve').innerHTML = rz;
+  if ($('rcCause')){ const guess = changes.some(c => c.action === 'Added') ? 'Missing transaction' : changes.some(c => c.action === 'Deleted') ? 'Duplicate entry' : changes.some(c => c.fields && c.fields.includes('amount')) ? 'Wrong amount' : changes.some(c => c.fields && c.fields.includes('account')) ? 'Wrong account' : 'Missing transaction'; $('rcCause').value = guess; }
+  renderVarHistory(); updateHScroll();
+};
+function renderVarHistory(){
+  const L = (S.vlog || []).slice().sort((a,b) => (b.created||0) - (a.created||0));
+  const kk = (v,l,c) => `<div class="kpi"><b class="${c||''}">${v}</b><span>${l}</span></div>`;
+  const res = L.filter(e => e.status !== 'open'), byCause = {};
+  for (const e of res){ const c = e.cause || 'Other'; (byCause[c] ||= { n:0, amt:0 }); byCause[c].n++; byCause[c].amt += Math.abs(+e.amount || 0); }
+  const top = Object.entries(byCause).sort((a,b) => b[1].n - a[1].n)[0];
+  $('rcHistKpis').innerHTML = kk(L.length, 'Variances recorded') + kk(res.length, 'Resolved or accepted', 'pos') + kk(money(L.reduce((s,e) => s + Math.abs(+e.amount || 0), 0), true), 'Total size of all variances') + kk(top ? top[0] : 'None yet', 'Most common cause');
+  const cs = Object.entries(byCause);
+  mkChart('rcCauseChart', { type:'bar', data:{ labels:cs.length ? cs.map(c => c[0]) : ['No resolved variances yet'], datasets:[{ label:'Times', data:cs.length ? cs.map(c => c[1].n) : [0], backgroundColor:css('--amber') || css('--card') }] }, options:Object.assign(lineOpts(), { indexAxis:'y', plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ precision:0 }, grid:{ color:css('--rule') } }, y:{ grid:{ display:false }, ticks:{ color:css('--ink') } } } }) });
+  const stat = s => s === 'open' ? '<b class="neg">Open</b>' : s === 'accepted' ? 'Accepted' : s === 'partial' ? 'Partly resolved, carried forward' : '<b class="pos">Resolved</b>';
+  $('rcLog').innerHTML = L.length ? L.map(e => `<tr><td>${fmtDate(e.found)}</td><td>${esc(e.account)}</td><td class="n">${(e.amount >= 0 ? '+' : '-') + money(Math.abs(+e.amount || 0), true)}</td><td>${stat(e.status)}</td><td>${esc(e.cause || '')}</td><td class="wrap">${(e.corrections || []).map(c => esc(c.text)).join('<br>') || (e.status === 'open' ? '' : 'None')}</td><td>${e.resolvedOn ? fmtDate(e.resolvedOn) : ''}</td><td class="wrap">${esc(e.note || '')}${e.bankBal != null ? `<br><span class="muted">Bank showed ${money(e.bankBal, true)}; app showed ${money(e.appBal, true)}</span>` : ''}</td></tr>`).join('') : '<tr><td colspan="8" class="muted">No variances recorded yet. Use True up on any account when it does not match the bank.</td></tr>';
+}
+async function closeVariance(mode){
+  const name = RC.acct, entries = openEntries(name); if (!entries.length) return;
+  const changes = sessionChanges().map(c => ({ action:c.action, text:describeChange(c) }));
+  const cause = $('rcCause') ? $('rcCause').value : 'Other', note = $('rcNote') ? $('rcNote').value.trim() : '', today = todayISO();
+  const ov = openVariance(name), effect = Math.round((bankBal(name, null, { noAdj:true }) - (RC.base ?? 0)) * 100) / 100, remaining = Math.round((ov - effect) * 100) / 100;
+  try {
+    if (mode !== 'accept'){ for (const e of entries){ const t = S.tx.find(x => x.id === e.adjId); if (t) await deleteTx(t); } }
+    for (const e of entries){ Object.assign(e, { status:mode === 'accept' ? 'accepted' : (mode === 'partial' ? 'partial' : 'resolved'), cause, note:[e.note, note].filter(Boolean).join(' | '), corrections:changes, resolvedOn:today }); }
+    if (mode === 'partial' && Math.abs(remaining) >= 0.005){
+      const row = { id:uid(), date:today, account:name, amount:remaining, desc:`Remaining variance carried forward (${remaining >= 0 ? '+' : '-'}${money(Math.abs(remaining), true)})`, cat:'Balance Adjustment', to:'', notes:'', created:Date.now(), seq:Date.now(), posted:true };
+      await addTx(row);
+      S.vlog.push({ id:uid(), adjId:row.id, account:name, found:today, created:Date.now(), bankBal:null, appBal:null, amount:remaining, status:'open', note:'Carried forward after a partial correction', cause:'', corrections:[], resolvedOn:'' });
+    }
+    await setDoc(ref('meta','varianceLog'), { entries:S.vlog });
+    startSession(name); toast(mode === 'accept' ? 'Variance accepted and recorded' : mode === 'partial' ? 'Progress saved; the rest is still open' : 'Variance removed and recorded'); renderAll();
+  } catch (err){ toast('Could not save: ' + (err.code || err.message)); }
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-rc]'); if (b){ startSession(b.dataset.rc); render.recon(); $('rcWork').scrollIntoView({ behavior:'smooth' }); return; }
+  if (e.target.id === 'rcResolveBtn') closeVariance('full');
+  if (e.target.id === 'rcPartBtn') closeVariance('partial');
+  if (e.target.id === 'rcAcceptBtn'){ if (confirm('Keep the variance entry on the account and close it in the history?')) closeVariance('accept'); }
+});
+document.addEventListener('click', e => { if (e.target.closest('input.rcm')) e.stopPropagation(); }, true);
+document.addEventListener('change', async e => {
+  const cb = e.target.closest('input.rcm'); if (!cb) return; const t = S.tx.find(x => x.id === cb.dataset.rcm); if (!t) return;
+  cb.disabled = true;
+  try { await updateTx(t, Object.assign({}, t, { recon:cb.checked ? todayISO() : '' })); if (RC.snap && RC.snap.has(t.id)){ RC.snap.set(t.id, JSON.stringify(cleanRow(S.tx.find(x => x.id === t.id)))); } render.recon(); }
+  catch (err){ cb.checked = !cb.checked; toast('Could not update: ' + (err.code || err.message)); } finally { cb.disabled = false; }
+});
+$('rcAcct').addEventListener('change', () => { startSession($('rcAcct').value); render.recon(); });
+['rcFrom','rcTo'].forEach(id => $(id).addEventListener('change', () => render.recon()));
+$('rcBack').addEventListener('click', () => { $('rcFrom').value = addDays($('rcFrom').value || todayISO(), -14); render.recon(); });
+$('rcAdd').addEventListener('click', () => {
+  $('mTitle').textContent = 'Add a missing transaction'; editing = null;
+  $('eDate').value = $('rcTo').value || todayISO(); $('eAcct').value = RC.acct; $('eAmt').value = ''; $('eDesc').value = ''; $('eCat').value = ''; $('eTo').value = ''; $('eNotes').value = 'Added while reconciling'; $('ePosted').checked = true; $('eErr').textContent = '';
+  $('eDel').classList.add('hidden'); show('modal');
+});
+/* ================= Accounts by month ================= */
+const GROUP_ORDER = ['Income','Fixed','Variable bill','Everyday','One-time','Unitemized cards','Savings','Transfer','Adjustment'];
+function baMonths(){
+  const ks = [...new Set(S.tx.map(t => ym(t.date)))].sort(); const now = new Date(), cur = ymKey(now.getFullYear(), now.getMonth()+1);
+  if (!ks.length) return [cur]; const out = []; let k = ks[0]; const last = ks[ks.length-1] > cur ? ks[ks.length-1] : cur;
+  while (k <= last){ out.push(k); k = addMonths(k, 1); } return out;
+}
+function baFill(){
+  const ms = baMonths(), o = ms.map(k => `<option value="${k}">${monthLabel(k)}</option>`).join('');
+  const f = $('baFrom').value, t = $('baTo').value; $('baFrom').innerHTML = o; $('baTo').innerHTML = o;
+  $('baFrom').value = f && ms.includes(f) ? f : ms[0]; $('baTo').value = t && ms.includes(t) ? t : ms[ms.length-1];
+}
+function baCols(){ // month keys plus year-total markers
+  let from = $('baFrom').value, to = $('baTo').value; if (from > to) [from, to] = [to, from];
+  const cols = []; let k = from;
+  while (k <= to){ cols.push({ k, label:monthLabel(k) }); const nx = addMonths(k, 1); if (nx.slice(0,4) !== k.slice(0,4) || nx > to) cols.push({ y:k.slice(0,4), label:'Total ' + k.slice(0,4) }); k = nx; }
+  return cols;
+}
+function baData(){
+  const D = {}, add = (acct, row, k, v, t) => { const a = (D[acct] ||= {}), r = (a[row] ||= { m:{}, tx:{} }); r.m[k] = (r.m[k] || 0) + v; (r.tx[k] ||= []).push(t); };
+  for (const t of S.tx){ const c = catUsed(t) || '(Uncategorized)', k = ym(t.date);
+    add(t.account, c, k, t.amount, t);
+    if (typeOf(c) === 'Transfer' && toUsed(t)) add(toUsed(t), c + ' (received)', k, t.amount, t); }
+  return D;
+}
+const baRowOrder = names => names.sort((a,b) => { const ca = a.replace(/ \(received\)$/,''), cb = b.replace(/ \(received\)$/,''); const ga = GROUP_ORDER.indexOf(groupOf(ca) || (typeOf(ca) === 'Transfer' ? 'Transfer' : typeOf(ca))), gb = GROUP_ORDER.indexOf(groupOf(cb) || (typeOf(cb) === 'Transfer' ? 'Transfer' : typeOf(cb)));
+  return (ga < 0 ? 99 : ga) - (gb < 0 ? 99 : gb) || ca.localeCompare(cb) || a.length - b.length; });
+let BA = null;
+function baTable(title, rows, cols, acctKey, skipTransfers){
+  const firstK = cols[0].k, lastK = cols.filter(c => c.k).pop().k;
+  const cell = (r, c) => c.y ? Object.entries(r.m).filter(([k]) => k.slice(0,4) === c.y && k >= firstK && k <= lastK).reduce((s,[,v]) => s + v, 0) : (r.m[c.k] || 0);
+  const fmt = v => Math.abs(v) < 0.005 ? '<span class="z">-</span>' : money(v, true);
+  let h = `<div class="tbl"><table><thead><tr><th>Category</th>${cols.map(c => `<th class="n${c.y ? ' yt' : ''}">${c.label}</th>`).join('')}</tr></thead><tbody>`;
+  const tot = { in:{ m:{} }, out:{ m:{} }, net:{ m:{} } };
+  for (const [name, r] of rows){
+    const base = name.replace(/ \(received\)$/,''), ty = typeOf(base), recv = name !== base;
+    h += `<tr><td>${esc(name)}</td>${cols.map(c => { const v = cell(r, c); return `<td class="n c${c.y ? ' yt' : ''}" data-ba="${esc(acctKey)}|${esc(name)}|${c.k || 'Y' + c.y}">${fmt(v)}</td>`; }).join('')}</tr>`;
+    if (skipTransfers && ty === 'Transfer') continue;
+    for (const [k, v] of Object.entries(r.m)){ const inflow = ty === 'Income' || recv || (ty === 'Adjustment' && v > 0); const sgn = ty === 'Adjustment' ? Math.sign(v) : (inflow ? 1 : -1); const absV = Math.abs(v);
+      if (ty === 'Adjustment'){ if (v > 0) tot.in.m[k] = (tot.in.m[k] || 0) + absV; else tot.out.m[k] = (tot.out.m[k] || 0) + absV; }
+      else if (inflow) tot.in.m[k] = (tot.in.m[k] || 0) + absV; else tot.out.m[k] = (tot.out.m[k] || 0) + absV;
+      tot.net.m[k] = (tot.net.m[k] || 0) + sgn * absV; }
+  }
+  const sumRow = (label, r, cls) => `<tr class="sum"><td>${label}</td>${cols.map(c => { const v = cell(r, c); return `<td class="n${c.y ? ' yt' : ''} ${cls ? (v < 0 ? 'neg' : 'pos') : ''}">${fmt(v)}</td>`; }).join('')}</tr>`;
+  h += sumRow('Total in', tot.in) + sumRow('Total out', tot.out) + sumRow('Net (in minus out)', tot.net, true) + '</tbody></table></div>';
+  return { html:h, totals:tot, cell };
+}
+render.byacct = () => {
+  baFill(); const cols = baCols(), D = baData(); BA = { D, cols };
+  const from = cols[0].k, to = cols.filter(c => c.k).pop().k, all = $('baAll').checked, showEmpty = $('baEmpty').checked;
+  const inRange = r => Object.keys(r.m).some(k => k >= from && k <= to && Math.abs(r.m[k]) >= 0.005);
+  let html = '';
+  const accts = S.config.accounts.map(a => a.name).concat(Object.keys(D).filter(n => !acctInfo(n)));
+  for (const name of accts){
+    const A = D[name] || {}; let names = Object.keys(A).filter(n => inRange(A[n]));
+    if (all){ const extra = S.config.categories.map(c => c.name).filter(c => !names.includes(c)); names = names.concat(extra); extra.forEach(c => A[c] ||= { m:{}, tx:{} }); }
+    if (!names.length && !showEmpty) continue;
+    const t = baTable(name, baRowOrder(names).map(n => [n, A[n] || { m:{}, tx:{} }]), cols, name);
+    html += `<details open><summary>${esc(name)}</summary>${t.html}</details>`;
+  }
+  // consolidated: source side only (received rows excluded)
+  const C = {};
+  for (const [acct, A] of Object.entries(D)) for (const [n, r] of Object.entries(A)){ if (/ \(received\)$/.test(n)) continue; const cr = (C[n] ||= { m:{}, tx:{} }); for (const [k, v] of Object.entries(r.m)){ cr.m[k] = (cr.m[k] || 0) + v; (cr.tx[k] ||= []).push(...r.tx[k]); } }
+  let cn = Object.keys(C).filter(n => inRange(C[n])); if (all) S.config.categories.forEach(c => { if (!cn.includes(c.name)){ cn.push(c.name); C[c.name] ||= { m:{}, tx:{} }; } });
+  BA.C = C;
+  const ct = baTable('Consolidated', baRowOrder(cn).map(n => [n, C[n]]), cols, '__all', true);
+  html += `<details open><summary>Consolidated: all accounts</summary>${ct.html}<p class="note" style="margin:8px 0 0">Transfers and card payments are listed once here but left out of Total in and Total out, because moving money between your own accounts is neither income nor spending. Card purchases count as spending when they are made.</p></details>`;
+  $('baBody').innerHTML = html; show('baDrill', false); updateHScroll();
+};
+document.addEventListener('click', e => {
+  const td = e.target.closest('td[data-ba]'); if (!td || !BA) return;
+  const [acct, name, key] = td.dataset.ba.split('|'); const src = acct === '__all' ? BA.C : (BA.D[acct] || {}); const r = src[name]; if (!r) return;
+  const from = BA.cols[0].k, to = BA.cols.filter(c => c.k).pop().k;
+  const keys = key.startsWith('Y') ? Object.keys(r.tx).filter(k => k.slice(0,4) === key.slice(1) && k >= from && k <= to) : [key];
+  const list = keys.flatMap(k => r.tx[k] || []).sort((a,b) => a.date < b.date ? -1 : 1);
+  $('baDrillTitle').textContent = `${acct === '__all' ? 'All accounts' : acct}, ${name}, ${key.startsWith('Y') ? key.slice(1) : monthLabel(key)}: ${list.length} transaction${list.length === 1 ? '' : 's'}`;
+  $('baDrillBody').innerHTML = list.length ? list.map(t => `<tr class="click" data-id="${t.id}"><td>${fmtDate(t.date)}</td><td>${esc(t.account)}${toUsed(t) ? ' to ' + esc(toUsed(t)) : ''}</td><td class="n">${money(t.amount, true)}</td><td class="wrap">${esc(t.desc)}</td><td>${esc(catUsed(t))}</td></tr>`).join('') : '<tr><td colspan="5" class="muted">No transactions.</td></tr>';
+  show('baDrill'); $('baDrill').scrollIntoView({ behavior:'smooth', block:'start' });
+});
+$('baDrillClose').addEventListener('click', () => show('baDrill', false));
+['baFrom','baTo','baAll','baEmpty'].forEach(id => $(id).addEventListener('change', () => render.byacct()));
+$('baExport').addEventListener('click', () => {
+  if (!BA || !window.XLSX) return; const wb = XLSX.utils.book_new(), cols = BA.cols;
+  const sheetFor = (title, src) => { const names = baRowOrder(Object.keys(src).filter(n => Object.keys(src[n].m).some(k => k >= cols[0].k && k <= cols.filter(c => c.k).pop().k)));
+    const aoa = [['Category', ...cols.map(c => c.label)]];
+    for (const n of names){ const r = src[n]; aoa.push([n, ...cols.map(c => { const v = c.y ? Object.entries(r.m).filter(([k]) => k.slice(0,4) === c.y && k >= cols[0].k && k <= cols.filter(x => x.k).pop().k).reduce((s,[,x]) => s + x, 0) : (r.m[c.k] || 0); return Math.round(v * 100) / 100; })]); }
+    const ws = XLSX.utils.aoa_to_sheet(aoa); XLSX.utils.book_append_sheet(wb, ws, title.replace(/[\\\/\?\*\[\]:]/g,'').slice(0, 31)); };
+  for (const a of S.config.accounts){ if (BA.D[a.name]) sheetFor(a.name.replace(/^(Checking|Savings|Card) - /, ''), BA.D[a.name]); }
+  sheetFor('Consolidated', BA.C); XLSX.writeFile(wb, `Accounts by month ${todayISO()}.xlsx`);
 });
 /* ---------- Data: import ---------- */
 function serialToISO(v){
@@ -1630,12 +2038,12 @@ $('expNew').addEventListener('click', async () => {
 $('expAll').addEventListener('click', () => { exportRows(S.tx, `Budget all transactions ${todayISO()}.xlsx`); $('expInfo').textContent = `Exported ${S.tx.length} rows.`; });
 
 /* ---------- Data: settings ---------- */
-const KIND = ['Cash','Card'], TYPES = ['Income','Expense','Savings','Transfer'], GRPS = ['Income','Fixed','Variable bill','Everyday','One-time','Unitemized cards','Savings','Transfer'];
+const KIND = ['Cash','Card'], TYPES = ['Income','Expense','Savings','Transfer','Adjustment'], GRPS = ['Income','Fixed','Variable bill','Everyday','One-time','Unitemized cards','Savings','Transfer','Adjustment'];
 const sel = (list, v, cls) => `<select class="cellin ${cls||''}">${list.map(x => `<option${x===v?' selected':''}>${esc(x)}</option>`).join('')}</select>`;
 const inp = (v, cls, type) => `<input class="cellin ${cls||''}" type="${type||'text'}" value="${esc(v)}">`;
 const delBtn = '<button class="btn sec small" data-del type="button">Remove</button>';
 function renderSettings(){
-  const accts = S.config.accounts.map(a => a.name), cats = S.config.categories.map(c => c.name);
+  const accts = S.config.accounts.map(a => a.name), cats = S.config.categories.map(c => c.name).sort((x,y) => x.localeCompare(y));
   $('sAcct').innerHTML = S.config.accounts.map(a => `<tr data-orig="${esc(a.name)}"><td>${inp(a.name,'wide')}</td><td>${sel(KIND,a.kind)}</td><td>${inp(a.owner)}</td><td class="n">${inp(a.openBal,'','number')}</td><td>${inp(a.openDate,'wide','date')}</td><td>${delBtn}</td></tr>`).join('');
   $('sCat').innerHTML = S.config.categories.map(c => `<tr data-orig="${esc(c.name)}"><td>${inp(c.name,'wide')}</td><td>${sel(TYPES,c.type)}</td><td>${sel(GRPS,c.group)}</td><td>${delBtn}</td></tr>`).join('');
   const cardAccts = S.config.accounts.filter(a => a.kind === 'Card').map(a => a.name);
@@ -1657,7 +2065,7 @@ $('addRaise').addEventListener('click', () => { const incCats = S.config.categor
 $('addDebt').addEventListener('click', () => { const cardAccts = S.config.accounts.filter(a => a.kind === 'Card').map(a => a.name); $('sDebt').insertAdjacentHTML('beforeend', `<tr><td>${inp('','wide')}</td><td>${sel(['Card','Loan'],'Loan')}</td><td>${sel(['',...cardAccts],'','wide')}</td><td class="n">${inp(0,'','number')}</td><td>${inp(todayISO(),'wide','date')}</td><td class="n">${inp(0,'','number')}</td><td class="n">${inp(0,'','number')}</td><td>${delBtn}</td></tr>`); });
 $('addGoal').addEventListener('click', () => { const accts = S.config.accounts.map(a => a.name); $('sGoal').insertAdjacentHTML('beforeend', `<tr><td>${inp('','wide')}</td><td class="n">${inp(0,'','number')}</td><td>${inp('','wide','date')}</td><td>${sel(['',...accts],'','wide')}</td><td class="n">${inp(0,'','number')}</td><td>${delBtn}</td></tr>`); });
 $('addCat').addEventListener('click', () => $('sCat').insertAdjacentHTML('beforeend', `<tr><td>${inp('','wide')}</td><td>${sel(TYPES,'Expense')}</td><td>${sel(GRPS,'Everyday')}</td><td>${delBtn}</td></tr>`));
-$('addRule').addEventListener('click', () => { const cats = S.config.categories.map(c => c.name), accts = S.config.accounts.map(a => a.name); $('sRule').insertAdjacentHTML('beforeend', `<tr><td>${inp('','wide')}</td><td>${sel(cats,'','wide')}</td><td>${sel(['',...accts],'','wide')}</td><td>${delBtn}</td></tr>`); });
+$('addRule').addEventListener('click', () => { const cats = S.config.categories.map(c => c.name).sort((x,y) => x.localeCompare(y)), accts = S.config.accounts.map(a => a.name); $('sRule').insertAdjacentHTML('beforeend', `<tr><td>${inp('','wide')}</td><td>${sel(cats,'','wide')}</td><td>${sel(['',...accts],'','wide')}</td><td>${delBtn}</td></tr>`); });
 $('saveSettings').addEventListener('click', async () => {
   const val = el => el.value.trim();
   const accounts = [...$('sAcct').rows].map(r => { const f = r.querySelectorAll('input,select'); return { name:val(f[0]), kind:f[1].value, owner:val(f[2]), openBal:+f[3].value || 0, openDate:f[4].value }; }).filter(a => a.name);
