@@ -161,7 +161,43 @@ nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:va
 .overview .panel{margin-bottom:16px}
 @media (max-width:900px){.home{grid-template-columns:1fr}}
 @media (min-width:901px) and (max-width:1180px){#hTiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:760px){.g3,.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g2{grid-template-columns:1fr}header.top .stat{display:none}nav.tabs{top:48px}main{padding:14px 10px 90px}}
+nav.rtabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 18px;align-items:center}
+nav.rtabs button{border:1px solid var(--rule);background:var(--surface);border-radius:20px;padding:7px 14px;cursor:pointer;color:var(--muted);font-weight:600;font-size:.9rem}
+nav.rtabs button[aria-selected="true"]{background:var(--btnbg);border-color:var(--btnbg);color:var(--btnfg)}
+.rpick{padding:12px 16px}
+.rpick-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:4px 0}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden;flex-wrap:wrap}
+.seg button{background:var(--surface);border:0;border-right:1px solid var(--rule);padding:7px 12px;cursor:pointer;color:var(--muted);font-weight:600;font-size:.9rem}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--btnbg);color:var(--btnfg)}
+.rslide{display:flex;align-items:center;gap:8px;font-size:.9rem;color:var(--muted)}
+.rslide input{width:190px;accent-color:var(--ledger)}
+.rslide.off{opacity:.55}
+.kpi small{display:block;font-size:.75rem;color:var(--muted);margin-top:4px}
+.rread{border-left:4px solid var(--ledger)}
+.rread.warn{border-left-color:var(--card)}.rread.bad{border-left-color:var(--out)}
+.rread p{margin:6px 0}
+.tag.warn{color:var(--card);background:color-mix(in srgb,var(--card) 16%,transparent)}
+.ra-in{width:140px;padding:6px 8px;border:1px solid var(--rule);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit}
+.ra-in.set{border-color:var(--card);background:color-mix(in srgb,var(--card) 12%,var(--surface))}
+#rAssume table{table-layout:fixed;min-width:760px}#rAssume th:nth-child(1){width:23%}#rAssume th:nth-child(2){width:41%}#rAssume th:nth-child(3){width:11%}#rAssume th:nth-child(4){width:14%}#rAssume th:nth-child(5){width:11%}#rAssume td{white-space:normal}
+#rAssume .ra-in{width:100%}
+#rAssume td.use b{color:var(--card)}
+#rAssume .tbl{margin-bottom:16px}
+#rDefs td:last-child{white-space:normal;max-width:720px}
+#kBody tr.promo td,#kBody tr.promo td:first-child{background:color-mix(in srgb,var(--card) 12%,var(--surface))}
+#sBody tr.sel td,#sBody tr.sel td:first-child{background:color-mix(in srgb,var(--ledger) 12%,var(--surface))}
+#sBody tr{cursor:pointer}
+.acard h3{margin:0 0 4px;font-size:1rem}.acard b{display:block;font-size:1.35rem;font-variant-numeric:tabular-nums}
+.acard .row{margin-top:10px}
+.ckphase{margin-bottom:14px}
+.ckitem{display:grid;grid-template-columns:26px 1fr auto;gap:10px;align-items:start;padding:10px 0;border-top:1px solid var(--rule)}
+.ckitem:first-of-type{border-top:0}
+.ckitem input{width:18px;height:18px;margin-top:3px;accent-color:var(--in)}
+.ckitem .t1{font-weight:600}.ckitem .t2{font-size:.85rem;color:var(--muted);margin-top:2px}
+.ckitem .due{text-align:right;font-size:.85rem;color:var(--muted);white-space:nowrap}
+.ckitem.done .t1{color:var(--muted);text-decoration:line-through}
+@media (max-width:760px){.rslide input{width:140px}.g3,.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g2{grid-template-columns:1fr}header.top .stat{display:none}nav.tabs{top:48px}main{padding:14px 10px 90px}}
 </style>
 </head>
 <body>
@@ -198,13 +234,14 @@ nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:va
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 17</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 18</span>
   <div class="sp"></div>
   <button id="signOutBtn" type="button">Sign out</button>
 </header>
 <nav class="tabs views" role="tablist" aria-label="Views">
   <button role="tab" data-view="home" aria-selected="true">Home</button>
   <button role="tab" data-view="details" aria-selected="false">Details and analysis</button>
+  <button role="tab" data-view="retire" aria-selected="false">Retirement</button>
 </nav>
 <main>
 
@@ -580,6 +617,108 @@ nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:va
   <div class="err" id="setMsg"></div>
 </section>
 </section>
+
+<section id="view-retire" class="hidden">
+  <div class="panel rpick">
+    <div class="rpick-row">
+      <span class="sublabel">Scenario</span>
+      <div class="seg" id="rScen" role="group" aria-label="Retirement scenario">
+        <button type="button" data-s="A">A: 2048</button><button type="button" data-s="B">B: 2053</button><button type="button" data-s="C">C: 2055</button><button type="button" data-s="D">D: 2058</button><button type="button" data-s="custom">Custom</button>
+      </div>
+      <label class="rslide"><span id="rYearLbl">Custom year</span><input type="range" id="rYear" min="2035" max="2065" step="1" value="2050"></label>
+    </div>
+    <div class="rpick-row">
+      <span class="sublabel">401(k) path</span>
+      <div class="seg" id="rPath" role="group" aria-label="401(k) step-up path">
+        <button type="button" data-p="slow">Slow</button><button type="button" data-p="exp">Expected</button><button type="button" data-p="fast">Fast</button>
+      </div>
+      <span class="note" id="rPickNote"></span>
+    </div>
+  </div>
+  <nav class="rtabs" aria-label="Retirement sections">
+    <button data-rt="overview" aria-selected="true">Overview</button>
+    <button data-rt="k401" aria-selected="false">Progressive 401(k)</button>
+    <button data-rt="scen" aria-selected="false">Scenarios</button>
+    <button data-rt="accts" aria-selected="false">Accounts</button>
+    <button data-rt="check" aria-selected="false">Milestone checklist</button>
+    <button data-rt="assume" aria-selected="false">Assumptions and definitions</button>
+  </nav>
+
+  <section id="rt-overview">
+    <h2>Retirement overview</h2>
+    <p class="note" style="margin-top:-6px">Every amount on this tab is in today’s dollars unless it says otherwise. Placeholders and every other input can be changed on the Assumptions and definitions page.</p>
+    <div class="grid g4" id="rKpis"></div>
+    <div class="panel" style="margin-top:16px"><h3 style="margin-top:0" id="rChartTitle">Projected savings versus the target path</h3><div class="chart tall"><canvas id="cRet"></canvas></div><p class="note" id="rChartNote"></p></div>
+    <div class="panel" id="rRead"></div>
+  </section>
+
+  <section id="rt-k401" class="hidden">
+    <h2>Progressive 401(k) percentage</h2>
+    <p class="note" style="margin-top:-6px" id="kRule"></p>
+    <div class="grid g4" id="kKpis"></div>
+    <div class="panel" style="margin-top:16px"><h3 style="margin-top:0">Contribution rate by year, with the IRS maximum</h3><div class="chart"><canvas id="cK401"></canvas></div><p class="note">The dashed line is the maximum: the percent of pay at which K’s contributions reach the IRS employee limit for that year. Slow uses the low end of every range and the latest promotion year, Fast the high end and the earliest, and Expected the middle.</p></div>
+    <h3 id="kTblTitle">Year by year</h3>
+    <div class="tbl"><table><thead><tr><th>Year</th><th>What changes in May</th><th class="n">Gross pay</th><th class="n">Points added</th><th class="n">Contribution rate</th><th class="n">IRS limit</th><th class="n">Maximum rate</th><th class="n">K contributes</th><th class="n">Employer match</th><th class="n">Pay after 401(k)</th><th>Status</th></tr></thead><tbody id="kBody"></tbody></table></div>
+    <p class="note">Gross pay, contributions, and the match are full-year amounts at the rate in effect after the May change, in that year’s dollars. The employer match stops growing once K contributes 5% of pay, so every step-up above that is K’s own savings.</p>
+  </section>
+
+  <section id="rt-scen" class="hidden">
+    <h2>Scenarios compared</h2>
+    <p class="note" style="margin-top:-6px">Both K and J retire in the same year in every scenario. Select a row or use the picker above to see the details for one scenario.</p>
+    <div class="tbl"><table><thead><tr><th>Scenario</th><th class="n">Retire</th><th class="n">K / J age</th><th class="n">Target nest egg</th><th class="n">Projected</th><th class="n">Funded</th><th class="n">Monthly needed</th><th class="n">Planned monthly</th><th class="n">Mortgage left</th><th class="n">Health before Medicare</th></tr></thead><tbody id="sBody"></tbody></table></div>
+    <h3 id="sDetTitle">Details</h3>
+    <div class="grid g2" id="sDetail"></div>
+    <h3>Five-year checkpoints</h3>
+    <div class="tbl"><table><thead><tr><th>End of year</th><th class="n">Target path</th><th class="n">Projected</th><th class="n">Actual</th><th>Reading</th></tr></thead><tbody id="sCp"></tbody></table></div>
+    <p class="note">The target path is the savings path that reaches the target nest egg exactly in the retirement year. Projected follows the current plan. Actual is the total of the latest balances logged on the Accounts page.</p>
+  </section>
+
+  <section id="rt-accts" class="hidden">
+    <h2>Retirement accounts</h2>
+    <p class="note" style="margin-top:-6px">Log a balance monthly or quarterly from each statement or provider screen. The latest balance of each account feeds every projection on this tab.</p>
+    <div class="grid g3" id="aCards"></div>
+    <div class="panel" style="margin-top:16px">
+      <h3 style="margin-top:0">Log a balance</h3>
+      <div class="row">
+        <div><label class="f" for="rsAcct">Account</label><select class="t" id="rsAcct"></select></div>
+        <div><label class="f" for="rsDate">Date</label><input class="t" id="rsDate" type="date"></div>
+        <div><label class="f" for="rsBal">Balance</label><input class="t" id="rsBal" type="number" inputmode="decimal" step="0.01" min="0"></div>
+        <div><button class="btn" id="rsSave" type="button">Save balance</button></div>
+      </div>
+      <div class="hint" id="rsMsg"></div>
+    </div>
+    <h3>Balance history</h3>
+    <div class="tbl"><table><thead><tr><th>Date</th><th>Account</th><th class="n">Balance</th><th>Note</th><th></th></tr></thead><tbody id="rsBody"></tbody></table></div>
+    <div class="panel" style="margin-top:16px">
+      <h3 style="margin-top:0">Add an account</h3>
+      <p class="note">For example J’s retirement plan, an IRA for J, an HSA, or a brokerage account for the bridge years. Its balance grows at the return before retirement plus the monthly amount entered here.</p>
+      <div class="row">
+        <div><label class="f" for="raName">Name</label><input class="t" id="raName" placeholder="For example: 403(b) - J"></div>
+        <div><label class="f" for="raOwner">Owner</label><select class="t" id="raOwner"><option>K</option><option>J</option><option>Both</option></select></div>
+        <div><label class="f" for="raType">Type</label><select class="t" id="raType"><option>401(k)</option><option>403(b)</option><option>Pension</option><option>Traditional IRA</option><option>Roth IRA</option><option>HSA</option><option>Brokerage</option><option>Other</option></select></div>
+        <div><label class="f" for="raMonthly">Monthly contribution</label><input class="t" id="raMonthly" type="number" step="0.01" min="0" value="0"></div>
+        <div><label class="f" for="raBal">Starting balance</label><input class="t" id="raBal" type="number" step="0.01" min="0" value="0"></div>
+        <div><button class="btn sec" id="raAdd" type="button">Add account</button></div>
+      </div>
+      <div class="hint" id="raMsg"></div>
+    </div>
+  </section>
+
+  <section id="rt-check" class="hidden">
+    <h2>Milestone checklist</h2>
+    <p class="note" style="margin-top:-6px">Items marked “From your data” check themselves off. Check the others yourself when they are done. Dates follow the selected scenario where they depend on it.</p>
+    <div id="cList"></div>
+  </section>
+
+  <section id="rt-assume" class="hidden">
+    <h2>Assumptions and definitions</h2>
+    <p class="note" style="margin-top:-6px">Every input used on this tab, what it means, and where the default comes from. Type a value under “Your value” to use it instead of the default; clear the box to go back. Changes save automatically and update every page.</p>
+    <div class="row" style="margin-bottom:14px"><button class="btn sec small" id="rReset" type="button">Reset every value to the default</button><span class="note" id="rOverCount"></span></div>
+    <div id="rAssume"></div>
+    <h3>How the calculated amounts are worked out</h3>
+    <div class="tbl"><table><thead><tr><th>Amount</th><th>Definition</th></tr></thead><tbody id="rDefs"></tbody></table></div>
+  </section>
+</section>
 </main>
 </div>
 
@@ -742,6 +881,7 @@ async function loadAll(){
   const snap = await getDocs(collection(db, 'households', 'main', 'months'));
   S.months = {}; snap.forEach(d => { S.months[d.id] = (d.data().rows || []); });
   rebuildTx();
+  await retLoad();
 }
 function rebuildTx(){
   S.tx = [];
@@ -791,7 +931,7 @@ function fillSelects(){
 const statusTag = s => `<span class="tag ${s==='OK'?'ok':(s==='History'?'':'bad')}">${esc(s)}</span>`;
 const currentView = () => document.querySelector('nav.views button[aria-selected="true"]').dataset.view;
 const currentSub = () => document.querySelector('nav.subtabs button[aria-selected="true"]').dataset.tab;
-function renderAll(){ fillSelects(); fillExtra(); show('emptyNote', S.config.accounts.length === 0); document.querySelector('.overview').classList.toggle('hidden', S.tx.length === 0); if (currentView() === 'home') renderHome(); else render[currentSub()](); }
+function renderAll(){ fillSelects(); fillExtra(); show('emptyNote', S.config.accounts.length === 0); document.querySelector('.overview').classList.toggle('hidden', S.tx.length === 0); if (currentView() === 'home') renderHome(); else if (currentView() === 'retire') renderRetire(); else render[currentSub()](); }
 function monthTotals(k){
   const out = { bills:0, billsB:0, day:0, dayB:0, inc:0, out:0, byCat:{} }; const Y = +k.slice(0,4), M = +k.slice(5,7);
   for (const t of S.tx){ if (ym(t.date) !== k) continue; const c = catUsed(t), ty = typeOf(c), g = groupOf(c);
@@ -963,8 +1103,8 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('modal'
 const render = {};
 document.querySelectorAll('nav.views button').forEach(b => b.addEventListener('click', () => {
   document.querySelectorAll('nav.views button').forEach(x => x.setAttribute('aria-selected', x === b ? 'true' : 'false'));
-  show('view-home', b.dataset.view === 'home'); show('view-details', b.dataset.view === 'details');
-  if (b.dataset.view === 'home') renderHome(); else render[currentSub()]();
+  show('view-home', b.dataset.view === 'home'); show('view-details', b.dataset.view === 'details'); show('view-retire', b.dataset.view === 'retire');
+  if (b.dataset.view === 'home') renderHome(); else if (b.dataset.view === 'retire') renderRetire(); else render[currentSub()]();
   window.scrollTo(0, 0);
 }));
 document.querySelectorAll('nav.subtabs button').forEach(b => b.addEventListener('click', () => {
@@ -1960,6 +2100,425 @@ $('baExport').addEventListener('click', () => {
     const ws = XLSX.utils.aoa_to_sheet(aoa); XLSX.utils.book_append_sheet(wb, ws, title.replace(/[\\\/\?\*\[\]:]/g,'').slice(0, 31)); };
   for (const a of S.config.accounts){ if (BA.D[a.name]) sheetFor(a.name.replace(/^(Checking|Savings|Card) - /, ''), BA.D[a.name]); }
   sheetFor('Consolidated', BA.C); XLSX.writeFile(wb, `Accounts by month ${todayISO()}.xlsx`);
+});
+
+/* ================= Retirement (Version 18) ================= */
+/* Stored in households/main/meta/retirement: overrides, accounts, snapshots, checks, scenario, customYear, path, sub. */
+const RS = { overrides:{}, accounts:null, snapshots:null, checks:{}, scenario:'A', customYear:2050, path:'exp', sub:'overview' };
+const RET_DEFAULT_ACCTS = [
+  { id:'k401', name:'401(k) - K', owner:'K', type:'401(k)', monthly:0, core:true },
+  { id:'kroth', name:'Roth IRA - K', owner:'K', type:'Roth IRA', monthly:0, core:true }];
+const RET_DEFAULT_SNAPS = [
+  { id:'start-k401', acct:'k401', date:'2026-10-09', bal:11078.65, note:'Starting balance from the 401(k) provider screen' },
+  { id:'start-kroth', acct:'kroth', date:'2026-10-09', bal:2356.63, note:'Starting balance from the Vanguard screen, including a $10 pending deposit' }];
+function retRothDefault(){ const d = new Date(); const v = budgetFor('Investment', d.getFullYear(), d.getMonth()); return v > 0 ? v : 20; }
+
+/* kind: money, pct, pts, year, month, age, num, yesno */
+const RET_DEFS = [
+  { g:'People and dates', k:'kBirth', label:'K’s birth year', def:1993, kind:'year', info:'K is 33 in 2026. Every K age and milestone year comes from this.' },
+  { g:'People and dates', k:'jBirth', label:'J’s birth year', def:1988, kind:'year', info:'J is 38 in 2026. Every J age and milestone year comes from this.' },
+  { g:'People and dates', k:'scenA', label:'Scenario A retirement year', def:2048, kind:'year', info:'K’s goal: both retire when K is 55 and J is 60.' },
+  { g:'People and dates', k:'scenB', label:'Scenario B retirement year', def:2053, kind:'year', info:'Both retire when J reaches Medicare at 65 (K is 60).' },
+  { g:'People and dates', k:'scenC', label:'Scenario C retirement year', def:2055, kind:'year', info:'Both retire when the mortgage ends on schedule (K is 62, J is 67).' },
+  { g:'People and dates', k:'scenD', label:'Scenario D retirement year', def:2058, kind:'year', info:'Both retire when K reaches Medicare at 65 (J is 70).' },
+  { g:'People and dates', k:'horizon', label:'Plan until K is this age', def:95, kind:'age', info:'Savings must last until this age. A long horizon is the cautious choice.' },
+
+  { g:'K’s pay and the progressive 401(k)', k:'salary', label:'K’s gross pay in 2026', def:73800, kind:'money', info:'Yearly pay before taxes, worked out from the 401(k) screen (2026 contributions at 6%).' },
+  { g:'K’s pay and the progressive 401(k)', k:'deferNow', label:'K’s 401(k) rate today', def:6, kind:'pct', info:'Before-tax contribution as a percent of pay, from the 401(k) screen. Update it here each time it changes.' },
+  { g:'K’s pay and the progressive 401(k)', k:'raiseMonth', label:'Month raises take effect', def:5, kind:'num', info:'1 is January and 5 is May. Yearly raises, the promotion, and each 401(k) step-up take effect this month.' },
+  { g:'K’s pay and the progressive 401(k)', k:'raiseLow', label:'Yearly raise, low end', def:3, kind:'pct', info:'The plan: K gets a 3% to 4% raise most years.' },
+  { g:'K’s pay and the progressive 401(k)', k:'raiseHigh', label:'Yearly raise, high end', def:4, kind:'pct', info:'High end of the usual yearly raise.' },
+  { g:'K’s pay and the progressive 401(k)', k:'stepLow', label:'Points of each raise added to the 401(k), low end', def:0.5, kind:'pts', info:'Each May, 0.5 to 1.5 points of the raise are added to the 401(k) rate; the rest of the raise is take-home pay.' },
+  { g:'K’s pay and the progressive 401(k)', k:'stepHigh', label:'Points of each raise added to the 401(k), high end', def:1.5, kind:'pts', info:'High end of the yearly step-up.' },
+  { g:'K’s pay and the progressive 401(k)', k:'promoEarly', label:'Promotion, earliest year', def:2028, kind:'year', info:'The promotion is expected in 2 to 4 years from 2026.' },
+  { g:'K’s pay and the progressive 401(k)', k:'promoLate', label:'Promotion, latest year', def:2030, kind:'year', info:'Latest expected promotion year. Expected uses the middle year, rounded.' },
+  { g:'K’s pay and the progressive 401(k)', k:'promoRaise', label:'Pay increase at the promotion', def:25, kind:'pct', info:'The promotion raises pay by this percent and takes the place of that year’s normal raise.' },
+  { g:'K’s pay and the progressive 401(k)', k:'promoStepLow', label:'Points added to the 401(k) at the promotion, low end', def:10, kind:'pts', info:'When the promotion happens, 10 to 12 points are added to the 401(k) rate. Read as percentage points of pay, the same way as the yearly step-up.' },
+  { g:'K’s pay and the progressive 401(k)', k:'promoStepHigh', label:'Points added to the 401(k) at the promotion, high end', def:12, kind:'pts', info:'High end of the promotion step-up.' },
+  { g:'K’s pay and the progressive 401(k)', k:'maxGoalYear', label:'Year to reach the maximum', def:2036, kind:'year', info:'Goal: reach the maximum 401(k) contribution within 10 years of 2026.' },
+
+  { g:'401(k) limits and employer match', k:'irsLimit', label:'IRS employee limit, 2026', def:24500, kind:'money', info:'The most an employee can contribute to a 401(k) in 2026, set by the IRS. The employer match does not count toward it. The maximum rate is this limit divided by pay.' },
+  { g:'401(k) limits and employer match', k:'limitGrowth', label:'Yearly growth in IRS limits', def:2.5, kind:'pct', info:'The IRS raises limits with inflation, rounded down to the nearest $500. Applied to every limit below.' },
+  { g:'401(k) limits and employer match', k:'catch50', label:'Catch-up from age 50, 2026', def:8000, kind:'money', info:'Extra amount allowed each year from the year K turns 50 (2043 by default).' },
+  { g:'401(k) limits and employer match', k:'catch6063', label:'Catch-up at ages 60 to 63, 2026', def:11250, kind:'money', info:'Larger catch-up allowed in the years K is 60 to 63, in place of the age-50 catch-up.' },
+  { g:'401(k) limits and employer match', k:'matchFull', label:'Employer matches 100% up to', def:3, kind:'pct', info:'The employer adds a dollar for every dollar K contributes up to this percent of pay.' },
+  { g:'401(k) limits and employer match', k:'matchHalf', label:'Employer matches 50% up to', def:5, kind:'pct', info:'From the first tier up to this percent of pay, the employer adds 50 cents per dollar. Nothing is matched above it, so the most match is 4% of pay.' },
+
+  { g:'Roth IRA and other savings', k:'rothMonthly', label:'Roth IRA deposit each month', def:retRothDefault, kind:'money', info:'Defaults to this month’s budget for the Investment category (the Vanguard deposit). Enter a value here to plan a different amount.' },
+  { g:'Roth IRA and other savings', k:'rothInvested', label:'Roth IRA cash invested in a fund?', def:'No', kind:'yesno', info:'All of the Roth IRA sits in the money market settlement fund. Until this says Yes, the Roth grows at the cash rate below.' },
+  { g:'Roth IRA and other savings', k:'freedMonthly', label:'Freed monthly amount saved for retirement', def:1450, kind:'money', info:'Card and loan payments freed once the debt is gone (Finance 101 payoff plan), sent to retirement savings such as Roth IRAs for both. Any extra mortgage payment below comes out of this amount.' },
+  { g:'Roth IRA and other savings', k:'freedStart', label:'Freed amount starts', def:'2028-08', kind:'month', info:'The month after the last PNC loan is paid off in July 2028.' },
+  { g:'Roth IRA and other savings', k:'iraLimit', label:'IRA limit per person, 2026', def:7500, kind:'money', info:'Reference only: each spouse can put up to this much a year into an IRA, so two Roth IRAs hold $15,000 a year in 2026.' },
+
+  { g:'Returns and inflation', k:'retPre', label:'Yearly return before retirement', def:7, kind:'pct', info:'Long-run assumption for a stock-heavy mix such as K’s aggressive 85/15 401(k). Not a guarantee.' },
+  { g:'Returns and inflation', k:'retPost', label:'Yearly return during retirement', def:5.5, kind:'pct', info:'A more balanced mix once withdrawals begin.' },
+  { g:'Returns and inflation', k:'inflation', label:'Yearly inflation', def:2.5, kind:'pct', info:'Used to turn future amounts back into today’s dollars.' },
+  { g:'Returns and inflation', k:'cashRate', label:'Cash rate', def:3.5, kind:'pct', info:'What uninvested money in a money market fund is assumed to earn.' },
+
+  { g:'Retirement spending and income', k:'spend', label:'Monthly spending target', def:6000, kind:'money', info:'PLACEHOLDER. Spending in today’s dollars once retired, before taxes, health insurance, and any mortgage payment. The Retirement 101 deck offers $5,000, $6,000, or the provider’s $6,578.' },
+  { g:'Retirement spending and income', k:'health', label:'Health insurance before Medicare', def:750, kind:'money', info:'PLACEHOLDER. Per person per month in today’s dollars, for each year a retired person is under the Medicare age. Not a quote.' },
+  { g:'Retirement spending and income', k:'medicareAge', label:'Medicare age', def:65, kind:'age', info:'Health insurance cost stops for each person at this age.' },
+  { g:'Retirement spending and income', k:'kSS', label:'K’s Social Security at full retirement age', def:2938, kind:'money', info:'PLACEHOLDER. Monthly benefit at 67 in today’s dollars, from the 401(k) provider screen. Replace with the estimate from ssa.gov.' },
+  { g:'Retirement spending and income', k:'kSSAge', label:'K claims Social Security at', def:67, kind:'age', info:'62 to 70. Claiming at 62 pays about 70% of the full benefit for life; each year after 67 adds 8%, up to 124% at 70.' },
+  { g:'Retirement spending and income', k:'jSS', label:'J’s Social Security at full retirement age', def:0, kind:'money', info:'PLACEHOLDER. Unknown, so set to zero to stay cautious. Replace with the estimate from ssa.gov.' },
+  { g:'Retirement spending and income', k:'jSSAge', label:'J claims Social Security at', def:67, kind:'age', info:'62 to 70, with the same reductions and credits as K.' },
+
+  { g:'Mortgage', k:'mortBal', label:'Mortgage balance', def:310151.12, kind:'money', info:'Principal balance from the statement, after the October 2026 payment.' },
+  { g:'Mortgage', k:'mortAsOf', label:'Balance is as of', def:'2026-10', kind:'month', info:'Month of the balance above. Update both together from a newer statement.' },
+  { g:'Mortgage', k:'mortRate', label:'Interest rate', def:6.5, kind:'pct', info:'From the statement.' },
+  { g:'Mortgage', k:'mortPI', label:'Principal and interest each month', def:1986.41, kind:'money', info:'Worked out from the balance, rate, and the August 2055 maturity date; it reproduces the statement’s 2026 interest. The $2,111.64 payment also includes about $125 of escrow.' },
+  { g:'Mortgage', k:'mortExtra', label:'Extra principal each month', def:0, kind:'money', info:'Enter an amount to test paying the mortgage off early. It stops at retirement. Paying it off by 2048 takes about $309 a month from August 2028.' },
+  { g:'Mortgage', k:'mortExtraStart', label:'Extra principal starts', def:'2028-08', kind:'month', info:'Month the extra payment begins.' },
+
+  { g:'Emergency fund', k:'efStarter', label:'Starter emergency fund', def:2000, kind:'money', info:'Checklist target for 2027.' },
+  { g:'Emergency fund', k:'efFull', label:'Full emergency fund', def:17400, kind:'money', info:'About three months of essential spending; checklist target for 2030.' }];
+
+const RET_CALC_DEFS = [
+  ['Retirement savings now','The latest logged balance of every retirement account added together.'],
+  ['Savings rate','This year’s 401(k) contributions from K and the employer, plus the Roth IRA deposits and any monthly amounts on added accounts, as a percent of K’s gross pay.'],
+  ['Maximum 401(k) rate','The IRS employee limit for the year (plus any catch-up K is old enough for) divided by K’s gross pay. Reaching it means contributing the most the IRS allows.'],
+  ['Contribution rate','Today’s rate plus every step-up so far: points from each yearly raise and from the promotion. It never goes above the maximum rate.'],
+  ['Target nest egg','What must be saved by the start of the retirement year, in today’s dollars, so that withdrawals cover the spending target, health insurance before Medicare, and any remaining mortgage payments, minus Social Security, every year until K reaches the planning age. Money left invested is assumed to earn the return during retirement.'],
+  ['Projected','Every account grown month by month to the start of the retirement year: the 401(k) with the progressive rate and the match, the Roth IRA deposits, the freed monthly amount, and added accounts, converted to today’s dollars.'],
+  ['Funded','Projected divided by the target nest egg.'],
+  ['Monthly needed','The monthly amount, starting when the freed amount starts, that would bring the projection exactly to the target nest egg. Compare it with the planned freed amount.'],
+  ['Target path','The year-end balances that would reach the target nest egg exactly, used for the five-year checkpoints.'],
+  ['Bridge years','The years from retirement until K turns 59½, when every retirement account opens without the 10% penalty. The bridge amount is the part of the target nest egg spent in those years.'],
+  ['Health before Medicare','The health insurance placeholder times every year each person is retired and under the Medicare age, in today’s dollars.'],
+  ['Mortgage left','The mortgage balance at the start of the retirement year, after any extra principal.']];
+
+/* ---------- helpers ---------- */
+const rYM = s => +String(s).slice(0,4) * 12 + (+String(s).slice(5,7) - 1);
+const rNow = () => { const d = new Date(); return d.getFullYear() * 12 + d.getMonth(); };
+const rPct = (v, d=1) => (Math.round(v * 10**d) / 10**d).toLocaleString('en-US',{maximumFractionDigits:d}) + '%';
+const rMonthName = i => MONTHS[i % 12] + ' ' + Math.floor(i / 12);
+const rK = v => '$' + Math.round(v / 1000).toLocaleString('en-US') + 'k';
+function retA(){
+  const A = {};
+  for (const d of RET_DEFS){
+    const dv = typeof d.def === 'function' ? d.def() : d.def, o = RS.overrides[d.k];
+    A[d.k] = (o === undefined || o === null || o === '') ? dv : (d.kind === 'month' || d.kind === 'yesno' ? o : +o);
+  }
+  return A;
+}
+const retAccts = () => RS.accounts || RET_DEFAULT_ACCTS;
+const retSnaps = () => RS.snapshots || RET_DEFAULT_SNAPS;
+function retLatest(acctId, onOrBefore){
+  let best = null;
+  for (const s of retSnaps()) if (s.acct === acctId && (!onOrBefore || s.date <= onOrBefore) && (!best || s.date > best.date || (s.date === best.date && (s.created||0) > (best.created||0)))) best = s;
+  return best;
+}
+const retTotalAt = date => retAccts().reduce((t, a) => { const s = retLatest(a.id, date); return t + (s ? +s.bal : 0); }, 0);
+function retYears(A){ return { A:A.scenA, B:A.scenB, C:A.scenC, D:A.scenD, custom:RS.customYear }; }
+function retYear(A){ const y = retYears(A)[RS.scenario] || A.scenA; return Math.max(Math.floor(rNow() / 12) + 2, y); }
+const retLabel = s => s === 'custom' ? 'Custom' : 'Scenario ' + s;
+function ssFactor(age){ const a = Math.max(62, Math.min(70, Math.floor(age))); return { 62:0.70, 63:0.75, 64:0.80, 65:0.8667, 66:0.9333, 67:1, 68:1.08, 69:1.16, 70:1.24 }[a]; }
+function retLimit(A, y){
+  const g = 1 + A.limitGrowth / 100, n = Math.max(0, y - 2026), fl = v => Math.floor(v / 500) * 500, age = y - A.kBirth;
+  let lim = fl(A.irsLimit * g ** n);
+  if (age >= 60 && age <= 63) lim += fl(A.catch6063 * g ** n); else if (age >= 50) lim += fl(A.catch50 * g ** n);
+  return lim;
+}
+const retMatch = (A, rate) => Math.min(rate, A.matchFull) + 0.5 * Math.max(0, Math.min(rate, A.matchHalf) - A.matchFull);
+function retPath(A, kind){
+  const mid = (a, b) => (a + b) / 2;
+  if (kind === 'slow') return { raise:A.raiseLow, step:A.stepLow, promoYear:A.promoLate, promoStep:A.promoStepLow };
+  if (kind === 'fast') return { raise:A.raiseHigh, step:A.stepHigh, promoYear:A.promoEarly, promoStep:A.promoStepHigh };
+  return { raise:mid(A.raiseLow, A.raiseHigh), step:mid(A.stepLow, A.stepHigh), promoYear:Math.round(mid(A.promoEarly, A.promoLate)), promoStep:mid(A.promoStepLow, A.promoStepHigh) };
+}
+/* Year-by-year progressive 401(k): pay and rate after each May change. */
+function retSchedule(A, kind, lastYear){
+  const P = retPath(A, kind), rows = []; let pay = A.salary, want = A.deferNow, reached = null;
+  for (let y = 2026; y <= lastYear; y++){
+    let ev = 'Today', add = 0;
+    if (y > 2026){
+      if (y === P.promoYear){ pay *= 1 + A.promoRaise / 100; add = P.promoStep; ev = 'Promotion, pay +' + rPct(A.promoRaise, 1); }
+      else { pay *= 1 + P.raise / 100; add = P.step; ev = 'Raise ' + rPct(P.raise, 2); }
+      want += add;
+    }
+    const lim = retLimit(A, y), maxPct = lim / pay * 100, at = want >= maxPct - 1e-9, rate = Math.min(want, maxPct);
+    if (reached === null && at) reached = y;
+    rows.push({ y, ev, add, pay, want, rate, lim, maxPct, at, emp:pay * rate / 100, match:pay * retMatch(A, rate) / 100 });
+  }
+  return { rows, reached, P };
+}
+/* Mortgage month by month from the statement month; extra principal runs from xStart until stopI. */
+function retMortgage(A, extra, xStart, stopI){
+  let b = +A.mortBal, j = rYM(A.mortAsOf), payoff = null; const paid = {}, endBal = {}, mr = A.mortRate / 1200;
+  endBal[Math.floor(j / 12)] = b;
+  while (b > 0.005 && j < 2120 * 12){
+    j++; const it = b * mr, x = (j >= xStart && j < stopI) ? extra : 0, p = Math.min(b + it, A.mortPI + x);
+    b = Math.max(0, b + it - p); const y = Math.floor(j / 12); paid[y] = (paid[y] || 0) + p; endBal[y] = b;
+    if (b <= 0.005) payoff = j;
+  }
+  return { paid, endBal, payoff, balBefore:y => { for (let yy = y - 1; yy >= y - 120; yy--) if (endBal[yy] !== undefined) return endBal[yy]; return +A.mortBal; } };
+}
+/* Monthly projection to the end of endYear. */
+function retSim(A, o){
+  const sch = retSchedule(A, o.kind, o.endYear + 1).rows, byY = {}; sch.forEach(r => byY[r.y] = r);
+  const i0 = rNow(), endI = o.endYear * 12 + 11, rp = A.retPre / 1200, rr = (A.rothInvested === 'Yes' ? A.retPre : A.cashRate) / 1200;
+  const freed = o.freed ?? A.freedMonthly, fStart = rYM(A.freedStart), extra = A.mortExtra, xStart = rYM(A.mortExtraStart);
+  const mort = retMortgage(A, extra, xStart, o.endYear * 12 + 12);
+  let k = 0, roth = 0, side = 0; const oth = [];
+  for (const a of retAccts()){ const s = retLatest(a.id); const v = s ? +s.bal : 0; if (a.id === 'k401') k = v; else if (a.id === 'kroth') roth = v; else oth.push({ bal:v, monthly:+a.monthly || 0, type:a.type }); }
+  const out = {}, rec = (j) => { const y = Math.floor(j / 12), o2 = oth.reduce((t, x) => t + x.bal, 0), outside = roth + side + oth.filter(x => !/401|403|Pension/.test(x.type)).reduce((t, x) => t + x.bal, 0), d = (1 + A.inflation / 100) ** ((j - i0) / 12);
+    out[y] = { k, roth, side, oth:o2, nominal:k + roth + side + o2, real:(k + roth + side + o2) / d, outsideReal:outside / d, k401Real:k / d }; };
+  rec(i0);
+  let curY = null, empY = 0;
+  for (let j = i0 + 1; j <= endI; j++){
+    const y = Math.floor(j / 12), m = j % 12 + 1;
+    if (y !== curY){ curY = y; empY = 0; }
+    const r = m >= A.raiseMonth ? byY[y] : (byY[y - 1] || byY[y]); if (!r) break;
+    const lim = retLimit(A, y), emp = Math.max(0, Math.min(r.pay / 12 * r.rate / 100, lim - empY)); empY += emp;
+    k = k * (1 + rp) + emp + r.pay / 12 * retMatch(A, r.rate) / 100;
+    roth = roth * (1 + rr) + A.rothMonthly;
+    const mortOpen = mort.payoff === null || j <= mort.payoff;
+    side = side * (1 + rp) + (j >= fStart ? Math.max(0, freed - (j >= xStart && mortOpen ? extra : 0)) : 0);
+    for (const x of oth) x.bal = x.bal * (1 + rp) + x.monthly;
+    if (m === 12 || j === endI) rec(j);
+  }
+  return { years:out, mort, sch };
+}
+function retNeed(A, R, mort){
+  const rr = (1 + A.retPost / 100) / (1 + A.inflation / 100) - 1, i0 = rNow(), endY = A.kBirth + A.horizon;
+  const defl = y => (1 + A.inflation / 100) ** ((y * 12 + 6 - i0) / 12);
+  let need = 0, bridge = 0, health = 0, hK = 0, hJ = 0;
+  for (let y = R; y <= endY; y++){
+    const ka = y - A.kBirth, ja = y - A.jBirth, hk = ka < A.medicareAge ? 1 : 0, hj = ja < A.medicareAge ? 1 : 0;
+    hK += hk; hJ += hj; health += A.health * 12 * (hk + hj);
+    const outv = A.spend * 12 + A.health * 12 * (hk + hj) + (mort.paid[y] || 0) / defl(y);
+    let inc = 0; if (ka >= A.kSSAge) inc += A.kSS * 12 * ssFactor(A.kSSAge); if (ja >= A.jSSAge) inc += A.jSS * 12 * ssFactor(A.jSSAge);
+    const d = Math.max(0, outv - inc) / (1 + rr) ** (y - R); need += d; if (ka < 60) bridge += d;
+  }
+  return { need, bridge, health, hK, hJ };
+}
+function retScenario(A, R, kind){
+  const nd = retNeed(A, R, retMortgage(A, A.mortExtra, rYM(A.mortExtraStart), R * 12));
+  const run = f => retSim(A, { kind, endYear:R - 1, freed:f });
+  const sim = run(A.freedMonthly), have = sim.years[R - 1] ? sim.years[R - 1].real : 0;
+  let needed = 0;
+  if (run(0).years[R - 1].real < nd.need){ let lo = 0, hi = 50000; for (let i = 0; i < 40; i++){ const mid = (lo + hi) / 2; if (run(mid).years[R - 1].real >= nd.need) hi = mid; else lo = mid; } needed = hi; }
+  const target = run(needed), mortBal = sim.mort.balBefore(R);
+  let payExtra = 0; const xs = Math.max(rYM(A.mortExtraStart), rNow() + 1);
+  if (mortBal > 1){ let lo = 0, hi = 20000; for (let i = 0; i < 40; i++){ const mid = (lo + hi) / 2; const mm = retMortgage(A, mid, xs, R * 12); if (mm.payoff !== null && mm.payoff < R * 12) hi = mid; else lo = mid; } payExtra = hi; }
+  const end = sim.years[R - 1] || {};
+  return { R, kAge:R - A.kBirth, jAge:R - A.jBirth, need:nd.need, bridge:nd.bridge, health:nd.health, hK:nd.hK, hJ:nd.hJ, have, funded:nd.need ? have / nd.need : 1, needed, planned:A.freedMonthly, sim, target, mortBal, mortPayoff:sim.mort.payoff, payExtra, outsideAtR:end.outsideReal || 0, k401AtR:end.k401Real || 0 };
+}
+
+/* ---------- load and save ---------- */
+async function retLoad(){
+  try { const d = await getDoc(ref('meta','retirement')); if (d.exists()) Object.assign(RS, d.data()); } catch (e) {}
+  RS.overrides = RS.overrides || {}; RS.checks = RS.checks || {};
+}
+let retSaveT = null;
+function retSave(){
+  clearTimeout(retSaveT);
+  retSaveT = setTimeout(async () => {
+    const payload = { overrides:RS.overrides, accounts:retAccts(), snapshots:retSnaps(), checks:RS.checks, scenario:RS.scenario, customYear:RS.customYear, path:RS.path, sub:RS.sub, updated:Date.now() };
+    try { await setDoc(ref('meta','retirement'), JSON.parse(JSON.stringify(payload))); } catch (err) { toast('Could not save: ' + (err.code || err.message)); }
+  }, 500);
+}
+
+/* ---------- rendering ---------- */
+function renderRetire(){
+  const A = retA();
+  document.querySelectorAll('#rScen button').forEach(b => b.setAttribute('aria-pressed', b.dataset.s === RS.scenario ? 'true' : 'false'));
+  document.querySelectorAll('#rPath button').forEach(b => b.setAttribute('aria-pressed', b.dataset.p === RS.path ? 'true' : 'false'));
+  const ys = retYears(A); document.querySelectorAll('#rScen button').forEach(b => { if (b.dataset.s !== 'custom') b.textContent = b.dataset.s + ': ' + ys[b.dataset.s]; });
+  $('rYear').value = RS.customYear; $('rYearLbl').textContent = 'Custom year ' + RS.customYear; $('rYear').parentElement.classList.toggle('off', RS.scenario !== 'custom');
+  const R = retYear(A); $('rPickNote').textContent = `Retire in ${R}: K ${R - A.kBirth}, J ${R - A.jBirth}.`;
+  document.querySelectorAll('nav.rtabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.rt === RS.sub ? 'true' : 'false'));
+  document.querySelectorAll('#view-retire > section').forEach(s => s.classList.toggle('hidden', s.id !== 'rt-' + RS.sub));
+  ({ overview:retOverview, k401:retK401, scen:retScen, accts:retAcctsPage, check:retCheck, assume:retAssume })[RS.sub](A);
+}
+const rKpi = (v, label, cls, sub) => `<div class="kpi"><b class="${cls||''}">${v}</b><span>${label}</span>${sub ? `<small>${sub}</small>` : ''}</div>`;
+function retNowRates(A){
+  const y = Math.floor(rNow() / 12), lim = retLimit(A, y), maxPct = lim / A.salary * 100;
+  const emp = A.salary * A.deferNow / 100, match = A.salary * retMatch(A, A.deferNow) / 100;
+  const other = retAccts().filter(a => !a.core).reduce((t, a) => t + (+a.monthly || 0) * 12, 0);
+  return { y, lim, maxPct, emp, match, rate:(emp + match + A.rothMonthly * 12 + other) / A.salary * 100 };
+}
+function retOverview(A){
+  const R = retYear(A), sc = retScenario(A, R, RS.path), now = retTotalAt(), nr = retNowRates(A);
+  const yrsLeft = R - Math.floor(rNow() / 12), f = sc.funded, cls = f >= 1 ? 'pos' : (f >= 0.85 ? '' : 'neg');
+  $('rKpis').innerHTML =
+    rKpi(money(now), 'Retirement savings now', '', 'Latest logged balances') +
+    rKpi(rPct(nr.rate), 'Savings rate', '', '401(k), match, and Roth deposits as a share of K’s pay') +
+    rKpi(yrsLeft + ' years', 'To retirement in ' + R, '', `${retLabel(RS.scenario)}: K ${sc.kAge}, J ${sc.jAge}`) +
+    rKpi(rPct(f * 100, 0), 'Funded', cls, 'Projected divided by target') +
+    rKpi(money(sc.need), 'Target nest egg', '', 'Needed at the start of ' + R) +
+    rKpi(money(sc.have), 'Projected', cls, RS.path === 'exp' ? 'Expected 401(k) path' : (RS.path === 'slow' ? 'Slow 401(k) path' : 'Fast 401(k) path')) +
+    rKpi(sc.needed < 1 ? 'Covered' : money(sc.needed), 'Monthly needed', sc.needed > sc.planned ? 'neg' : 'pos', 'Beyond the 401(k), from ' + rMonthName(rYM(A.freedStart))) +
+    rKpi(money(sc.planned), 'Planned monthly', '', 'Freed debt payments, from ' + rMonthName(rYM(A.freedStart)));
+  const y0 = Math.floor(rNow() / 12), labels = [], pj = [], tg = [], ac = [];
+  for (let y = y0; y <= R - 1; y++){
+    labels.push(String(y)); pj.push(Math.round((sc.sim.years[y] || {}).real || 0)); tg.push(Math.round((sc.target.years[y] || {}).real || 0));
+    const last = retSnaps().filter(s => s.date.slice(0,4) === String(y)).map(s => s.date).sort().pop();
+    ac.push(last && y <= y0 ? Math.round(retTotalAt(last)) : null);
+  }
+  $('rChartTitle').textContent = `Projected savings versus the target path, ${retLabel(RS.scenario)} (${R})`;
+  const ink = css('--ink'), rule = css('--rule');
+  mkChart('cRet', { type:'line', data:{ labels, datasets:[
+    { label:'Projected', data:pj, borderColor:css('--ledger'), backgroundColor:css('--ledger'), pointRadius:0, borderWidth:3 },
+    { label:'Target path', data:tg, borderColor:css('--card'), backgroundColor:css('--card'), borderDash:[6,4], pointRadius:0, borderWidth:2 },
+    { label:'Actual', data:ac, borderColor:ink, backgroundColor:ink, pointRadius:5, showLine:false }]},
+    options:{ responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false}, plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{label:c => ' ' + c.dataset.label + ': ' + money(c.parsed.y)}}}, scales:{ y:{ ticks:{ callback:v => rK(v) }, grid:{ color:rule } }, x:{ grid:{ display:false } } } } });
+  $('rChartNote').textContent = 'Year-end balances in today’s dollars. Projected follows the current plan, the target path reaches the target nest egg exactly, and the dots are logged actual totals.';
+  const word = f >= 1 ? 'On track' : (f >= 0.85 ? 'Close' : 'Behind');
+  const gap = sc.need - sc.have;
+  $('rRead').className = 'panel rread' + (f >= 1 ? '' : (f >= 0.85 ? ' warn' : ' bad'));
+  $('rRead').innerHTML = `<h3 style="margin-top:0">${word} for ${retLabel(RS.scenario)}</h3>` +
+    `<p>The plan projects ${money(sc.have)} by the start of ${R} against a target of ${money(sc.need)}, which is ${rPct(f * 100, 0)} funded${gap > 0 ? `, a gap of ${money(gap)}` : ''}. ` +
+    (sc.needed > sc.planned ? `Closing it takes about ${money(sc.needed)} a month from ${rMonthName(rYM(A.freedStart))}, ${money(sc.needed - sc.planned)} more than the ${money(sc.planned)} planned.` : `The planned ${money(sc.planned)} a month is enough; about ${money(sc.needed)} a month would reach the target.`) + `</p>` +
+    `<p>This uses a spending target of ${money(A.spend)} a month, ${money(A.health)} per person a month of health insurance before Medicare, Social Security of ${money(A.kSS)} for K${A.jSS ? ' and ' + money(A.jSS) + ' for J' : ' and none yet for J'}, and the ${({exp:'Expected',slow:'Slow',fast:'Fast'})[RS.path]} 401(k) path. ${A.rothInvested === 'Yes' ? '' : 'The Roth IRA is still treated as uninvested cash. '}Change any of these on the Assumptions and definitions page.</p>`;
+}
+function retK401(A){
+  const kinds = ['slow','exp','fast'], last = Math.max(A.maxGoalYear + 4, 2040), S3 = {};
+  kinds.forEach(k => S3[k] = retSchedule(A, k, last));
+  const E = S3[RS.path], P = E.P, nr = retNowRates(A), y0 = Math.floor(rNow() / 12), cur = E.rows.find(r => r.y === y0) || E.rows[0];
+  $('kRule').textContent = `The plan: each ${MONTHS[A.raiseMonth - 1]}, K’s raise of ${rPct(A.raiseLow, 2)} to ${rPct(A.raiseHigh, 2)} adds ${A.stepLow} to ${A.stepHigh} points to the 401(k) rate. A promotion between ${A.promoEarly} and ${A.promoLate} raises pay ${rPct(A.promoRaise, 1)} in place of that year’s raise and adds ${A.promoStepLow} to ${A.promoStepHigh} points. The goal is to reach the maximum rate by ${A.maxGoalYear}.`;
+  const far = {}; kinds.forEach(k => far[k] = retSchedule(A, k, 2070).reached);
+  const yr = k => far[k] ? String(far[k]) : 'Not by 2070', ok = k => far[k] && far[k] <= A.maxGoalYear;
+  $('kKpis').innerHTML =
+    rKpi(rPct(A.deferNow), 'K’s rate today', '', money(nr.emp) + ' a year, plus ' + money(nr.match) + ' match') +
+    rKpi(rPct(nr.maxPct), 'Maximum rate in ' + y0, '', 'IRS limit ' + money(nr.lim) + ' on ' + money(A.salary) + ' of pay') +
+    rKpi(yr(RS.path), 'Maximum reached, ' + ({exp:'Expected',slow:'Slow',fast:'Fast'})[RS.path] + ' path', ok(RS.path) ? 'pos' : 'neg', `Goal ${A.maxGoalYear}: ${ok(RS.path) ? 'met' : 'missed'}`) +
+    rKpi(`Fast ${yr('fast')}, Slow ${yr('slow')}`, 'Maximum reached, other paths', ok('slow') ? 'pos' : '', ok('slow') ? 'Every path meets the goal' : (ok('fast') ? 'The Slow path misses the goal' : 'No path meets the goal'));
+  const labels = E.rows.map(r => String(r.y)), col = { slow:css('--loan'), exp:css('--ledger'), fast:css('--in') };
+  mkChart('cK401', { type:'line', data:{ labels, datasets:[
+    ...kinds.map(k => ({ label:({slow:'Slow',exp:'Expected',fast:'Fast'})[k], data:S3[k].rows.map(r => +r.rate.toFixed(2)), borderColor:col[k], backgroundColor:col[k], borderWidth:k === RS.path ? 3.5 : 1.8, pointRadius:k === RS.path ? 3 : 0, stepped:true })),
+    { label:'Maximum (Expected pay)', data:S3.exp.rows.map(r => +r.maxPct.toFixed(2)), borderColor:css('--card'), backgroundColor:css('--card'), borderDash:[6,4], pointRadius:0, borderWidth:2 }]},
+    options:{ responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false}, plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{label:c => ' ' + c.dataset.label + ': ' + rPct(c.parsed.y)}}}, scales:{ y:{ min:0, ticks:{ callback:v => v + '%' }, grid:{ color:css('--rule') } }, x:{ grid:{ display:false } } } } });
+  $('kTblTitle').textContent = `Year by year, ${({exp:'Expected',slow:'Slow',fast:'Fast'})[RS.path]} path (raise ${rPct(P.raise, 2)}, step ${P.step} point${P.step === 1 ? '' : 's'} a year, promotion in ${P.promoYear} adding ${P.promoStep} points)`;
+  $('kBody').innerHTML = E.rows.map(r => {
+    const st = r.at ? `<span class="tag ok">At the maximum${r.want > r.maxPct + 0.05 ? ', capped' : ''}</span>` : (r.y === A.maxGoalYear ? '<span class="tag bad">Goal year, below the maximum</span>' : `<span class="tag">${rPct(r.maxPct - r.rate)} below</span>`);
+    return `<tr class="${/Promotion/.test(r.ev) ? 'promo' : ''}"><td>${r.y}</td><td>${esc(r.ev)}</td><td class="n">${money(r.pay)}</td><td class="n">${r.add ? '+' + r.add : ''}</td><td class="n"><b>${rPct(r.rate)}</b></td><td class="n">${money(r.lim)}</td><td class="n">${rPct(r.maxPct)}</td><td class="n">${money(r.emp)}</td><td class="n">${money(r.match)}</td><td class="n">${money(r.pay - r.emp)}</td><td>${st}</td></tr>`; }).join('');
+}
+function retScen(A){
+  const keys = ['A','B','C','D'].concat(RS.scenario === 'custom' ? ['custom'] : []), ys = retYears(A), rows = {};
+  for (const s of keys) rows[s] = retScenario(A, s === 'custom' ? Math.max(Math.floor(rNow() / 12) + 2, RS.customYear) : ys[s], RS.path);
+  $('sBody').innerHTML = keys.map(s => { const r = rows[s];
+    return `<tr data-s="${s}" class="${s === RS.scenario ? 'sel' : ''}"><td>${retLabel(s)}</td><td class="n">${r.R}</td><td class="n">${r.kAge} / ${r.jAge}</td><td class="n">${money(r.need)}</td><td class="n">${money(r.have)}</td><td class="n ${r.funded >= 1 ? 'pos' : (r.funded < 0.85 ? 'neg' : '')}">${rPct(r.funded * 100, 0)}</td><td class="n ${r.needed > r.planned ? 'neg' : 'pos'}">${r.needed < 1 ? 'Covered' : money(r.needed)}</td><td class="n">${money(r.planned)}</td><td class="n">${r.mortBal > 1 ? money(r.mortBal) : 'Paid off'}</td><td class="n">${money(r.health)}</td></tr>`; }).join('');
+  document.querySelectorAll('#sBody tr').forEach(tr => tr.addEventListener('click', () => { RS.scenario = tr.dataset.s; retSave(); renderRetire(); }));
+  const r = rows[RS.scenario] || rows.A, R = r.R, k59 = A.kBirth + 60, bridgeYears = Math.max(0, k59 - R), kss = A.kBirth + A.kSSAge, jss = A.jBirth + A.jSSAge;
+  $('sDetTitle').textContent = `Details for ${retLabel(RS.scenario)}: retire in ${R}`;
+  const card = (t, html) => `<div class="panel"><h3 style="margin-top:0">${t}</h3>${html}</div>`;
+  $('sDetail').innerHTML =
+    card('Target and gap', `<p>Target nest egg ${money(r.need)}; projected ${money(r.have)} (${rPct(r.funded * 100, 0)} funded). ${r.needed > r.planned ? `Reaching it takes about <b>${money(r.needed)}</b> a month from ${rMonthName(rYM(A.freedStart))}, versus ${money(r.planned)} planned.` : `The planned ${money(r.planned)} a month covers it; about ${money(r.needed)} would be enough.`}</p>`) +
+    card('Bridge years', bridgeYears ? `<p>${bridgeYears} years from ${R} until K turns 59½ around ${k59 - 1}. Those years use about <b>${money(r.bridge)}</b> of the target. Projected savings outside the 401(k) at retirement: ${money(r.outsideAtR)}. ${r.kAge >= 55 ? 'Because K is 55 or older in ' + R + ', the rule of 55 also opens the 401(k) of the employer K leaves, if K is still there in or after that year.' : 'K is under 55, so the 401(k) stays locked until 59½ apart from advanced options such as 72(t).'}</p>` : `<p>No bridge years: K is 59½ or older in ${R}, so every account is open without penalty.</p>`) +
+    card('Health insurance before Medicare', r.hK + r.hJ ? `<p>K ${r.hK} years and J ${r.hJ} years without Medicare, about <b>${money(r.health)}</b> in total at ${money(A.health)} per person a month.</p>` : '<p>Both are 65 or older at retirement, so Medicare covers both from the start.</p>') +
+    card('Mortgage and Social Security', `<p>${r.mortBal > 1 ? `About <b>${money(r.mortBal)}</b> is still owed at the start of ${R}${r.mortPayoff ? ', paid off in ' + rMonthName(r.mortPayoff) : ''}. Paying it off before retiring takes about ${money(r.payExtra)} a month of extra principal from ${rMonthName(Math.max(rYM(A.mortExtraStart), rNow() + 1))}.` : `The mortgage is paid off before ${R}${r.mortPayoff ? ' (' + rMonthName(r.mortPayoff) + ')' : ''}.`} K’s Social Security starts in ${kss} at ${A.kSSAge} (${money(A.kSS * ssFactor(A.kSSAge))} a month)${A.jSS ? `; J’s in ${jss} at ${A.jSSAge} (${money(A.jSS * ssFactor(A.jSSAge))} a month).` : '; J’s is not set yet.'}</p>`);
+  const y0 = Math.floor(rNow() / 12), cps = [];
+  for (let y = Math.ceil((y0 + 1) / 5) * 5; y < R; y += 5) cps.push(y);
+  if (!cps.includes(R - 1)) cps.push(R - 1);
+  $('sCp').innerHTML = cps.map(y => { const t = (r.target.years[y] || {}).real || 0, p = (r.sim.years[y] || {}).real || 0;
+    let act = '', read = p >= t ? '<span class="tag ok">Plan reaches it</span>' : '<span class="tag bad">Plan falls short</span>';
+    if (y < y0){ const a = retTotalAt(y + '-12-31'); act = money(a); read = a >= t ? '<span class="tag ok">Met</span>' : '<span class="tag bad">Missed</span>'; }
+    return `<tr><td>${y}</td><td class="n">${money(t)}</td><td class="n">${money(p)}</td><td class="n">${act}</td><td>${read}</td></tr>`; }).join('');
+}
+function retAcctsPage(A){
+  const accts = retAccts();
+  $('aCards').innerHTML = accts.map(a => { const s = retLatest(a.id), all = retSnaps().filter(x => x.acct === a.id).sort((x, y) => x.date < y.date ? 1 : -1), prev = all[1];
+    const ch = s && prev ? (+s.bal - +prev.bal) : null;
+    return `<div class="panel acard"><h3>${esc(a.name)}</h3><span class="note">${esc(a.type)}, ${esc(a.owner)}${a.core ? '' : ', ' + money(+a.monthly || 0) + ' a month'}</span><b>${s ? money(+s.bal, true) : 'No balance yet'}</b><span class="note">${s ? 'As of ' + fmtDate(s.date) + (ch !== null ? `; ${ch >= 0 ? 'up' : 'down'} ${money(Math.abs(ch), true)} since ${fmtDate(prev.date)}` : '') : ''}</span>` +
+      (a.core ? '' : `<div class="row"><div><label class="f">Monthly contribution</label><input class="ra-in" type="number" step="0.01" min="0" data-am="${a.id}" value="${+a.monthly || 0}"></div><div><button class="btn sec small" type="button" data-adel="${a.id}">Remove account</button></div></div>`) + `</div>`; }).join('');
+  const keep = $('rsAcct').value; $('rsAcct').innerHTML = accts.map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join(''); if (keep && accts.some(a => a.id === keep)) $('rsAcct').value = keep;
+  if (!$('rsDate').value) $('rsDate').value = todayISO();
+  const nm = id => (accts.find(a => a.id === id) || {}).name || id;
+  $('rsBody').innerHTML = retSnaps().slice().sort((x, y) => x.date < y.date ? 1 : (x.date > y.date ? -1 : 0)).map(s => `<tr><td>${fmtDate(s.date)}</td><td>${esc(nm(s.acct))}</td><td class="n">${money(+s.bal, true)}</td><td class="wrap">${esc(s.note || '')}</td><td><button class="btn sec small" type="button" data-sdel="${s.id}">Delete</button></td></tr>`).join('') || '<tr><td colspan="5" class="muted">No balances logged yet.</td></tr>';
+  document.querySelectorAll('[data-sdel]').forEach(b => b.addEventListener('click', () => { if (!confirm('Delete this balance?')) return; RS.snapshots = retSnaps().filter(s => s.id !== b.dataset.sdel); RS.accounts = retAccts(); retSave(); renderRetire(); }));
+  document.querySelectorAll('[data-adel]').forEach(b => b.addEventListener('click', () => { if (!confirm('Remove this account and its balance history?')) return; RS.accounts = retAccts().filter(a => a.id !== b.dataset.adel); RS.snapshots = retSnaps().filter(s => s.acct !== b.dataset.adel); retSave(); renderRetire(); }));
+  document.querySelectorAll('[data-am]').forEach(i => i.addEventListener('change', () => { RS.accounts = retAccts().map(a => a.id === i.dataset.am ? { ...a, monthly:+i.value || 0 } : a); retSave(); renderRetire(); }));
+}
+function retDebtGone(name){ const d = (S.config.debts || []).find(x => x.name === name); if (!d) return null; return !currentDebts().some(x => x.name === name); }
+function retChecks(A){
+  const R = retYear(A), y0 = Math.floor(rNow() / 12), E = retSchedule(A, 'exp', y0 + 1).rows, cur = E.find(r => r.y === y0), nr = retNowRates(A);
+  const sc = () => retScenario(A, R, RS.path), cp = y => { const t = (sc().target.years[y] || {}).real || 0, s = retSnaps().filter(x => x.date.slice(0,4) >= String(y)).length; return s ? retTotalAt() >= t : false; };
+  const F = 'Foundation, 2026 to 2028', B = 'Build, 2028 to 2036', P = 'Bridge prep, to retirement in ' + R;
+  return [
+    { id:'match', ph:F, t:'Contribute at least ' + A.matchHalf + '% to get the full employer match', due:'2026-12', auto:A.deferNow >= A.matchHalf, src:'K’s 401(k) rate today' },
+    { id:'rothInvest', ph:F, t:'Invest the Roth IRA cash and set the monthly deposit to buy the fund', due:'2026-12', auto:A.rothInvested === 'Yes', src:'“Roth IRA cash invested” on Assumptions' },
+    { id:'ssEst', ph:F, t:'Get both Social Security estimates from ssa.gov and enter them on Assumptions', due:'2027-03' },
+    { id:'jAccts', ph:F, t:'Record J’s retirement accounts, if any, on the Accounts page', due:'2027-03' },
+    { id:'escrow', ph:F, t:'Confirm what the $125 escrow item pays for; end mortgage insurance once eligible', due:'2027-06' },
+    { id:'capone', ph:F, t:'Capital One (J) card paid off', due:'2027-02', auto:retDebtGone('Capital One (J)'), src:'Debt balances' },
+    { id:'chase', ph:F, t:'Chase Amazon (J) card paid off', due:'2027-05', auto:retDebtGone('Chase Amazon (J)'), src:'Debt balances' },
+    { id:'efStarter', ph:F, t:'Starter emergency fund of ' + money(A.efStarter), due:'2027-12' },
+    { id:'pncCons', ph:F, t:'PNC consolidation loan paid off', due:'2028-01', auto:retDebtGone('PNC consolidation loan'), src:'Debt balances' },
+    { id:'pncPers', ph:F, t:'PNC personal loan paid off', due:'2028-07', auto:retDebtGone('PNC personal loan'), src:'Debt balances' },
+    { id:'stepup', ph:F, t:`401(k) rate at or above this year’s planned ${rPct(cur ? cur.rate : A.deferNow)} (Expected path)`, due:y0 + '-' + String(A.raiseMonth).padStart(2,'0'), auto:cur ? A.deferNow >= cur.rate - 1e-9 : null, src:'K’s 401(k) rate today', note:'Checks again every year after the May change.' },
+    { id:'redirect', ph:B, t:`Send the freed ${money(A.freedMonthly)} a month to retirement savings`, due:A.freedStart },
+    { id:'promo', ph:B, t:`At the promotion, add ${A.promoStepLow} to ${A.promoStepHigh} points to the 401(k)`, due:A.promoLate + '-12' },
+    { id:'mortDecide', ph:B, t:'Decide whether to pay off the mortgage before retiring or plan for the payment', due:'2028-08' },
+    { id:'cp2030', ph:B, t:'Reach the 2030 savings checkpoint on the target path', due:'2030-12', auto:y0 > 2030 || retSnaps().some(x => x.date >= '2030-01-01') ? cp(2030) : null, src:'Logged balances' },
+    { id:'efFull', ph:B, t:'Full emergency fund of ' + money(A.efFull), due:'2030-12' },
+    { id:'cp2035', ph:B, t:'Reach the 2035 savings checkpoint on the target path', due:'2035-12', auto:y0 > 2035 || retSnaps().some(x => x.date >= '2035-01-01') ? cp(2035) : null, src:'Logged balances' },
+    { id:'max401', ph:B, t:'401(k) contributions reach the IRS maximum', due:A.maxGoalYear + '-12', auto:A.deferNow >= nr.maxPct - 1e-9, src:'K’s 401(k) rate today versus this year’s maximum' },
+    { id:'outside', ph:P, t:'Build savings outside the 401(k) for the bridge years until K is 59½', due:(R - 1) + '-12' },
+    { id:'health', ph:P, t:'Choose health insurance until Medicare', due:(R - 1) + '-06' },
+    { id:'claim', ph:P, t:'Decide when each of you will claim Social Security', due:(R - 1) + '-12' }];
+}
+function retCheck(A){
+  const items = retChecks(A), today = todayISO().slice(0,7), soon = (() => { const i = rNow() + 6; return Math.floor(i / 12) + '-' + String(i % 12 + 1).padStart(2,'0'); })();
+  const phases = [...new Set(items.map(i => i.ph))];
+  $('cList').innerHTML = phases.map(ph => `<div class="panel ckphase"><h3 style="margin-top:0">${esc(ph)}</h3>` + items.filter(i => i.ph === ph).map(i => {
+    const isAuto = i.auto !== undefined && i.auto !== null, done = isAuto ? !!i.auto : !!RS.checks[i.id];
+    const st = done ? '<span class="tag ok">Done</span>' : (i.due < today ? '<span class="tag bad">Overdue</span>' : (i.due <= soon ? '<span class="tag warn">Due soon</span>' : '<span class="tag">Upcoming</span>'));
+    const sub = isAuto ? `From your data: ${esc(i.src)}.${i.note ? ' ' + esc(i.note) : ''}` : (RS.checks[i.id] ? 'Checked on ' + fmtDate(RS.checks[i.id]) + '.' : 'Check it when done.');
+    return `<div class="ckitem${done ? ' done' : ''}"><input type="checkbox" data-ck="${i.id}" ${done ? 'checked' : ''} ${isAuto ? 'disabled' : ''} aria-label="${esc(i.t)}"><div><div class="t1">${esc(i.t)}</div><div class="t2">${sub}</div></div><div class="due">${rMonthName(rYM(i.due))}<br>${st}</div></div>`; }).join('') + '</div>').join('');
+  document.querySelectorAll('[data-ck]').forEach(c => c.addEventListener('change', () => { if (c.checked) RS.checks[c.dataset.ck] = todayISO(); else delete RS.checks[c.dataset.ck]; retSave(); retCheck(retA()); }));
+}
+function retFmt(d, v){
+  if (v === '' || v === undefined || v === null) return '';
+  if (d.kind === 'money') return money(+v, Math.abs(+v % 1) > 0.001);
+  if (d.kind === 'pct') return rPct(+v, 2);
+  if (d.kind === 'pts') return (+v) + ' points';
+  if (d.kind === 'month') return rMonthName(rYM(v));
+  if (d.kind === 'age') return v + ' years old';
+  return String(v);
+}
+function retAssume(A){
+  const groups = [...new Set(RET_DEFS.map(d => d.g))];
+  const input = d => { const o = RS.overrides[d.k], set = !(o === undefined || o === null || o === '');
+    if (d.kind === 'yesno') return `<select class="ra-in${set ? ' set' : ''}" data-ov="${d.k}"><option value="">Default (${esc(typeof d.def === 'function' ? d.def() : d.def)})</option><option ${o === 'Yes' ? 'selected' : ''}>Yes</option><option ${o === 'No' ? 'selected' : ''}>No</option></select>`;
+    if (d.kind === 'month') return `<input class="ra-in${set ? ' set' : ''}" type="month" data-ov="${d.k}" value="${set ? esc(o) : ''}">`;
+    return `<input class="ra-in${set ? ' set' : ''}" type="number" step="any" data-ov="${d.k}" value="${set ? esc(o) : ''}" placeholder="${esc(typeof d.def === 'function' ? d.def() : d.def)}">`; };
+  $('rAssume').innerHTML = groups.map(g => `<h3>${esc(g)}</h3><div class="tbl"><table><thead><tr><th>Amount</th><th>What it means and where it comes from</th><th class="n">Default</th><th>Your value</th><th class="n">In use</th></tr></thead><tbody>` +
+    RET_DEFS.filter(d => d.g === g).map(d => { const dv = typeof d.def === 'function' ? d.def() : d.def, o = RS.overrides[d.k], set = !(o === undefined || o === null || o === '');
+      return `<tr><td>${esc(d.label)}</td><td class="def">${esc(d.info)}</td><td class="n">${esc(retFmt(d, dv))}</td><td>${input(d)}</td><td class="n use">${set ? '<b>' + esc(retFmt(d, A[d.k])) + '</b>' : esc(retFmt(d, A[d.k]))}</td></tr>`; }).join('') + '</tbody></table></div>').join('') +
+    `<h3>Account balances</h3><p class="note">Balances are not typed here: log a new balance on the Accounts page, and the latest one is used everywhere. Retirement savings now: ${money(retTotalAt())}.</p>`;
+  const n = Object.values(RS.overrides).filter(v => !(v === undefined || v === null || v === '')).length;
+  $('rOverCount').textContent = n ? `${n} value${n === 1 ? '' : 's'} changed from the default, shown in gold.` : 'Every value is at its default.';
+  $('rDefs').innerHTML = RET_CALC_DEFS.map(r => `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td></tr>`).join('');
+  document.querySelectorAll('[data-ov]').forEach(el => el.addEventListener('change', () => {
+    const v = el.value.trim(), d = RET_DEFS.find(x => x.k === el.dataset.ov);
+    if (v === '') delete RS.overrides[d.k];
+    else if (d.kind === 'month' || d.kind === 'yesno') RS.overrides[d.k] = v;
+    else if (isNaN(+v)) { toast('Enter a number'); return; } else RS.overrides[d.k] = +v;
+    retSave(); retAssume(retA()); toast('Saved');
+  }));
+}
+
+/* ---------- events ---------- */
+document.querySelectorAll('#rScen button').forEach(b => b.addEventListener('click', () => { RS.scenario = b.dataset.s; retSave(); renderRetire(); }));
+document.querySelectorAll('#rPath button').forEach(b => b.addEventListener('click', () => { RS.path = b.dataset.p; retSave(); renderRetire(); }));
+$('rYear').addEventListener('input', () => { RS.customYear = +$('rYear').value; RS.scenario = 'custom'; $('rYearLbl').textContent = 'Custom year ' + RS.customYear; });
+$('rYear').addEventListener('change', () => { RS.customYear = +$('rYear').value; RS.scenario = 'custom'; retSave(); renderRetire(); });
+document.querySelectorAll('nav.rtabs button').forEach(b => b.addEventListener('click', () => { RS.sub = b.dataset.rt; retSave(); renderRetire(); }));
+$('rReset').addEventListener('click', () => { if (!confirm('Put every assumption back to its default?')) return; RS.overrides = {}; retSave(); renderRetire(); toast('Defaults restored'); });
+$('rsSave').addEventListener('click', () => {
+  const acct = $('rsAcct').value, date = $('rsDate').value, bal = parseFloat($('rsBal').value);
+  if (!acct || !date || !(bal >= 0)){ $('rsMsg').textContent = 'Pick an account, a date, and a balance.'; return; }
+  RS.accounts = retAccts(); RS.snapshots = retSnaps().concat([{ id:uid(), acct, date, bal:Math.round(bal * 100) / 100, note:'', created:Date.now() }]);
+  $('rsBal').value = ''; $('rsMsg').textContent = ''; retSave(); renderRetire(); toast('Balance saved');
+});
+$('raAdd').addEventListener('click', () => {
+  const name = $('raName').value.trim(); if (!name){ $('raMsg').textContent = 'Give the account a name.'; return; }
+  if (retAccts().some(a => a.name.toLowerCase() === name.toLowerCase())){ $('raMsg').textContent = 'There is already an account with that name.'; return; }
+  const id = uid(), bal = parseFloat($('raBal').value) || 0;
+  RS.accounts = retAccts().concat([{ id, name, owner:$('raOwner').value, type:$('raType').value, monthly:parseFloat($('raMonthly').value) || 0, core:false }]);
+  RS.snapshots = retSnaps().concat([{ id:uid(), acct:id, date:todayISO(), bal, note:'Starting balance', created:Date.now() }]);
+  $('raName').value = ''; $('raMonthly').value = 0; $('raBal').value = 0; $('raMsg').textContent = ''; retSave(); renderRetire(); toast('Account added');
 });
 /* ---------- Data: import ---------- */
 function serialToISO(v){
