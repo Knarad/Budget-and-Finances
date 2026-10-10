@@ -197,6 +197,11 @@ nav.rtabs button[aria-selected="true"]{background:var(--btnbg);border-color:var(
 .ckitem .t1{font-weight:600}.ckitem .t2{font-size:.85rem;color:var(--muted);margin-top:2px}
 .ckitem .due{text-align:right;font-size:.85rem;color:var(--muted);white-space:nowrap}
 .ckitem.done .t1{color:var(--muted);text-decoration:line-through}
+#recentBody tr.acolor td,#recentBody tr.acolor td:first-child{background:color-mix(in srgb,var(--ac) 14%,var(--surface))}
+#recentBody tr.acolor td:first-child{box-shadow:inset 4px 0 0 var(--ac),1px 0 0 var(--rule)}
+#recentBody tr.acolor.click:hover td{background:color-mix(in srgb,var(--ac) 26%,var(--surface))}
+.adot{display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--ac);margin-right:8px;vertical-align:-1px;box-shadow:0 0 0 1px color-mix(in srgb,var(--ac) 60%,var(--ink))}
+#sAcct input[type=color]{width:46px;height:32px;padding:2px;border:1px solid var(--rule);border-radius:6px;background:var(--surface);cursor:pointer}
 details.rcpt{margin-top:16px}
 details.rcpt *,details.rcpt *::before,details.rcpt *::after{box-sizing:border-box}
 details.rcpt>summary{cursor:pointer;list-style:none;display:flex;flex-direction:column;gap:2px}
@@ -261,7 +266,7 @@ details.rcpt[open]>summary h2::before{transform:rotate(90deg)}
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 19</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 20</span>
   <div class="sp"></div>
   <button id="signOutBtn" type="button">Sign out</button>
 </header>
@@ -640,7 +645,7 @@ details.rcpt[open]>summary h2::before{transform:rotate(90deg)}
   </div>
   <div class="panel">
     <h3 style="margin-top:0">Accounts</h3>
-    <div class="tbl"><table><thead><tr><th>Account</th><th>Kind</th><th>Owner</th><th class="n">Opening balance (cards: owed)</th><th>Opening date</th><th></th></tr></thead><tbody id="sAcct"></tbody></table></div>
+    <div class="tbl"><table><thead><tr><th>Account</th><th>Kind</th><th>Owner</th><th class="n">Opening balance (cards: owed)</th><th>Opening date</th><th>Color</th><th></th></tr></thead><tbody id="sAcct"></tbody></table></div>
     <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap"><button class="btn sec small" id="addAcct" type="button">Add account</button></div>
   </div>
   <div class="panel">
@@ -969,6 +974,10 @@ async function deleteTx(row){
   S.months[k] = (S.months[k] || []).filter(x => x.id !== row.id); rebuildTx();
 }
 /* ---------- shared UI ---------- */
+/* Account colors (Version 20): each account can store a color in Settings; accounts without one get a palette color by position. */
+const ACCT_PALETTE = ['#2F6FD0','#C9962B','#8A5CC2','#2A9D8F','#D0587E','#E07B39','#4E9A4E','#2B9EB3','#9C6B3E','#6B7A8F','#B23A48','#8C9A2E'];
+function acctColor(name){ const i = S.config.accounts.findIndex(a => a.name === name); if (i < 0) return ''; const c = S.config.accounts[i].color; return /^#[0-9a-f]{6}$/i.test(c || '') ? c : ACCT_PALETTE[i % ACCT_PALETTE.length]; }
+const acctDot = name => { const c = acctColor(name); return c ? `<span class="adot" style="--ac:${c}" aria-hidden="true"></span>` : ''; };
 function opts(list, blank){ return (blank !== undefined ? `<option value="">${esc(blank)}</option>` : '') + list.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join(''); }
 function fillSelects(){
   const accts = S.config.accounts.map(a => a.name), cats = S.config.categories.map(c => c.name).sort((x,y) => x.localeCompare(y));
@@ -1016,7 +1025,7 @@ function renderHome(){ renderReceipt();
   const b = balances(); const tile = (v, l, c) => `<div class="kpi"><b class="${c||''}">${v}</b><span>${l}</span></div>`;
   const cashA = S.config.accounts.filter(a => a.kind !== 'Card'), cardA = S.config.accounts.filter(a => a.kind === 'Card');
   const bp = balances(true);
-  const arow = (a, v, cls) => { const pv = a.kind === 'Card' ? -bp.bal[a.name] : bp.bal[a.name]; return `<tr><td>${esc(a.name)}</td><td class="n ${cls||''}">${money(v, true)}</td><td class="n muted">${money(pv, true)}</td><td class="n"><button class="btn sec small" type="button" data-trueup="${esc(a.name)}">True up</button></td></tr>`; };
+  const arow = (a, v, cls) => { const pv = a.kind === 'Card' ? -bp.bal[a.name] : bp.bal[a.name]; return `<tr><td>${acctDot(a.name)}${esc(a.name)}</td><td class="n ${cls||''}">${money(v, true)}</td><td class="n muted">${money(pv, true)}</td><td class="n"><button class="btn sec small" type="button" data-trueup="${esc(a.name)}">True up</button></td></tr>`; };
   $('hAcct').innerHTML = '<tr class="grp"><td>Checking and savings</td><td></td><td></td><td></td></tr>' + cashA.map(a => arow(a, b.bal[a.name], b.bal[a.name] < 0 ? 'neg' : '')).join('') +
     '<tr class="grp"><td>Credit cards (amount owed)</td><td></td><td></td><td></td></tr>' + cardA.map(a => arow(a, -b.bal[a.name], -b.bal[a.name] > 0.005 ? 'neg' : '')).join('');
   $('hTiles').innerHTML = tile(money(b.cash), 'Cash in checking and savings') + tile(money(b.card), 'Owed on credit cards', b.card > 0 ? 'neg' : '') + tile(money(T.inc), 'Money in this month', 'pos') + tile(money(T.out), 'Money out this month', 'neg');
@@ -1096,7 +1105,7 @@ function renderRecent(){
   const rows = S.tx.filter(t => t.date >= from).sort((a,b) => a.date === b.date ? (b.created || 0) - (a.created || 0) : (a.date < b.date ? 1 : -1));
   const pend = rows.filter(t => !isPosted(t));
   $('recentSum').textContent = rows.length ? `${rows.length} transactions since ${fmtDate(from)}. ${pend.length ? pend.length + ' still pending, totaling ' + money(pend.reduce((s,t) => s + t.amount, 0), true) + '.' : 'Everything has posted.'}` : '';
-  $('recentBody').innerHTML = rows.length ? rows.map(t => `<tr class="click${isPosted(t) ? '' : ' pending'}" data-id="${t.id}"><td>${postBox(t)}</td><td>${fmtDate(t.date)}</td><td>${esc(t.account)}</td><td class="n">${money(t.amount,true)}</td><td class="wrap">${esc(t.desc)}</td><td>${esc(catUsed(t))}</td></tr>`).join('') : '<tr><td colspan="6" class="muted">No transactions in the last two weeks.</td></tr>';
+  $('recentBody').innerHTML = rows.length ? rows.map(t => { const ac = acctColor(t.account); return `<tr class="click${isPosted(t) ? '' : ' pending'}${ac ? ' acolor' : ''}"${ac ? ` style="--ac:${ac}"` : ''} data-id="${t.id}"><td>${postBox(t)}</td><td>${fmtDate(t.date)}</td><td>${esc(t.account)}</td><td class="n">${money(t.amount,true)}</td><td class="wrap">${esc(t.desc)}</td><td>${esc(catUsed(t))}</td></tr>`; }).join('') : '<tr><td colspan="6" class="muted">No transactions in the last two weeks.</td></tr>';
 }
 document.addEventListener('change', async e => {
   const cb = e.target.closest('input.post'); if (!cb) return;
@@ -2784,7 +2793,7 @@ const inp = (v, cls, type) => `<input class="cellin ${cls||''}" type="${type||'t
 const delBtn = '<button class="btn sec small" data-del type="button">Remove</button>';
 function renderSettings(){
   const accts = S.config.accounts.map(a => a.name), cats = S.config.categories.map(c => c.name).sort((x,y) => x.localeCompare(y));
-  $('sAcct').innerHTML = S.config.accounts.map(a => `<tr data-orig="${esc(a.name)}"><td>${inp(a.name,'wide')}</td><td>${sel(KIND,a.kind)}</td><td>${inp(a.owner)}</td><td class="n">${inp(a.openBal,'','number')}</td><td>${inp(a.openDate,'wide','date')}</td><td>${delBtn}</td></tr>`).join('');
+  $('sAcct').innerHTML = S.config.accounts.map(a => `<tr data-orig="${esc(a.name)}"><td>${inp(a.name,'wide')}</td><td>${sel(KIND,a.kind)}</td><td>${inp(a.owner)}</td><td class="n">${inp(a.openBal,'','number')}</td><td>${inp(a.openDate,'wide','date')}</td><td><input type="color" value="${acctColor(a.name)}" aria-label="Color for ${esc(a.name)}"></td><td>${delBtn}</td></tr>`).join('');
   $('sCat').innerHTML = S.config.categories.map(c => `<tr data-orig="${esc(c.name)}"><td>${inp(c.name,'wide')}</td><td>${sel(TYPES,c.type)}</td><td>${sel(GRPS,c.group)}</td><td>${delBtn}</td></tr>`).join('');
   const cardAccts = S.config.accounts.filter(a => a.kind === 'Card').map(a => a.name);
   $('sDebt').innerHTML = (S.config.debts || []).map(d => `<tr><td>${inp(d.name,'wide')}</td><td>${sel(['Card','Loan'],d.kind)}</td><td>${sel(['',...cardAccts],d.account,'wide')}</td><td class="n">${inp(d.balance,'','number')}</td><td>${inp(d.asOf,'wide','date')}</td><td class="n">${inp(d.apr,'','number')}</td><td class="n">${inp(d.payment,'','number')}</td><td>${delBtn}</td></tr>`).join('');
@@ -2800,7 +2809,7 @@ document.addEventListener('click', e => {
   if (b.hasAttribute('data-up') && tr.previousElementSibling) tr.parentNode.insertBefore(tr, tr.previousElementSibling);
   if (b.hasAttribute('data-down') && tr.nextElementSibling) tr.parentNode.insertBefore(tr.nextElementSibling, tr);
 });
-$('addAcct').addEventListener('click', () => $('sAcct').insertAdjacentHTML('beforeend', `<tr><td>${inp('','wide')}</td><td>${sel(KIND,'Card')}</td><td>${inp('')}</td><td class="n">${inp(0,'','number')}</td><td>${inp(todayISO(),'wide','date')}</td><td>${delBtn}</td></tr>`));
+$('addAcct').addEventListener('click', () => $('sAcct').insertAdjacentHTML('beforeend', `<tr><td>${inp('','wide')}</td><td>${sel(KIND,'Card')}</td><td>${inp('')}</td><td class="n">${inp(0,'','number')}</td><td>${inp(todayISO(),'wide','date')}</td><td><input type="color" value="${ACCT_PALETTE[$('sAcct').rows.length % ACCT_PALETTE.length]}" aria-label="Account color"></td><td>${delBtn}</td></tr>`));
 $('addRaise').addEventListener('click', () => { const incCats = S.config.categories.filter(c => c.type === 'Income').map(c => c.name); $('sRaise').insertAdjacentHTML('beforeend', `<tr><td>${sel(incCats, incCats[0], 'wide')}</td><td class="n">${inp(2.5,'','number')}</td><td>${sel(MONTHS,'May')}</td><td>${inp('','wide')}</td><td>${delBtn}</td></tr>`); });
 $('addDebt').addEventListener('click', () => { const cardAccts = S.config.accounts.filter(a => a.kind === 'Card').map(a => a.name); $('sDebt').insertAdjacentHTML('beforeend', `<tr><td>${inp('','wide')}</td><td>${sel(['Card','Loan'],'Loan')}</td><td>${sel(['',...cardAccts],'','wide')}</td><td class="n">${inp(0,'','number')}</td><td>${inp(todayISO(),'wide','date')}</td><td class="n">${inp(0,'','number')}</td><td class="n">${inp(0,'','number')}</td><td>${delBtn}</td></tr>`); });
 $('addGoal').addEventListener('click', () => { const accts = S.config.accounts.map(a => a.name); $('sGoal').insertAdjacentHTML('beforeend', `<tr><td>${inp('','wide')}</td><td class="n">${inp(0,'','number')}</td><td>${inp('','wide','date')}</td><td>${sel(['',...accts],'','wide')}</td><td class="n">${inp(0,'','number')}</td><td>${delBtn}</td></tr>`); });
@@ -2808,7 +2817,7 @@ $('addCat').addEventListener('click', () => $('sCat').insertAdjacentHTML('before
 $('addRule').addEventListener('click', () => { const cats = S.config.categories.map(c => c.name).sort((x,y) => x.localeCompare(y)), accts = S.config.accounts.map(a => a.name); $('sRule').insertAdjacentHTML('beforeend', `<tr><td>${inp('','wide')}</td><td>${sel(cats,'','wide')}</td><td>${sel(['',...accts],'','wide')}</td><td>${delBtn}</td></tr>`); });
 $('saveSettings').addEventListener('click', async () => {
   const val = el => el.value.trim();
-  const accounts = [...$('sAcct').rows].map(r => { const f = r.querySelectorAll('input,select'); return { name:val(f[0]), kind:f[1].value, owner:val(f[2]), openBal:+f[3].value || 0, openDate:f[4].value }; }).filter(a => a.name);
+  const accounts = [...$('sAcct').rows].map(r => { const f = r.querySelectorAll('input,select'); return { name:val(f[0]), kind:f[1].value, owner:val(f[2]), openBal:+f[3].value || 0, openDate:f[4].value, color:f[5] ? f[5].value : '' }; }).filter(a => a.name);
   const categories = [...$('sCat').rows].map(r => { const f = r.querySelectorAll('input,select'); return { name:val(f[0]), type:f[1].value, group:f[2].value }; }).filter(c => c.name);
   const rules = [...$('sRule').rows].map(r => { const f = r.querySelectorAll('input,select'); return { key:f[0].value, cat:f[1].value, to:f[2].value }; }).filter(r => r.key.trim() && r.cat);
   const debts = [...$('sDebt').rows].map(r => { const f = r.querySelectorAll('input,select'); return { name:val(f[0]), kind:f[1].value, account:f[2].value, balance:+f[3].value || 0, asOf:f[4].value, apr:+f[5].value || 0, payment:+f[6].value || 0 }; }).filter(d => d.name);
