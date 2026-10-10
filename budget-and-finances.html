@@ -197,6 +197,33 @@ nav.rtabs button[aria-selected="true"]{background:var(--btnbg);border-color:var(
 .ckitem .t1{font-weight:600}.ckitem .t2{font-size:.85rem;color:var(--muted);margin-top:2px}
 .ckitem .due{text-align:right;font-size:.85rem;color:var(--muted);white-space:nowrap}
 .ckitem.done .t1{color:var(--muted);text-decoration:line-through}
+details.rcpt{margin-top:16px}
+details.rcpt *,details.rcpt *::before,details.rcpt *::after{box-sizing:border-box}
+details.rcpt>summary{cursor:pointer;list-style:none;display:flex;flex-direction:column;gap:2px}
+details.rcpt>summary::-webkit-details-marker{display:none}
+details.rcpt>summary h2{margin:0;display:flex;align-items:center;gap:8px}
+details.rcpt>summary h2::before{content:"\25B8";color:var(--ledger);font-size:.9em;transition:transform .15s}
+details.rcpt[open]>summary h2::before{transform:rotate(90deg)}
+.rcpt-head{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-top:6px}
+.rcpt-head>div{flex:1 1 130px;min-width:0}
+.rcpt-head>div.rcpt-store{flex:1.4 1 200px}
+.rcpt-head>div:nth-child(3){flex:1.6 1 210px}
+.rcpt-head .t,.rcpt-add .t{min-width:0;max-width:100%}
+.rcpt-seg{margin-bottom:6px;width:100%}.rcpt-seg button{flex:1;padding:6px 8px}
+.rcpt-total{padding:10px 0;font-size:1.15rem;font-weight:700;font-variant-numeric:tabular-nums}
+.rcpt-add{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+.rcpt-add>div{flex:0 1 150px}.rcpt-add>div.grow{flex:1 1 200px}
+.rcpt-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.rcpt-chips button{border:1px solid var(--rule);background:var(--surface);border-radius:16px;padding:5px 12px;cursor:pointer;color:var(--muted);font-weight:600;font-size:.85rem}
+.rcpt-chips button[aria-pressed="true"]{background:var(--btnbg);border-color:var(--btnbg);color:var(--btnfg)}
+.rcpt-status{margin-top:14px;padding:10px 14px;border-radius:8px;background:var(--soft);font-weight:600}
+.rcpt-status.ok{color:var(--in);background:color-mix(in srgb,var(--in) 12%,var(--surface))}
+.rcpt-status.bad{color:var(--out);background:color-mix(in srgb,var(--out) 10%,var(--surface))}
+.rcpt-tables>div{min-width:0}
+.rcpt-add>div{min-width:0}
+.rcpt-items{max-height:420px;overflow:auto}
+.rcpt-items select{padding:4px 6px;border:1px solid var(--rule);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit;font-size:.9rem}
+#rxCats tr.tot td{font-weight:700}
 @media (max-width:760px){.rslide input{width:140px}.g3,.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g2{grid-template-columns:1fr}header.top .stat{display:none}nav.tabs{top:48px}main{padding:14px 10px 90px}}
 </style>
 </head>
@@ -234,7 +261,7 @@ nav.rtabs button[aria-selected="true"]{background:var(--btnbg);border-color:var(
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 18</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 19</span>
   <div class="sp"></div>
   <button id="signOutBtn" type="button">Sign out</button>
 </header>
@@ -282,6 +309,37 @@ nav.rtabs button[aria-selected="true"]{background:var(--btnbg);border-color:var(
       <div class="panel"><h3 style="margin-top:0">Money in and out, last six months</h3><div class="chart small"><canvas id="cHomeTrend"></canvas></div></div>
     </div>
   </div>
+  <details class="panel rcpt" id="rxPanel">
+    <summary><h2>Itemize a receipt</h2><span class="note" id="rxSumNote">Split one store order across categories, with the tax spread by each category’s share of the subtotal.</span></summary>
+    <div class="rcpt-head">
+      <div class="rcpt-store"><label class="f" for="rxStore">Store</label><div class="seg rcpt-seg" id="rxStoreSeg" role="group" aria-label="Quick store"><button type="button" data-st="Walmart">Walmart</button><button type="button" data-st="Sam's Club">Sam's Club</button></div><input class="t" id="rxStore" value="Walmart" aria-label="Store name"></div>
+      <div><label class="f" for="rxDate">Date</label><input class="t" id="rxDate" type="date"></div>
+      <div><label class="f" for="rxAcct">Paid from</label><select class="t" id="rxAcct"></select></div>
+      <div><label class="f" for="rxSub">Receipt subtotal</label><input class="t" id="rxSub" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></div>
+      <div><label class="f" for="rxTax">Tax</label><input class="t" id="rxTax" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+      <div><label class="f">Receipt total</label><div class="rcpt-total" id="rxTotal">$0.00</div></div>
+    </div>
+    <h3>Add each item</h3>
+    <div class="rcpt-add">
+      <div><label class="f" for="rxAmt">Amount</label><input class="t" id="rxAmt" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></div>
+      <div class="grow"><label class="f" for="rxCat">Category</label><select class="t" id="rxCat"></select></div>
+      <div class="grow"><label class="f" for="rxNote">Item (optional)</label><input class="t" id="rxNote" placeholder="For example: dog food"></div>
+      <div><button class="btn" type="button" id="rxAdd">Add item</button></div>
+    </div>
+    <div class="rcpt-chips" id="rxChips"></div>
+    <p class="note" style="margin:6px 0 0">Press Enter in the Amount or Item box to add. The category stays selected for the next item. Enter a discount or a returned item as a negative amount.</p>
+    <div class="rcpt-status" id="rxStatus"></div>
+    <div class="grid g2 rcpt-tables">
+      <div><h3>By category</h3><div class="tbl"><table><thead><tr><th>Category</th><th class="n">Items</th><th class="n">Subtotal</th><th class="n">Share</th><th class="n">Tax</th><th class="n">Total</th></tr></thead><tbody id="rxCats"></tbody></table></div></div>
+      <div><h3>Items entered</h3><div class="tbl rcpt-items"><table><thead><tr><th>#</th><th class="n">Amount</th><th>Category</th><th>Item</th><th></th></tr></thead><tbody id="rxItems"></tbody></table></div></div>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <button class="btn" type="button" id="rxSave" disabled>Save transactions</button>
+      <button class="btn sec" type="button" id="rxClear">Start over</button>
+      <span class="note" id="rxSaveNote"></span>
+    </div>
+    <div class="err" id="rxErr" role="alert"></div>
+  </details>
   <h3>Last two weeks</h3>
   <p class="note" id="recentSum" style="margin:-4px 0 10px"></p>
   <div class="tbl"><table><thead><tr><th>Posted</th><th>Date</th><th>Account</th><th class="n">Amount</th><th>Description</th><th>Category</th></tr></thead><tbody id="recentBody"></tbody></table></div>
@@ -941,7 +999,7 @@ function monthTotals(k){
   for (const c of S.config.categories){ if (c.type !== 'Expense') continue; const b = budgetFor(c.name, Y, M-1); if (c.group === 'Fixed' || c.group === 'Variable bill') out.billsB += b; else out.dayB += b; }
   return out;
 }
-function renderHome(){
+function renderHome(){ renderReceipt();
   renderRecent();
   const now = new Date(), k = todayISO().slice(0,7), dim = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate(), elapsed = now.getDate() / dim;
   const h = now.getHours(); $('hGreet').textContent = (h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening') + '. Today is ' + now.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' }) + '.';
@@ -1124,6 +1182,116 @@ render.list = () => {
   $('listBody').innerHTML = shown.map(t => { const s = status(t); return `<tr class="click${s==='History'?' hist':''}${isPosted(t)?'':' pending'}" data-id="${t.id}"><td>${postBox(t)}</td><td>${fmtDate(t.date)}</td><td>${esc(t.account)}</td><td class="n">${money(t.amount,true)}</td><td class="wrap">${esc(t.desc)}</td><td>${esc(catUsed(t))}</td><td>${esc(toUsed(t))}</td><td>${statusTag(s)}</td></tr>`; }).join('') + (rows.length > 600 ? '<tr><td colspan="8" class="muted">Showing the latest 600. Narrow the filters to see more.</td></tr>' : '');
 };
 ['lMonth','lAcct','lCat'].forEach(id => $(id).addEventListener('change', render.list)); $('lSearch').addEventListener('input', render.list);
+
+/* ================= Itemize a receipt (Version 19) ================= */
+/* The draft lives in this browser (localStorage) until it is saved, so a half-entered receipt survives a refresh. */
+const RC_KEY = 'bf-receipt';
+const rcBlank = () => ({ store:'Walmart', date:'', acct:'', sub:'', tax:'', items:[], cat:'' });
+let RCP = rcBlank(), rcInit = false;
+try { const v = JSON.parse(localStorage.getItem(RC_KEY) || 'null'); if (v && Array.isArray(v.items)) RCP = Object.assign(rcBlank(), v); } catch (e) {}
+function rcKeep(){ try { localStorage.setItem(RC_KEY, JSON.stringify(RCP)); } catch (e) {} }
+const rcCents = v => Math.round((+v || 0) * 100);
+const rcMoney = c => money(c / 100, true);
+const rxCats = () => S.config.categories.filter(c => c.type === 'Expense').map(c => c.name).sort((a, b) => a.localeCompare(b));
+function rcFavorites(){
+  const st = (RCP.store || '').trim().toLowerCase(), n = {};
+  if (st) for (const t of S.tx){ if ((t.desc || '').toLowerCase().startsWith(st)){ const c = catUsed(t); if (typeOf(c) === 'Expense') n[c] = (n[c] || 0) + 1; } }
+  const fav = Object.keys(n).sort((a, b) => n[b] - n[a]).slice(0, 6);
+  for (const d of ['Groceries','Home Goods','Pets','Other','Medical','Gifts']) if (fav.length < 6 && !fav.includes(d) && catInfo(d)) fav.push(d);
+  return fav;
+}
+/* Category subtotals, each category's share of the items, and the tax spread by that share. Rounding leftovers go to the largest category so the tax adds up to the cent. */
+function rcCalc(){
+  const by = {}; let items = 0;
+  for (const it of RCP.items){ const c = rcCents(it.amt); items += c; (by[it.cat] ||= { cents:0, n:0 }); by[it.cat].cents += c; by[it.cat].n++; }
+  const tax = rcCents(RCP.tax), cats = Object.keys(by).sort((a, b) => by[b].cents - by[a].cents || a.localeCompare(b));
+  let given = 0;
+  for (const c of cats){ by[c].share = items ? by[c].cents / items : 0; by[c].tax = items ? Math.round(tax * by[c].cents / items) : 0; given += by[c].tax; }
+  if (cats.length && items) by[cats[0]].tax += tax - given;
+  for (const c of cats) by[c].total = by[c].cents + by[c].tax;
+  const sub = String(RCP.sub).trim() === '' ? null : rcCents(RCP.sub);
+  return { by, cats, items, tax, sub, left:sub === null ? null : sub - items };
+}
+function rcSync(){
+  $('rxStore').value = RCP.store; $('rxDate').value = RCP.date || todayISO(); RCP.date = $('rxDate').value;
+  $('rxAcct').value = RCP.acct; $('rxSub').value = RCP.sub; $('rxTax').value = RCP.tax; $('rxCat').value = RCP.cat;
+}
+function renderReceipt(){
+  const cats = rxCats(), accts = S.config.accounts.map(a => a.name);
+  $('rxAcct').innerHTML = opts(accts, 'Choose an account'); $('rxAcct').value = accts.includes(RCP.acct) ? RCP.acct : '';
+  $('rxCat').innerHTML = opts(cats, 'Choose a category'); $('rxCat').value = cats.includes(RCP.cat) ? RCP.cat : '';
+  if (!rcInit){ rcSync(); $('rxPanel').open = RCP.items.length > 0; rcInit = true; }
+  document.querySelectorAll('#rxStoreSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.st.toLowerCase() === (RCP.store || '').trim().toLowerCase() ? 'true' : 'false'));
+  $('rxChips').innerHTML = rcFavorites().map(c => `<button type="button" data-rcc="${esc(c)}" aria-pressed="${c === RCP.cat}">${esc(c)}</button>`).join('');
+  const k = rcCalc(), subUsed = k.sub === null ? k.items : k.sub;
+  $('rxTotal').textContent = rcMoney(subUsed + k.tax);
+  const st = $('rxStatus');
+  if (!RCP.items.length){ st.className = 'rcpt-status'; st.textContent = 'Add the first item from the receipt.'; }
+  else if (k.sub === null){ st.className = 'rcpt-status'; st.textContent = `${RCP.items.length} item${RCP.items.length === 1 ? '' : 's'} add up to ${rcMoney(k.items)}. Enter the receipt subtotal to check them against it.`; }
+  else if (k.left === 0){ st.className = 'rcpt-status ok'; st.textContent = `All ${RCP.items.length} items add up to the ${rcMoney(k.sub)} subtotal.`; }
+  else if (k.left > 0){ st.className = 'rcpt-status bad'; st.textContent = `Items add up to ${rcMoney(k.items)}: ${rcMoney(k.left)} still to enter to reach the ${rcMoney(k.sub)} subtotal.`; }
+  else { st.className = 'rcpt-status bad'; st.textContent = `Items add up to ${rcMoney(k.items)}, which is ${rcMoney(-k.left)} more than the ${rcMoney(k.sub)} subtotal. Check for an item entered twice.`; }
+  $('rxCats').innerHTML = k.cats.length ? k.cats.map(c => { const b = k.by[c];
+    return `<tr><td>${esc(c)}</td><td class="n">${b.n}</td><td class="n">${rcMoney(b.cents)}</td><td class="n">${(b.share * 100).toFixed(1)}%</td><td class="n">${rcMoney(b.tax)}</td><td class="n"><b>${rcMoney(b.total)}</b></td></tr>`; }).join('') +
+    `<tr class="tot"><td>Total</td><td class="n">${RCP.items.length}</td><td class="n">${rcMoney(k.items)}</td><td class="n">100%</td><td class="n">${rcMoney(k.tax)}</td><td class="n">${rcMoney(k.items + k.tax)}</td></tr>`
+    : '<tr><td colspan="6" class="muted">Categories appear here as items are added.</td></tr>';
+  $('rxItems').innerHTML = RCP.items.length ? RCP.items.map((it, i) => ({ it, i })).reverse().map(({ it, i }) =>
+    `<tr><td>${i + 1}</td><td class="n">${rcMoney(rcCents(it.amt))}</td><td><select data-rci="${it.id}" aria-label="Category for item ${i + 1}">${opts(cats).replace(`value="${esc(it.cat)}"`, `value="${esc(it.cat)}" selected`)}</select></td><td class="wrap">${esc(it.note || '')}</td><td><button class="btn sec small" type="button" data-rcd="${it.id}" aria-label="Remove item ${i + 1}">Remove</button></td></tr>`).join('')
+    : '<tr><td colspan="5" class="muted">No items yet.</td></tr>';
+  const neg = k.cats.filter(c => k.by[c].total <= 0);
+  let why = '';
+  if (!RCP.items.length) why = 'Add items to save.';
+  else if (!RCP.date) why = 'Pick the date.';
+  else if (!RCP.acct) why = 'Choose the account it was paid from.';
+  else if (k.sub === null) why = 'Enter the receipt subtotal.';
+  else if (k.left !== 0) why = 'The items must add up to the subtotal before saving.';
+  else if (neg.length) why = `${neg.join(', ')} adds up to zero or less; move those discounts into another category.`;
+  $('rxSave').disabled = !!why;
+  $('rxSave').textContent = k.cats.length > 1 ? `Save ${k.cats.length} transactions` : 'Save transaction';
+  $('rxSaveNote').textContent = why || `Saves ${k.cats.map(c => `${RCP.store.trim() || 'Store'} - ${c} ${rcMoney(k.by[c].total)}`).join(', ')}; together ${rcMoney(k.items + k.tax)}.`;
+  $('rxSumNote').textContent = RCP.items.length ? `Receipt in progress: ${RCP.items.length} item${RCP.items.length === 1 ? '' : 's'}, ${rcMoney(k.items)} entered${k.sub !== null ? ' of ' + rcMoney(k.sub) : ''}.` : 'Split one store order across categories, with the tax spread by each category’s share of the subtotal.';
+}
+function rcAddItem(){
+  $('rxErr').textContent = '';
+  const v = parseFloat($('rxAmt').value);
+  if (!v){ $('rxErr').textContent = 'Enter the item’s amount.'; $('rxAmt').focus(); return; }
+  if (!RCP.cat){ $('rxErr').textContent = 'Pick a category for this item.'; $('rxCat').focus(); return; }
+  RCP.items.push({ id:uid(), amt:Math.round(v * 100) / 100, cat:RCP.cat, note:$('rxNote').value.trim() });
+  $('rxAmt').value = ''; $('rxNote').value = ''; rcKeep(); renderReceipt(); $('rxAmt').focus();
+}
+$('rxStoreSeg').addEventListener('click', e => { const b = e.target.closest('[data-st]'); if (!b) return; RCP.store = b.dataset.st; $('rxStore').value = RCP.store; rcKeep(); renderReceipt(); });
+$('rxStore').addEventListener('input', () => { RCP.store = $('rxStore').value; rcKeep(); renderReceipt(); });
+$('rxDate').addEventListener('change', () => { RCP.date = $('rxDate').value; rcKeep(); renderReceipt(); });
+$('rxAcct').addEventListener('change', () => { RCP.acct = $('rxAcct').value; rcKeep(); renderReceipt(); });
+$('rxSub').addEventListener('input', () => { RCP.sub = $('rxSub').value; rcKeep(); renderReceipt(); });
+$('rxTax').addEventListener('input', () => { RCP.tax = $('rxTax').value; rcKeep(); renderReceipt(); });
+$('rxCat').addEventListener('change', () => { RCP.cat = $('rxCat').value; rcKeep(); renderReceipt(); });
+$('rxChips').addEventListener('click', e => { const b = e.target.closest('[data-rcc]'); if (!b) return; RCP.cat = b.dataset.rcc; $('rxCat').value = RCP.cat; rcKeep(); renderReceipt(); $('rxAmt').focus(); });
+$('rxAdd').addEventListener('click', rcAddItem);
+['rxAmt','rxNote'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); rcAddItem(); } }));
+$('rxItems').addEventListener('click', e => { const b = e.target.closest('[data-rcd]'); if (!b) return; RCP.items = RCP.items.filter(x => x.id !== b.dataset.rcd); rcKeep(); renderReceipt(); });
+$('rxItems').addEventListener('change', e => { const s = e.target.closest('[data-rci]'); if (!s) return; const it = RCP.items.find(x => x.id === s.dataset.rci); if (it){ it.cat = s.value; rcKeep(); renderReceipt(); } });
+$('rxClear').addEventListener('click', () => {
+  if (RCP.items.length && !confirm('Clear this receipt and its items?')) return;
+  RCP = Object.assign(rcBlank(), { store:RCP.store, acct:RCP.acct, date:todayISO() }); rcKeep(); rcSync(); $('rxErr').textContent = ''; renderReceipt();
+});
+$('rxSave').addEventListener('click', async () => {
+  const k = rcCalc(), store = RCP.store.trim() || 'Store', base = Date.now();
+  const itemNotes = RCP.items.map(i => i.note).filter(Boolean).join(', ');
+  const note = `Itemized receipt: ${RCP.items.length} items, ${rcMoney(k.items)} plus ${rcMoney(k.tax)} tax, receipt total ${rcMoney(k.items + k.tax)}`;
+  const rows = k.cats.map((c, i) => { const mine = RCP.items.filter(x => x.cat === c && x.note).map(x => x.note).join(', ');
+    return { id:uid(), date:RCP.date, account:RCP.acct, amount:k.by[c].total / 100, desc:`${store} - ${c}`, cat:c, to:'', notes:(note + (mine ? '. Items: ' + mine : '')).slice(0, 300), created:base, seq:base + i }; });
+  for (const r of rows){ const st = status(r); if (st !== 'OK' && st !== 'History'){ $('rxErr').textContent = `${r.desc}: ${st}`; return; } }
+  $('rxSave').disabled = true; $('rxErr').textContent = '';
+  let done = 0;
+  try { for (const r of rows){ await addTx(r); done++; }
+    toast(`Saved ${rows.length} transaction${rows.length === 1 ? '' : 's'}`);
+    RCP = Object.assign(rcBlank(), { store:RCP.store, acct:RCP.acct, date:todayISO() }); rcKeep(); rcSync(); renderAll();
+  } catch (err){
+    RCP.items = RCP.items.filter(x => !rows.slice(0, done).some(r => r.cat === x.cat)); rcKeep();
+    $('rxErr').textContent = `Could not save${done ? ` after ${done} of ${rows.length}; the saved categories were removed from this receipt` : ''}: ` + (err.code || err.message); renderAll();
+  }
+});
 /* ---------- Dashboard ---------- */
 let charts = {};
 function css(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
