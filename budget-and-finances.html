@@ -188,9 +188,15 @@ nav.rtabs button[aria-selected="true"]{background:var(--btnbg);border-color:var(
 #kBody tr.promo td,#kBody tr.promo td:first-child{background:color-mix(in srgb,var(--card) 12%,var(--surface))}
 #sBody tr.sel td,#sBody tr.sel td:first-child{background:color-mix(in srgb,var(--ledger) 12%,var(--surface))}
 #sBody tr{cursor:pointer}
+#sBody td.b{font-weight:700;color:var(--ink)}
 .acard h3{margin:0 0 4px;font-size:1rem}.acard b{display:block;font-size:1.35rem;font-variant-numeric:tabular-nums}
 .acard .row{margin-top:10px}
 .ckphase{margin-bottom:14px}
+.ci .ci-q{padding:12px 0;border-top:1px solid var(--rule)}.ci .ci-q:first-of-type{border-top:0}
+.ci .ci-q .t{max-width:360px}.ci .ci-q textarea.t{max-width:none;width:100%}
+.ci .ci-q .note{margin:6px 0 0}
+.ci-bals{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-top:6px}
+.ci-bals label{font-size:.85rem;color:var(--muted)}
 .ckitem{display:grid;grid-template-columns:26px 1fr auto;gap:10px;align-items:start;padding:10px 0;border-top:1px solid var(--rule)}
 .ckitem:first-of-type{border-top:0}
 .ckitem input{width:18px;height:18px;margin-top:3px;accent-color:var(--in)}
@@ -266,7 +272,7 @@ details.rcpt[open]>summary h2::before{transform:rotate(90deg)}
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 21</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 22</span>
   <div class="sp"></div>
   <button id="signOutBtn" type="button">Sign out</button>
 </header>
@@ -704,12 +710,14 @@ details.rcpt[open]>summary h2::before{transform:rotate(90deg)}
     <button data-rt="scen" aria-selected="false">Scenarios</button>
     <button data-rt="accts" aria-selected="false">Accounts</button>
     <button data-rt="check" aria-selected="false">Milestone checklist</button>
+    <button data-rt="checkin" aria-selected="false">Quarterly check-in</button>
     <button data-rt="assume" aria-selected="false">Assumptions and definitions</button>
   </nav>
 
   <section id="rt-overview">
     <h2>Retirement overview</h2>
     <p class="note" style="margin-top:-6px">Every amount on this tab is in today’s dollars unless it says otherwise. Placeholders and every other input can be changed on the Assumptions and definitions page.</p>
+    <p class="note" id="rCiNote"></p>
     <div class="grid g4" id="rKpis"></div>
     <div class="panel" style="margin-top:16px"><h3 style="margin-top:0" id="rChartTitle">Projected savings versus the target path</h3><div class="chart tall"><canvas id="cRet"></canvas></div><p class="note" id="rChartNote"></p></div>
     <div class="panel" id="rRead"></div>
@@ -728,7 +736,7 @@ details.rcpt[open]>summary h2::before{transform:rotate(90deg)}
   <section id="rt-scen" class="hidden">
     <h2>Scenarios compared</h2>
     <p class="note" style="margin-top:-6px">Both K and J retire in the same year in every scenario. Select a row or use the picker above to see the details for one scenario.</p>
-    <div class="tbl"><table><thead><tr><th>Scenario</th><th class="n">Retire</th><th class="n">K / J age</th><th class="n">Target nest egg</th><th class="n">Projected</th><th class="n">Funded</th><th class="n">Monthly needed</th><th class="n">Planned monthly</th><th class="n">Mortgage left</th><th class="n">Health before Medicare</th></tr></thead><tbody id="sBody"></tbody></table></div>
+    <div class="tbl"><table><thead><tr><th>Scenario</th><th class="n">Retire</th><th class="n">K / J age</th><th class="n">Withdrawal rate</th><th class="n">Target, rate method</th><th class="n">Target, year by year</th><th class="n">Target used</th><th class="n">Projected</th><th class="n">Funded</th><th class="n">Monthly needed</th><th class="n">Planned monthly</th><th class="n">Mortgage left</th><th class="n">Health before Medicare</th></tr></thead><tbody id="sBody"></tbody></table></div>
     <h3 id="sDetTitle">Details</h3>
     <div class="grid g2" id="sDetail"></div>
     <h3>Five-year checkpoints</h3>
@@ -771,6 +779,30 @@ details.rcpt[open]>summary h2::before{transform:rotate(90deg)}
     <h2>Milestone checklist</h2>
     <p class="note" style="margin-top:-6px">Items marked “From your data” check themselves off. Check the others yourself when they are done. Dates follow the selected scenario where they depend on it.</p>
     <div id="cList"></div>
+  </section>
+
+  <section id="rt-checkin" class="hidden">
+    <h2>Quarterly check-in</h2>
+    <p class="note" style="margin-top:-6px">Every three months, for example in January, April, July, and October, answer these ten questions. They take about ten minutes with your statements in hand. Saving a check-in logs the balances, updates the plan with anything that changed, and records how far along the target path you are, so progress can be compared over time.</p>
+    <div class="panel rread" id="ciStatus"></div>
+    <div class="panel ci">
+      <h3 style="margin-top:0">This check-in</h3>
+      <div class="ci-q"><label class="f" for="ciDate">1. Date of this check-in</label><input class="t" id="ciDate" type="date"></div>
+      <div class="ci-q"><span class="f">2. Balance of each retirement account today</span><div id="ciBals" class="ci-bals"></div><p class="note">From each statement or provider screen. Leave a box empty to keep the last logged balance.</p></div>
+      <div class="ci-q"><label class="f" for="ciRate">3. K’s 401(k) contribution rate now (percent of pay)</label><input class="t" id="ciRate" type="number" step="0.5" min="0" max="100"><p class="note" id="ciRatePlan"></p></div>
+      <div class="ci-q"><label class="f" for="ciPay">4. K’s gross yearly pay now</label><input class="t" id="ciPay" type="number" step="100" min="0"><p class="note" id="ciPayPlan"></p></div>
+      <div class="ci-q"><label class="f" for="ciPromo">5. Has the promotion happened?</label><div class="row"><select class="t" id="ciPromo"><option value="no">Not yet</option><option value="yes">Yes</option></select><input class="t" id="ciPromoYear" type="number" min="2026" max="2040" placeholder="Year it happened"></div><p class="note">If it has, the plan switches to the actual year for every path.</p></div>
+      <div class="ci-q"><label class="f" for="ciSaved">6. Amount saved for retirement outside the 401(k) since the last check-in</label><input class="t" id="ciSaved" type="number" step="0.01" min="0"><p class="note" id="ciSavedPlan"></p></div>
+      <div class="ci-q"><label class="f" for="ciRoth">7. Is the Roth IRA money invested in a fund (not sitting in cash)?</label><select class="t" id="ciRoth"><option>No</option><option>Yes</option></select></div>
+      <div class="ci-q"><label class="f" for="ciEF">8. Emergency fund balance today</label><input class="t" id="ciEF" type="number" step="0.01" min="0"><p class="note" id="ciEFPlan"></p></div>
+      <div class="ci-q"><label class="f" for="ciScen">9. Is this still the goal?</label><div class="row"><select class="t" id="ciScen"></select><input class="t" id="ciSpend" type="number" step="50" min="0" aria-label="Monthly spending target"></div><p class="note">Retirement scenario, then the monthly spending target in today’s dollars.</p></div>
+      <div class="ci-q"><label class="f" for="ciNote">10. Anything that changed since the last check-in?</label><textarea class="t" id="ciNote" rows="3" placeholder="For example: new job, different health insurance, a raise, a big expense, a change in family plans"></textarea></div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn" id="ciSave" type="button">Save check-in</button><span class="note" id="ciMsg"></span></div>
+    </div>
+    <div class="panel" style="margin-top:16px"><h3 style="margin-top:0">Savings at each check-in versus the target path</h3><div class="chart"><canvas id="cCi"></canvas></div></div>
+    <h3>Check-in history</h3>
+    <div class="tbl"><table><thead><tr><th>Date</th><th class="n">Savings</th><th class="n">Target path</th><th class="n">On track</th><th class="n">Funded</th><th class="n">401(k) rate</th><th class="n">Pay</th><th class="n">Saved outside 401(k)</th><th class="n">Emergency fund</th><th>Notes</th><th></th></tr></thead><tbody id="ciBody"></tbody></table></div>
+    <p class="note">On track compares the savings logged at the check-in with where the target path says they should be on that date. Plan figures are shown in parentheses.</p>
   </section>
 
   <section id="rt-assume" class="hidden">
@@ -2333,6 +2365,12 @@ const RET_DEFS = [
   { g:'Returns and inflation', k:'retSpread', label:'Range above and below that return', def:2, kind:'pts', info:'For the minimum and maximum lines on the projection chart. Minimum: the Slow 401(k) path at the return before retirement minus these points (5% by default). Maximum: the Fast path at that return plus these points (9%).' },
   { g:'Returns and inflation', k:'cashRate', label:'Cash rate', def:3.5, kind:'pct', info:'What uninvested money in a money market fund is assumed to earn.' },
 
+  { g:'Withdrawals and taxes', k:'method', label:'How the target nest egg is worked out', def:'safer', kind:'select', opts:[['safer','The more cautious of the two methods'],['swr','Safe withdrawal rate by retirement age'],['yby','Year by year to the planning age']], info:'Safe withdrawal rate divides the yearly gap by a rate that is lower for earlier retirements, which leaves a cushion for a bad market early in retirement. Year by year adds up each year’s need assuming the same return every year, with nothing left at the planning age. The default uses whichever is larger.' },
+  { g:'Withdrawals and taxes', k:'swr55', label:'Safe withdrawal rate, retiring before 59', def:3.25, kind:'pct', info:'Covers a retirement of 40 years or more. Rates commonly cited for early retirement run from 3% to 3.5%.' },
+  { g:'Withdrawals and taxes', k:'swr59', label:'Safe withdrawal rate, retiring at 59', def:3.5, kind:'pct', info:'About 36 years of retirement.' },
+  { g:'Withdrawals and taxes', k:'swr60', label:'Safe withdrawal rate, retiring at 60 or 61', def:3.75, kind:'pct', info:'About 35 years of retirement.' },
+  { g:'Withdrawals and taxes', k:'swr62', label:'Safe withdrawal rate, retiring at 62 or later', def:4, kind:'pct', info:'The classic 4% rule, built for a retirement of about 30 years.' },
+  { g:'Withdrawals and taxes', k:'taxRate', label:'Effective tax rate on pre-tax withdrawals', def:12, kind:'pct', info:'PLACEHOLDER. The share of each dollar taken from pre-tax accounts (traditional 401(k), 403(b), traditional IRA, pension) that goes to income tax. Roth money is tax free. The share of savings that is pre-tax comes from the account types on the Accounts page, and the freed monthly amount is treated as Roth. Pennsylvania generally does not tax retirement account withdrawals or Social Security after retirement, so this is mostly federal tax. Not tax advice.' },
   { g:'Retirement spending and income', k:'spend', label:'Monthly spending target', def:6000, kind:'money', info:'PLACEHOLDER. Spending in today’s dollars once retired, before taxes, health insurance, and any mortgage payment. The Retirement 101 deck offers $5,000, $6,000, or the provider’s $6,578.' },
   { g:'Retirement spending and income', k:'health', label:'Health insurance before Medicare', def:750, kind:'money', info:'PLACEHOLDER. Per person per month in today’s dollars, for each year a retired person is under the Medicare age. Not a quote.' },
   { g:'Retirement spending and income', k:'medicareAge', label:'Medicare age', def:65, kind:'age', info:'Health insurance cost stops for each person at this age.' },
@@ -2341,6 +2379,8 @@ const RET_DEFS = [
   { g:'Retirement spending and income', k:'jSS', label:'J’s Social Security at full retirement age', def:0, kind:'money', info:'PLACEHOLDER. Unknown, so set to zero to stay cautious. Replace with the estimate from ssa.gov.' },
   { g:'Retirement spending and income', k:'jSSAge', label:'J claims Social Security at', def:67, kind:'age', info:'62 to 70, with the same reductions and credits as K.' },
 
+  { g:'Retirement spending and income', k:'pension', label:'Pension or other income each month', def:0, kind:'money', info:'Any lifetime income besides Social Security, such as a pension or an annuity, in today’s dollars before tax. It is taxed at the effective rate above.' },
+  { g:'Retirement spending and income', k:'pensionStart', label:'Pension or other income starts', def:2058, kind:'year', info:'First year the income above is paid.' },
   { g:'Mortgage', k:'mortBal', label:'Mortgage balance', def:310151.12, kind:'money', info:'Principal balance from the statement, after the October 2026 payment.' },
   { g:'Mortgage', k:'mortAsOf', label:'Balance is as of', def:'2026-10', kind:'month', info:'Month of the balance above. Update both together from a newer statement.' },
   { g:'Mortgage', k:'mortRate', label:'Interest rate', def:6.5, kind:'pct', info:'From the statement.' },
@@ -2358,6 +2398,9 @@ const RET_CALC_DEFS = [
   ['Contribution rate','Today’s rate plus every step-up so far: points from each yearly raise and from the promotion. It never goes above the maximum rate.'],
   ['Target nest egg','What must be saved by the start of the retirement year, in today’s dollars, so that withdrawals cover the spending target, health insurance before Medicare, and any remaining mortgage payments, minus Social Security, every year until K reaches the planning age. Money left invested is assumed to earn the return during retirement.'],
   ['Projected','Every account grown month by month to the start of the retirement year: the 401(k) with the progressive rate and the match, the Roth IRA deposits, the freed monthly amount, and added accounts, converted to today’s dollars.'],
+  ['Target, withdrawal-rate method','The yearly gap that lasts all of retirement (spending, grossed up for tax, minus Social Security and pension once they all start) divided by the safe withdrawal rate for the retirement age, plus the cost of everything temporary: Social Security and pension not yet started, health insurance before Medicare, and mortgage payments still owed.'],
+  ['Target, year-by-year method','Each year’s spending, health insurance, and mortgage payments, grossed up for tax and minus Social Security and pension, added up from retirement to the planning age at the return during retirement.'],
+  ['Tax gross-up','Withdrawals are increased so that the amount left after tax still covers spending: divide by one minus the effective tax rate times the pre-tax share of savings.'],
   ['Funded','Projected divided by the target nest egg.'],
   ['Minimum and maximum','Two more projections drawn around Projected on the chart. Minimum combines the Slow 401(k) path with a return before retirement lower by the range on Assumptions; Maximum combines the Fast path with a return higher by the same range. They show how far results can swing, not a guarantee of either bound.'],
   ['Monthly needed','The monthly amount, starting when the freed amount starts, that would bring the projection exactly to the target nest egg. Compare it with the planned freed amount.'],
@@ -2377,7 +2420,7 @@ function retA(){
   const A = {};
   for (const d of RET_DEFS){
     const dv = typeof d.def === 'function' ? d.def() : d.def, o = RS.overrides[d.k];
-    A[d.k] = (o === undefined || o === null || o === '') ? dv : (d.kind === 'month' || d.kind === 'yesno' ? o : +o);
+    A[d.k] = (o === undefined || o === null || o === '') ? dv : (d.kind === 'month' || d.kind === 'yesno' || d.kind === 'select' ? o : +o);
   }
   return A;
 }
@@ -2442,8 +2485,9 @@ function retSim(A, o){
   let k = 0, roth = 0, side = 0; const oth = [];
   for (const a of retAccts()){ const s = retLatest(a.id); const v = s ? +s.bal : 0; if (a.id === 'k401') k = v; else if (a.id === 'kroth') roth = v; else oth.push({ bal:v, monthly:+a.monthly || 0, type:a.type }); }
   const out = {}, rec = (j) => { const y = Math.floor(j / 12), o2 = oth.reduce((t, x) => t + x.bal, 0), outside = roth + side + oth.filter(x => !/401|403|Pension/.test(x.type)).reduce((t, x) => t + x.bal, 0), d = (1 + A.inflation / 100) ** ((j - i0) / 12);
-    out[y] = { k, roth, side, oth:o2, nominal:k + roth + side + o2, real:(k + roth + side + o2) / d, outsideReal:outside / d, k401Real:k / d }; };
-  rec(i0);
+    const pre = k + oth.filter(x => /401|403|Pension|Traditional/.test(x.type)).reduce((t, x) => t + x.bal, 0);
+    out[y] = { k, roth, side, oth:o2, nominal:k + roth + side + o2, real:(k + roth + side + o2) / d, outsideReal:outside / d, k401Real:k / d, preShare:(k + roth + side + o2) ? pre / (k + roth + side + o2) : 1 }; };
+  rec(i0); const start = Object.assign({}, out[Math.floor(i0 / 12)]);
   let curY = null, empY = 0;
   for (let j = i0 + 1; j <= endI; j++){
     const y = Math.floor(j / 12), m = j % 12 + 1;
@@ -2457,25 +2501,34 @@ function retSim(A, o){
     for (const x of oth) x.bal = x.bal * (1 + rp) + x.monthly;
     if (m === 12 || j === endI) rec(j);
   }
-  return { years:out, mort, sch };
+  return { years:out, mort, sch, start, i0 };
 }
-function retNeed(A, R, mort){
-  const rr = (1 + A.retPost / 100) / (1 + A.inflation / 100) - 1, i0 = rNow(), endY = A.kBirth + A.horizon;
+function retSwrRate(A, age){ return age < 59 ? A.swr55 : (age < 60 ? A.swr59 : (age < 62 ? A.swr60 : A.swr62)); }
+function retNeed(A, R, mort, preShare){
+  const rr = (1 + A.retPost / 100) / (1 + A.inflation / 100) - 1, i0 = rNow(), endY = A.kBirth + A.horizon, tx = A.taxRate / 100;
+  const gross = 1 / (1 - tx * Math.min(1, Math.max(0, preShare ?? 1)));
   const defl = y => (1 + A.inflation / 100) ** ((y * 12 + 6 - i0) / 12);
-  let need = 0, bridge = 0, health = 0, hK = 0, hJ = 0;
+  const kInc = A.kSS * 12 * ssFactor(A.kSSAge), jInc = A.jSS * 12 * ssFactor(A.jSSAge), pInc = A.pension * 12 * (1 - tx);
+  const permInc = kInc + jInc + pInc, spendY = A.spend * 12, rate = retSwrRate(A, R - A.kBirth) / 100;
+  let yby = 0, temp = 0, bridge = 0, health = 0, hK = 0, hJ = 0;
   for (let y = R; y <= endY; y++){
     const ka = y - A.kBirth, ja = y - A.jBirth, hk = ka < A.medicareAge ? 1 : 0, hj = ja < A.medicareAge ? 1 : 0;
-    hK += hk; hJ += hj; health += A.health * 12 * (hk + hj);
-    const outv = A.spend * 12 + A.health * 12 * (hk + hj) + (mort.paid[y] || 0) / defl(y);
-    let inc = 0; if (ka >= A.kSSAge) inc += A.kSS * 12 * ssFactor(A.kSSAge); if (ja >= A.jSSAge) inc += A.jSS * 12 * ssFactor(A.jSSAge);
-    const d = Math.max(0, outv - inc) / (1 + rr) ** (y - R); need += d; if (ka < 60) bridge += d;
+    hK += hk; hJ += hj; const hc = A.health * 12 * (hk + hj); health += hc;
+    const mp = (mort.paid[y] || 0) / defl(y);
+    const inc = (ka >= A.kSSAge ? kInc : 0) + (ja >= A.jSSAge ? jInc : 0) + (y >= A.pensionStart ? pInc : 0);
+    const disc = (1 + rr) ** (y - R);
+    const d = Math.max(0, spendY + hc + mp - inc) * gross / disc; yby += d; if (ka < 60) bridge += d;
+    temp += (Math.max(0, spendY - inc) - Math.max(0, spendY - permInc) + hc + mp) * gross / disc;
   }
-  return { need, bridge, health, hK, hJ };
+  const swr = Math.max(0, spendY - permInc) * gross / rate + temp;
+  const need = A.method === 'yby' ? yby : (A.method === 'swr' ? swr : Math.max(yby, swr));
+  return { need, yby, swr, rate:rate * 100, gross, bridge, health, hK, hJ, used:A.method === 'yby' ? 'yby' : (A.method === 'swr' ? 'swr' : (swr >= yby ? 'swr' : 'yby')) };
 }
 function retScenario(A, R, kind){
-  const nd = retNeed(A, R, retMortgage(A, A.mortExtra, rYM(A.mortExtraStart), R * 12));
   const run = f => retSim(A, { kind, endYear:R - 1, freed:f });
   const sim = run(A.freedMonthly), have = sim.years[R - 1] ? sim.years[R - 1].real : 0;
+  const preShare = sim.years[R - 1] ? sim.years[R - 1].preShare : 1;
+  const nd = retNeed(A, R, retMortgage(A, A.mortExtra, rYM(A.mortExtraStart), R * 12), preShare);
   let needed = 0;
   if (run(0).years[R - 1].real < nd.need){ let lo = 0, hi = 50000; for (let i = 0; i < 40; i++){ const mid = (lo + hi) / 2; if (run(mid).years[R - 1].real >= nd.need) hi = mid; else lo = mid; } needed = hi; }
   const target = run(needed), mortBal = sim.mort.balBefore(R);
@@ -2484,19 +2537,19 @@ function retScenario(A, R, kind){
   let payExtra = 0; const xs = Math.max(rYM(A.mortExtraStart), rNow() + 1);
   if (mortBal > 1){ let lo = 0, hi = 20000; for (let i = 0; i < 40; i++){ const mid = (lo + hi) / 2; const mm = retMortgage(A, mid, xs, R * 12); if (mm.payoff !== null && mm.payoff < R * 12) hi = mid; else lo = mid; } payExtra = hi; }
   const end = sim.years[R - 1] || {};
-  return { R, kAge:R - A.kBirth, jAge:R - A.jBirth, need:nd.need, bridge:nd.bridge, health:nd.health, hK:nd.hK, hJ:nd.hJ, have, funded:nd.need ? have / nd.need : 1, needed, planned:A.freedMonthly, sim, target, mortBal, mortPayoff:sim.mort.payoff, payExtra, outsideAtR:end.outsideReal || 0, k401AtR:end.k401Real || 0 };
+  return { R, kAge:R - A.kBirth, jAge:R - A.jBirth, need:nd.need, yby:nd.yby, swr:nd.swr, rate:nd.rate, gross:nd.gross, used:nd.used, preShare, bridge:nd.bridge, health:nd.health, hK:nd.hK, hJ:nd.hJ, have, funded:nd.need ? have / nd.need : 1, needed, planned:A.freedMonthly, sim, target, mortBal, mortPayoff:sim.mort.payoff, payExtra, outsideAtR:end.outsideReal || 0, k401AtR:end.k401Real || 0 };
 }
 
 /* ---------- load and save ---------- */
 async function retLoad(){
   try { const d = await getDoc(ref('meta','retirement')); if (d.exists()) Object.assign(RS, d.data()); } catch (e) {}
-  RS.overrides = RS.overrides || {}; RS.checks = RS.checks || {};
+  RS.overrides = RS.overrides || {}; RS.checks = RS.checks || {}; RS.checkins = RS.checkins || [];
 }
 let retSaveT = null;
 function retSave(){
   clearTimeout(retSaveT);
   retSaveT = setTimeout(async () => {
-    const payload = { overrides:RS.overrides, accounts:retAccts(), snapshots:retSnaps(), checks:RS.checks, scenario:RS.scenario, customYear:RS.customYear, path:RS.path, sub:RS.sub, updated:Date.now() };
+    const payload = { overrides:RS.overrides, accounts:retAccts(), snapshots:retSnaps(), checks:RS.checks, checkins:RS.checkins || [], scenario:RS.scenario, customYear:RS.customYear, path:RS.path, sub:RS.sub, updated:Date.now() };
     try { await setDoc(ref('meta','retirement'), JSON.parse(JSON.stringify(payload))); } catch (err) { toast('Could not save: ' + (err.code || err.message)); }
   }, 500);
 }
@@ -2511,7 +2564,8 @@ function renderRetire(){
   const R = retYear(A); $('rPickNote').textContent = `Retire in ${R}: K ${R - A.kBirth}, J ${R - A.jBirth}.`;
   document.querySelectorAll('nav.rtabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.rt === RS.sub ? 'true' : 'false'));
   document.querySelectorAll('#view-retire > section').forEach(s => s.classList.toggle('hidden', s.id !== 'rt-' + RS.sub));
-  ({ overview:retOverview, k401:retK401, scen:retScen, accts:retAcctsPage, check:retCheck, assume:retAssume })[RS.sub](A);
+  ({ overview:retOverview, k401:retK401, scen:retScen, accts:retAcctsPage, check:retCheck, checkin:retCheckin, assume:retAssume })[RS.sub](A);
+  const cs = retCiStatus(); $('rCiNote').innerHTML = cs.last ? `Last quarterly check-in ${fmtDate(cs.last.date)}; ${cs.overdue ? '<b>the next one is due now</b>' : 'next due ' + fmtDate(cs.next)}.` : '<b>No quarterly check-in yet.</b> Do the first one on the Quarterly check-in page.';
 }
 const rKpi = (v, label, cls, sub) => `<div class="kpi"><b class="${cls||''}">${v}</b><span>${label}</span>${sub ? `<small>${sub}</small>` : ''}</div>`;
 function retNowRates(A){
@@ -2528,7 +2582,7 @@ function retOverview(A){
     rKpi(rPct(nr.rate), 'Savings rate', '', '401(k), match, and Roth deposits as a share of K’s pay') +
     rKpi(yrsLeft + ' years', 'To retirement in ' + R, '', `${retLabel(RS.scenario)}: K ${sc.kAge}, J ${sc.jAge}`) +
     rKpi(rPct(f * 100, 0), 'Funded', cls, 'Projected divided by target') +
-    rKpi(money(sc.need), 'Target nest egg', '', 'Needed at the start of ' + R) +
+    rKpi(money(sc.need), 'Target nest egg', '', (sc.used === 'swr' ? 'Withdrawal-rate method, ' + rPct(sc.rate, 2) : 'Year-by-year method') + ', start of ' + R) +
     rKpi(money(sc.have), 'Projected', cls, RS.path === 'exp' ? 'Expected 401(k) path' : (RS.path === 'slow' ? 'Slow 401(k) path' : 'Fast 401(k) path')) +
     rKpi(sc.needed < 1 ? 'Covered' : money(sc.needed), 'Monthly needed', sc.needed > sc.planned ? 'neg' : 'pos', 'Beyond the 401(k), from ' + rMonthName(rYM(A.freedStart))) +
     rKpi(money(sc.planned), 'Planned monthly', '', 'Freed debt payments, from ' + rMonthName(rYM(A.freedStart)));
@@ -2559,6 +2613,7 @@ function retOverview(A){
   $('rRead').innerHTML = `<h3 style="margin-top:0">${word} for ${retLabel(RS.scenario)}</h3>` +
     `<p>The plan projects ${money(sc.have)} by the start of ${R} against a target of ${money(sc.need)}, which is ${rPct(f * 100, 0)} funded${gap > 0 ? `, a gap of ${money(gap)}` : ''}. The range runs from ${money(lo)} (${rPct(lo / sc.need * 100, 0)} funded) at the minimum to ${money(hi)} (${rPct(hi / sc.need * 100, 0)}) at the maximum. ` +
     (sc.needed > sc.planned ? `Closing it takes about ${money(sc.needed)} a month from ${rMonthName(rYM(A.freedStart))}, ${money(sc.needed - sc.planned)} more than the ${money(sc.planned)} planned.` : (sc.needed < 1 ? `The 401(k) and Roth IRA alone reach the target, so the planned ${money(sc.planned)} a month is extra cushion.` : `The planned ${money(sc.planned)} a month is enough; about ${money(sc.needed)} a month would reach the target.`)) + `</p>` +
+    `<p>The target uses the ${sc.used === 'swr' ? `safe withdrawal rate method at ${rPct(sc.rate, 2)} for retiring at ${sc.kAge}` : 'year-by-year method'}${A.method === 'safer' ? `, the more cautious of the two (withdrawal rate ${money(sc.swr)}, year by year ${money(sc.yby)})` : ''}. Withdrawals are raised ${rPct((sc.gross - 1) * 100, 1)} to cover income tax, because about ${rPct(sc.preShare * 100, 0)} of the savings is projected to be pre-tax.</p>` +
     `<p>This uses a spending target of ${money(A.spend)} a month, ${money(A.health)} per person a month of health insurance before Medicare, Social Security of ${money(A.kSS)} for K${A.jSS ? ' and ' + money(A.jSS) + ' for J' : ' and none yet for J'}, and the ${({exp:'Expected',slow:'Slow',fast:'Fast'})[RS.path]} 401(k) path. ${A.rothInvested === 'Yes' ? '' : 'The Roth IRA is still treated as uninvested cash. '}Change any of these on the Assumptions and definitions page.</p>`;
 }
 function retK401(A){
@@ -2587,13 +2642,13 @@ function retScen(A){
   const keys = ['A','B','C','D'].concat(RS.scenario === 'custom' ? ['custom'] : []), ys = retYears(A), rows = {};
   for (const s of keys) rows[s] = retScenario(A, s === 'custom' ? Math.max(Math.floor(rNow() / 12) + 2, RS.customYear) : ys[s], RS.path);
   $('sBody').innerHTML = keys.map(s => { const r = rows[s];
-    return `<tr data-s="${s}" class="${s === RS.scenario ? 'sel' : ''}"><td>${retLabel(s)}</td><td class="n">${r.R}</td><td class="n">${r.kAge} / ${r.jAge}</td><td class="n">${money(r.need)}</td><td class="n">${money(r.have)}</td><td class="n ${r.funded >= 1 ? 'pos' : (r.funded < 0.85 ? 'neg' : '')}">${rPct(r.funded * 100, 0)}</td><td class="n ${r.needed > r.planned ? 'neg' : 'pos'}">${r.needed < 1 ? 'Covered' : money(r.needed)}</td><td class="n">${money(r.planned)}</td><td class="n">${r.mortBal > 1 ? money(r.mortBal) : 'Paid off'}</td><td class="n">${money(r.health)}</td></tr>`; }).join('');
+    return `<tr data-s="${s}" class="${s === RS.scenario ? 'sel' : ''}"><td>${retLabel(s)}</td><td class="n">${r.R}</td><td class="n">${r.kAge} / ${r.jAge}</td><td class="n">${rPct(r.rate, 2)}</td><td class="n${r.used === 'swr' ? ' b' : ''}">${money(r.swr)}</td><td class="n${r.used === 'yby' ? ' b' : ''}">${money(r.yby)}</td><td class="n"><b>${money(r.need)}</b></td><td class="n">${money(r.have)}</td><td class="n ${r.funded >= 1 ? 'pos' : (r.funded < 0.85 ? 'neg' : '')}">${rPct(r.funded * 100, 0)}</td><td class="n ${r.needed > r.planned ? 'neg' : 'pos'}">${r.needed < 1 ? 'Covered' : money(r.needed)}</td><td class="n">${money(r.planned)}</td><td class="n">${r.mortBal > 1 ? money(r.mortBal) : 'Paid off'}</td><td class="n">${money(r.health)}</td></tr>`; }).join('');
   document.querySelectorAll('#sBody tr').forEach(tr => tr.addEventListener('click', () => { RS.scenario = tr.dataset.s; retSave(); renderRetire(); }));
   const r = rows[RS.scenario] || rows.A, R = r.R, k59 = A.kBirth + 60, bridgeYears = Math.max(0, k59 - R), kss = A.kBirth + A.kSSAge, jss = A.jBirth + A.jSSAge;
   $('sDetTitle').textContent = `Details for ${retLabel(RS.scenario)}: retire in ${R}`;
   const card = (t, html) => `<div class="panel"><h3 style="margin-top:0">${t}</h3>${html}</div>`;
   $('sDetail').innerHTML =
-    card('Target and gap', `<p>Target nest egg ${money(r.need)}; projected ${money(r.have)} (${rPct(r.funded * 100, 0)} funded). ${r.needed > r.planned ? `Reaching it takes about <b>${money(r.needed)}</b> a month from ${rMonthName(rYM(A.freedStart))}, versus ${money(r.planned)} planned.` : (r.needed < 1 ? `The 401(k) and Roth IRA alone reach it, so the planned ${money(r.planned)} a month is extra cushion.` : `The planned ${money(r.planned)} a month covers it; about ${money(r.needed)} would be enough.`)}</p>`) +
+    card('Target and gap', `<p>Withdrawal-rate method ${money(r.swr)} at ${rPct(r.rate, 2)}; year-by-year method ${money(r.yby)}. Taxes add ${rPct((r.gross - 1) * 100, 1)} with ${rPct(r.preShare * 100, 0)} of savings pre-tax.</p><p>Target nest egg ${money(r.need)}; projected ${money(r.have)} (${rPct(r.funded * 100, 0)} funded). ${r.needed > r.planned ? `Reaching it takes about <b>${money(r.needed)}</b> a month from ${rMonthName(rYM(A.freedStart))}, versus ${money(r.planned)} planned.` : (r.needed < 1 ? `The 401(k) and Roth IRA alone reach it, so the planned ${money(r.planned)} a month is extra cushion.` : `The planned ${money(r.planned)} a month covers it; about ${money(r.needed)} would be enough.`)}</p>`) +
     card('Bridge years', bridgeYears ? `<p>${bridgeYears} years from ${R} until K turns 59½ around ${k59 - 1}. Those years use about <b>${money(r.bridge)}</b> of the target. Projected savings outside the 401(k) at retirement: ${money(r.outsideAtR)}. ${r.kAge >= 55 ? 'Because K is 55 or older in ' + R + ', the rule of 55 also opens the 401(k) of the employer K leaves, if K is still there in or after that year.' : 'K is under 55, so the 401(k) stays locked until 59½ apart from advanced options such as 72(t).'}</p>` : `<p>No bridge years: K is 59½ or older in ${R}, so every account is open without penalty.</p>`) +
     card('Health insurance before Medicare', r.hK + r.hJ ? `<p>K ${r.hK} years and J ${r.hJ} years without Medicare, about <b>${money(r.health)}</b> in total at ${money(A.health)} per person a month.</p>` : '<p>Both are 65 or older at retirement, so Medicare covers both from the start.</p>') +
     card('Mortgage and Social Security', `<p>${r.mortBal > 1 ? `About <b>${money(r.mortBal)}</b> is still owed at the start of ${R}${r.mortPayoff ? ', paid off in ' + rMonthName(r.mortPayoff) : ''}. Paying it off before retiring takes about ${money(r.payExtra)} a month of extra principal from ${rMonthName(Math.max(rYM(A.mortExtraStart), rNow() + 1))}.` : `The mortgage is paid off before ${R}${r.mortPayoff ? ' (' + rMonthName(r.mortPayoff) + ')' : ''}.`} K’s Social Security starts in ${kss} at ${A.kSSAge} (${money(A.kSS * ssFactor(A.kSSAge))} a month)${A.jSS ? `; J’s in ${jss} at ${A.jSSAge} (${money(A.jSS * ssFactor(A.jSSAge))} a month).` : '; J’s is not set yet.'}</p>`);
@@ -2645,6 +2700,7 @@ function retChecks(A){
     { id:'max401', ph:B, t:'401(k) contributions reach the IRS maximum', due:A.maxGoalYear + '-12', auto:A.deferNow >= nr.maxPct - 1e-9, src:'K’s 401(k) rate today versus this year’s maximum' },
     { id:'outside', ph:P, t:'Build savings outside the 401(k) for the bridge years until K is 59½', due:(R - 1) + '-12' },
     { id:'health', ph:P, t:'Choose health insurance until Medicare', due:(R - 1) + '-06' },
+    { id:'checkin', ph:F, t:'Do a quarterly check-in every three months', due:retCiStatus().next.slice(0, 7), auto:!retCiStatus().overdue, src:'Quarterly check-in page', note:'Checks again after every check-in.' },
     { id:'claim', ph:P, t:'Decide when each of you will claim Social Security', due:(R - 1) + '-12' }];
 }
 function retCheck(A){
@@ -2659,6 +2715,7 @@ function retCheck(A){
 }
 function retFmt(d, v){
   if (v === '' || v === undefined || v === null) return '';
+  if (d.kind === 'select') return ((d.opts || []).find(o => o[0] === v) || [v, v])[1];
   if (d.kind === 'money') return money(+v, Math.abs(+v % 1) > 0.001);
   if (d.kind === 'pct') return rPct(+v, 2);
   if (d.kind === 'pts') return (+v) + ' points';
@@ -2670,6 +2727,7 @@ function retAssume(A){
   const groups = [...new Set(RET_DEFS.map(d => d.g))];
   const input = d => { const o = RS.overrides[d.k], set = !(o === undefined || o === null || o === '');
     if (d.kind === 'yesno') return `<select class="ra-in${set ? ' set' : ''}" data-ov="${d.k}"><option value="">Default (${esc(typeof d.def === 'function' ? d.def() : d.def)})</option><option ${o === 'Yes' ? 'selected' : ''}>Yes</option><option ${o === 'No' ? 'selected' : ''}>No</option></select>`;
+    if (d.kind === 'select') return `<select class="ra-in${set ? ' set' : ''}" data-ov="${d.k}"><option value="">Default</option>${d.opts.map(o => `<option value="${o[0]}" ${o[0] === RS.overrides[d.k] ? 'selected' : ''}>${esc(o[1])}</option>`).join('')}</select>`;
     if (d.kind === 'month') return `<input class="ra-in${set ? ' set' : ''}" type="month" data-ov="${d.k}" value="${set ? esc(o) : ''}">`;
     return `<input class="ra-in${set ? ' set' : ''}" type="number" step="any" data-ov="${d.k}" value="${set ? esc(o) : ''}" placeholder="${esc(typeof d.def === 'function' ? d.def() : d.def)}">`; };
   $('rAssume').innerHTML = groups.map(g => `<h3>${esc(g)}</h3><div class="tbl"><table><thead><tr><th>Amount</th><th>What it means and where it comes from</th><th class="n">Default</th><th>Your value</th><th class="n">In use</th></tr></thead><tbody>` +
@@ -2682,11 +2740,84 @@ function retAssume(A){
   document.querySelectorAll('[data-ov]').forEach(el => el.addEventListener('change', () => {
     const v = el.value.trim(), d = RET_DEFS.find(x => x.k === el.dataset.ov);
     if (v === '') delete RS.overrides[d.k];
-    else if (d.kind === 'month' || d.kind === 'yesno') RS.overrides[d.k] = v;
+    else if (d.kind === 'month' || d.kind === 'yesno' || d.kind === 'select') RS.overrides[d.k] = v;
     else if (isNaN(+v)) { toast('Enter a number'); return; } else RS.overrides[d.k] = +v;
     retSave(); retAssume(retA()); toast('Saved');
   }));
 }
+
+/* ---------- quarterly check-in (Version 22) ---------- */
+function rAddMonths(iso, n){ const [y, m, d] = iso.split('-').map(Number); const dt = new Date(y, m - 1 + n, Math.min(d, 28)); return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0'); }
+function retCiStatus(){
+  const list = (RS.checkins || []).slice().sort((a, b) => a.date < b.date ? -1 : (a.date > b.date ? 1 : 0));
+  const last = list[list.length - 1] || null, today = todayISO(), next = last ? rAddMonths(last.date, 3) : today;
+  return { list, last, next, overdue:!last || next <= today };
+}
+/* Value of a projection on a date: straight line between today's balances and each year-end. */
+function retPathAt(sim, iso){
+  const idx = rYM(iso), pts = [[sim.i0, sim.start ? sim.start.real : 0]];
+  Object.keys(sim.years).map(Number).sort((a, b) => a - b).forEach(y => { const j = y * 12 + 11; if (j > sim.i0) pts.push([j, sim.years[y].real]); });
+  if (idx <= pts[0][0]) return pts[0][1];
+  for (let i = 1; i < pts.length; i++) if (idx <= pts[i][0]){ const [a, va] = pts[i - 1], [b, vb] = pts[i]; return va + (vb - va) * (idx - a) / (b - a); }
+  return pts[pts.length - 1][1];
+}
+function retPlanNow(A, iso){
+  const y = +iso.slice(0, 4), m = +iso.slice(5, 7), rows = retSchedule(A, 'exp', y).rows;
+  const r = m >= A.raiseMonth ? rows.find(x => x.y === y) : (rows.find(x => x.y === y - 1) || rows.find(x => x.y === y));
+  return r || rows[rows.length - 1];
+}
+function retPlanSaved(A, fromIso, toIso){
+  let t = 0; const fs = rYM(A.freedStart);
+  for (let j = rYM(fromIso) + 1; j <= rYM(toIso); j++) t += A.rothMonthly + (j >= fs ? A.freedMonthly : 0);
+  return t;
+}
+function retCheckin(A){
+  const st = retCiStatus(), today = todayISO(), y0 = Math.floor(rNow() / 12);
+  const box = $('ciStatus');
+  if (!st.last){ box.className = 'panel rread warn'; box.innerHTML = '<h3 style="margin-top:0">No check-ins yet</h3><p>Do the first one now. After that, the next one is due every three months.</p>'; }
+  else { const pc = st.last.onTrack;
+    box.className = 'panel rread' + (st.overdue ? ' warn' : (pc < 0.9 ? ' bad' : ''));
+    box.innerHTML = `<h3 style="margin-top:0">${st.overdue ? 'A check-in is due' : 'Check-ins up to date'}; ${pc >= 1 ? 'on or ahead of the target path' : (pc >= 0.9 ? 'close to the target path' : 'behind the target path')}</h3><p>Last check-in ${fmtDate(st.last.date)}: savings of ${money(st.last.total)} were ${rPct(pc * 100, 0)} of where the target path said they should be, and the plan was ${rPct(st.last.funded * 100, 0)} funded for ${st.last.label}. Next check-in ${st.overdue ? 'is due now' : 'is due ' + fmtDate(st.next)}.</p>`; }
+  if (!$('ciDate').value) $('ciDate').value = today;
+  const date = $('ciDate').value || today, plan = retPlanNow(A, date), from = st.last ? st.last.date : rAddMonths(date, -3);
+  $('ciBals').innerHTML = retAccts().map(a => { const s = retLatest(a.id); return `<div><label for="ciB-${a.id}">${esc(a.name)}</label><input class="t" type="number" step="0.01" min="0" id="ciB-${a.id}" data-cib="${a.id}" placeholder="${s ? 'Last: ' + money(+s.bal, true) : 'No balance yet'}"></div>`; }).join('');
+  if (!$('ciRate').value) $('ciRate').value = A.deferNow;
+  $('ciRatePlan').textContent = `The plan for this point is ${rPct(plan.rate)} (Expected path). Today’s setting is ${rPct(A.deferNow)}.`;
+  $('ciPayPlan').textContent = `The plan expects about ${money(plan.pay)} a year at this point.`;
+  const ps = retPlanSaved(A, from, date);
+  $('ciSavedPlan').textContent = `The plan expects about ${money(ps)} since ${fmtDate(from)}: the Roth IRA deposit${rYM(date) >= rYM(A.freedStart) ? ' plus the freed debt payments' : ''}.`;
+  $('ciRoth').value = A.rothInvested === 'Yes' ? 'Yes' : 'No';
+  $('ciEFPlan').textContent = `Milestones: ${money(A.efStarter)} starter fund in 2027, ${money(A.efFull)} full fund by 2030.`;
+  const ys = retYears(A); $('ciScen').innerHTML = ['A','B','C','D'].map(s => `<option value="${s}" ${RS.scenario === s ? 'selected' : ''}>Scenario ${s}: retire in ${ys[s]}</option>`).join('') + (RS.scenario === 'custom' ? `<option value="custom" selected>Custom: retire in ${RS.customYear}</option>` : '');
+  if (!$('ciSpend').value) $('ciSpend').value = A.spend;
+  const L = st.list;
+  $('ciBody').innerHTML = L.length ? L.slice().reverse().map(c => `<tr><td>${fmtDate(c.date)}</td><td class="n">${money(c.total)}</td><td class="n">${money(c.target)}</td><td class="n ${c.onTrack >= 1 ? 'pos' : (c.onTrack < 0.9 ? 'neg' : '')}">${rPct(c.onTrack * 100, 0)}</td><td class="n">${rPct(c.funded * 100, 0)}</td><td class="n">${rPct(c.rate)} (${rPct(c.planRate)})</td><td class="n">${c.pay ? money(c.pay) : ''} (${money(c.planPay)})</td><td class="n">${c.saved !== null && c.saved !== undefined ? money(c.saved) : ''} (${money(c.planSaved)})</td><td class="n">${c.ef !== null && c.ef !== undefined ? money(c.ef) : ''}</td><td class="wrap">${esc(c.note || '')}</td><td><button class="btn sec small" type="button" data-cidel="${c.id}">Delete</button></td></tr>`).join('') : '<tr><td colspan="11" class="muted">No check-ins yet.</td></tr>';
+  document.querySelectorAll('[data-cidel]').forEach(b => b.addEventListener('click', () => { if (!confirm('Delete this check-in? Balances it logged stay on the Accounts page.')) return; RS.checkins = (RS.checkins || []).filter(c => c.id !== b.dataset.cidel); retSave(); retCheckin(retA()); }));
+  mkChart('cCi', { type:'line', data:{ labels:L.map(c => fmtDate(c.date)), datasets:[
+    { label:'Savings at the check-in', data:L.map(c => Math.round(c.total)), borderColor:css('--ledger'), backgroundColor:css('--ledger'), pointRadius:5, borderWidth:3 },
+    { label:'Target path on that date', data:L.map(c => Math.round(c.target)), borderColor:css('--card'), backgroundColor:css('--card'), borderDash:[6,4], pointRadius:3, borderWidth:2 }]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{label:c => ' ' + c.dataset.label + ': ' + money(c.parsed.y)}}}, scales:{ y:{ ticks:{ callback:v => rK(v) }, grid:{ color:css('--rule') } }, x:{ grid:{ display:false } } } } });
+}
+$('ciDate').addEventListener('change', () => retCheckin(retA()));
+$('ciSave').addEventListener('click', () => {
+  const date = $('ciDate').value; if (!date){ $('ciMsg').textContent = 'Pick the date.'; return; }
+  const A0 = retA(), st = retCiStatus(), plan = retPlanNow(A0, date), from = st.last ? st.last.date : rAddMonths(date, -3), now = Date.now();
+  RS.accounts = retAccts(); const snaps = retSnaps().slice();
+  document.querySelectorAll('[data-cib]').forEach(i => { const v = parseFloat(i.value); if (i.value !== '' && v >= 0) snaps.push({ id:uid(), acct:i.dataset.cib, date, bal:Math.round(v * 100) / 100, note:'Quarterly check-in', created:now }); });
+  RS.snapshots = snaps;
+  const num = id => { const v = $(id).value.trim(); return v === '' ? null : +v; };
+  const rate = num('ciRate'); if (rate !== null && rate !== A0.deferNow) RS.overrides.deferNow = rate;
+  if ($('ciPromo').value === 'yes'){ const py = num('ciPromoYear'); if (!py){ $('ciMsg').textContent = 'Enter the year the promotion happened.'; return; } RS.overrides.promoEarly = py; RS.overrides.promoLate = py; }
+  if ($('ciRoth').value !== A0.rothInvested) RS.overrides.rothInvested = $('ciRoth').value;
+  const sp = num('ciSpend'); if (sp !== null && sp !== A0.spend) RS.overrides.spend = sp;
+  RS.scenario = $('ciScen').value;
+  const A = retA(), R = retYear(A), sc = retScenario(A, R, RS.path), total = retTotalAt(date), target = retPathAt(sc.target, date);
+  RS.checkins = (RS.checkins || []).concat([{ id:uid(), date, total, target, proj:retPathAt(sc.sim, date), onTrack:target ? total / target : 1, funded:sc.funded, need:sc.need, scenario:RS.scenario, label:retLabel(RS.scenario) + ' (' + R + ')', R,
+    rate:A.deferNow, planRate:plan.rate, pay:num('ciPay'), planPay:plan.pay, saved:num('ciSaved'), planSaved:retPlanSaved(A0, from, date), ef:num('ciEF'), efTarget:+date.slice(0, 4) >= 2030 ? A.efFull : A.efStarter, roth:$('ciRoth').value, note:$('ciNote').value.trim(), created:now }]);
+  ['ciDate','ciRate','ciPay','ciSaved','ciEF','ciSpend','ciNote','ciPromoYear'].forEach(id => $(id).value = ''); $('ciPromo').value = 'no'; $('ciMsg').textContent = '';
+  retSave(); renderRetire(); toast('Check-in saved'); window.scrollTo({ top:0, behavior:'smooth' });
+});
+window.__ret = { retA, retScenario, retSchedule, retSim, retNeed, retYears, retTotalAt, RS };
 
 /* ---------- events ---------- */
 document.querySelectorAll('#rScen button').forEach(b => b.addEventListener('click', () => { RS.scenario = b.dataset.s; retSave(); renderRetire(); }));
