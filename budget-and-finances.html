@@ -266,7 +266,7 @@ details.rcpt[open]>summary h2::before{transform:rotate(90deg)}
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 20</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 21</span>
   <div class="sp"></div>
   <button id="signOutBtn" type="button">Sign out</button>
 </header>
@@ -2300,7 +2300,7 @@ const RET_DEFS = [
   { g:'People and dates', k:'scenD', label:'Scenario D retirement year', def:2058, kind:'year', info:'Both retire when K reaches Medicare at 65 (J is 70).' },
   { g:'People and dates', k:'horizon', label:'Plan until K is this age', def:95, kind:'age', info:'Savings must last until this age. A long horizon is the cautious choice.' },
 
-  { g:'K’s pay and the progressive 401(k)', k:'salary', label:'K’s gross pay in 2026', def:73800, kind:'money', info:'Yearly pay before taxes, worked out from the 401(k) screen (2026 contributions at 6%).' },
+  { g:'K’s pay and the progressive 401(k)', k:'salary', label:'K’s gross pay in 2026', def:77900, kind:'money', info:'Current yearly pay before taxes, as of October 2026. The first modeled raise and step-up are in May 2027.' },
   { g:'K’s pay and the progressive 401(k)', k:'deferNow', label:'K’s 401(k) rate today', def:6, kind:'pct', info:'Before-tax contribution as a percent of pay, from the 401(k) screen. Update it here each time it changes.' },
   { g:'K’s pay and the progressive 401(k)', k:'raiseMonth', label:'Month raises take effect', def:5, kind:'num', info:'1 is January and 5 is May. Yearly raises, the promotion, and each 401(k) step-up take effect this month.' },
   { g:'K’s pay and the progressive 401(k)', k:'raiseLow', label:'Yearly raise, low end', def:3, kind:'pct', info:'The plan: K gets a 3% to 4% raise most years.' },
@@ -2330,6 +2330,7 @@ const RET_DEFS = [
   { g:'Returns and inflation', k:'retPre', label:'Yearly return before retirement', def:7, kind:'pct', info:'Long-run assumption for a stock-heavy mix such as K’s aggressive 85/15 401(k). Not a guarantee.' },
   { g:'Returns and inflation', k:'retPost', label:'Yearly return during retirement', def:5.5, kind:'pct', info:'A more balanced mix once withdrawals begin.' },
   { g:'Returns and inflation', k:'inflation', label:'Yearly inflation', def:2.5, kind:'pct', info:'Used to turn future amounts back into today’s dollars.' },
+  { g:'Returns and inflation', k:'retSpread', label:'Range above and below that return', def:2, kind:'pts', info:'For the minimum and maximum lines on the projection chart. Minimum: the Slow 401(k) path at the return before retirement minus these points (5% by default). Maximum: the Fast path at that return plus these points (9%).' },
   { g:'Returns and inflation', k:'cashRate', label:'Cash rate', def:3.5, kind:'pct', info:'What uninvested money in a money market fund is assumed to earn.' },
 
   { g:'Retirement spending and income', k:'spend', label:'Monthly spending target', def:6000, kind:'money', info:'PLACEHOLDER. Spending in today’s dollars once retired, before taxes, health insurance, and any mortgage payment. The Retirement 101 deck offers $5,000, $6,000, or the provider’s $6,578.' },
@@ -2358,6 +2359,7 @@ const RET_CALC_DEFS = [
   ['Target nest egg','What must be saved by the start of the retirement year, in today’s dollars, so that withdrawals cover the spending target, health insurance before Medicare, and any remaining mortgage payments, minus Social Security, every year until K reaches the planning age. Money left invested is assumed to earn the return during retirement.'],
   ['Projected','Every account grown month by month to the start of the retirement year: the 401(k) with the progressive rate and the match, the Roth IRA deposits, the freed monthly amount, and added accounts, converted to today’s dollars.'],
   ['Funded','Projected divided by the target nest egg.'],
+  ['Minimum and maximum','Two more projections drawn around Projected on the chart. Minimum combines the Slow 401(k) path with a return before retirement lower by the range on Assumptions; Maximum combines the Fast path with a return higher by the same range. They show how far results can swing, not a guarantee of either bound.'],
   ['Monthly needed','The monthly amount, starting when the freed amount starts, that would bring the projection exactly to the target nest egg. Compare it with the planned freed amount.'],
   ['Target path','The year-end balances that would reach the target nest egg exactly, used for the five-year checkpoints.'],
   ['Bridge years','The years from retirement until K turns 59½, when every retirement account opens without the 10% penalty. The bridge amount is the part of the target nest egg spent in those years.'],
@@ -2370,6 +2372,7 @@ const rNow = () => { const d = new Date(); return d.getFullYear() * 12 + d.getMo
 const rPct = (v, d=1) => (Math.round(v * 10**d) / 10**d).toLocaleString('en-US',{maximumFractionDigits:d}) + '%';
 const rMonthName = i => MONTHS[i % 12] + ' ' + Math.floor(i / 12);
 const rK = v => '$' + Math.round(v / 1000).toLocaleString('en-US') + 'k';
+function rHexA(c, a){ const m = /^#?([0-9a-f]{6})$/i.exec(String(c).trim()); if (!m) return c; const n = parseInt(m[1], 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
 function retA(){
   const A = {};
   for (const d of RET_DEFS){
@@ -2476,6 +2479,8 @@ function retScenario(A, R, kind){
   let needed = 0;
   if (run(0).years[R - 1].real < nd.need){ let lo = 0, hi = 50000; for (let i = 0; i < 40; i++){ const mid = (lo + hi) / 2; if (run(mid).years[R - 1].real >= nd.need) hi = mid; else lo = mid; } needed = hi; }
   const target = run(needed), mortBal = sim.mort.balBefore(R);
+  /* When the 401(k) alone overshoots the target, scale that path down so the target path still ends exactly at the target nest egg. */
+  if (needed < 1 && target.years[R - 1] && target.years[R - 1].real > nd.need){ const f = nd.need / target.years[R - 1].real; for (const y in target.years) target.years[y] = Object.assign({}, target.years[y], { real:target.years[y].real * f }); }
   let payExtra = 0; const xs = Math.max(rYM(A.mortExtraStart), rNow() + 1);
   if (mortBal > 1){ let lo = 0, hi = 20000; for (let i = 0; i < 40; i++){ const mid = (lo + hi) / 2; const mm = retMortgage(A, mid, xs, R * 12); if (mm.payoff !== null && mm.payoff < R * 12) hi = mid; else lo = mid; } payExtra = hi; }
   const end = sim.years[R - 1] || {};
@@ -2527,26 +2532,33 @@ function retOverview(A){
     rKpi(money(sc.have), 'Projected', cls, RS.path === 'exp' ? 'Expected 401(k) path' : (RS.path === 'slow' ? 'Slow 401(k) path' : 'Fast 401(k) path')) +
     rKpi(sc.needed < 1 ? 'Covered' : money(sc.needed), 'Monthly needed', sc.needed > sc.planned ? 'neg' : 'pos', 'Beyond the 401(k), from ' + rMonthName(rYM(A.freedStart))) +
     rKpi(money(sc.planned), 'Planned monthly', '', 'Freed debt payments, from ' + rMonthName(rYM(A.freedStart)));
-  const y0 = Math.floor(rNow() / 12), labels = [], pj = [], tg = [], ac = [];
+  const lowA = Object.assign({}, A, { retPre:A.retPre - A.retSpread }), highA = Object.assign({}, A, { retPre:A.retPre + A.retSpread });
+  const simLo = retSim(lowA, { kind:'slow', endYear:R - 1 }), simHi = retSim(highA, { kind:'fast', endYear:R - 1 });
+  const lo = simLo.years[R - 1] ? simLo.years[R - 1].real : 0, hi = simHi.years[R - 1] ? simHi.years[R - 1].real : 0;
+  const y0 = Math.floor(rNow() / 12), labels = [], pj = [], tg = [], ac = [], mn = [], mx = [];
   for (let y = y0; y <= R - 1; y++){
     labels.push(String(y)); pj.push(Math.round((sc.sim.years[y] || {}).real || 0)); tg.push(Math.round((sc.target.years[y] || {}).real || 0));
+    mn.push(Math.round((simLo.years[y] || {}).real || 0)); mx.push(Math.round((simHi.years[y] || {}).real || 0));
     const last = retSnaps().filter(s => s.date.slice(0,4) === String(y)).map(s => s.date).sort().pop();
     ac.push(last && y <= y0 ? Math.round(retTotalAt(last)) : null);
   }
   $('rChartTitle').textContent = `Projected savings versus the target path, ${retLabel(RS.scenario)} (${R})`;
   const ink = css('--ink'), rule = css('--rule');
+  const band = rHexA(css('--ledger'), 0.12);
   mkChart('cRet', { type:'line', data:{ labels, datasets:[
+    { label:'Maximum (Fast path, ' + rPct(highA.retPre) + ' return)', data:mx, borderColor:css('--in'), backgroundColor:css('--in'), borderWidth:1.5, borderDash:[2,3], pointRadius:0, fill:false },
+    { label:'Minimum (Slow path, ' + rPct(lowA.retPre) + ' return)', data:mn, borderColor:css('--out'), backgroundColor:band, borderWidth:1.5, borderDash:[2,3], pointRadius:0, fill:'-1' },
     { label:'Projected', data:pj, borderColor:css('--ledger'), backgroundColor:css('--ledger'), pointRadius:0, borderWidth:3 },
     { label:'Target path', data:tg, borderColor:css('--card'), backgroundColor:css('--card'), borderDash:[6,4], pointRadius:0, borderWidth:2 },
     { label:'Actual', data:ac, borderColor:ink, backgroundColor:ink, pointRadius:5, showLine:false }]},
     options:{ responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false}, plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{label:c => ' ' + c.dataset.label + ': ' + money(c.parsed.y)}}}, scales:{ y:{ ticks:{ callback:v => rK(v) }, grid:{ color:rule } }, x:{ grid:{ display:false } } } } });
-  $('rChartNote').textContent = 'Year-end balances in today’s dollars. Projected follows the current plan, the target path reaches the target nest egg exactly, and the dots are logged actual totals.';
+  $('rChartNote').textContent = `Year-end balances in today’s dollars. Projected follows the current plan; the shaded band runs from the minimum (Slow 401(k) path at ${rPct(lowA.retPre)}) to the maximum (Fast path at ${rPct(highA.retPre)}). The target path reaches the target nest egg exactly, and the dots are logged actual totals. The range can be changed on Assumptions.`;
   const word = f >= 1 ? 'On track' : (f >= 0.85 ? 'Close' : 'Behind');
   const gap = sc.need - sc.have;
   $('rRead').className = 'panel rread' + (f >= 1 ? '' : (f >= 0.85 ? ' warn' : ' bad'));
   $('rRead').innerHTML = `<h3 style="margin-top:0">${word} for ${retLabel(RS.scenario)}</h3>` +
-    `<p>The plan projects ${money(sc.have)} by the start of ${R} against a target of ${money(sc.need)}, which is ${rPct(f * 100, 0)} funded${gap > 0 ? `, a gap of ${money(gap)}` : ''}. ` +
-    (sc.needed > sc.planned ? `Closing it takes about ${money(sc.needed)} a month from ${rMonthName(rYM(A.freedStart))}, ${money(sc.needed - sc.planned)} more than the ${money(sc.planned)} planned.` : `The planned ${money(sc.planned)} a month is enough; about ${money(sc.needed)} a month would reach the target.`) + `</p>` +
+    `<p>The plan projects ${money(sc.have)} by the start of ${R} against a target of ${money(sc.need)}, which is ${rPct(f * 100, 0)} funded${gap > 0 ? `, a gap of ${money(gap)}` : ''}. The range runs from ${money(lo)} (${rPct(lo / sc.need * 100, 0)} funded) at the minimum to ${money(hi)} (${rPct(hi / sc.need * 100, 0)}) at the maximum. ` +
+    (sc.needed > sc.planned ? `Closing it takes about ${money(sc.needed)} a month from ${rMonthName(rYM(A.freedStart))}, ${money(sc.needed - sc.planned)} more than the ${money(sc.planned)} planned.` : (sc.needed < 1 ? `The 401(k) and Roth IRA alone reach the target, so the planned ${money(sc.planned)} a month is extra cushion.` : `The planned ${money(sc.planned)} a month is enough; about ${money(sc.needed)} a month would reach the target.`)) + `</p>` +
     `<p>This uses a spending target of ${money(A.spend)} a month, ${money(A.health)} per person a month of health insurance before Medicare, Social Security of ${money(A.kSS)} for K${A.jSS ? ' and ' + money(A.jSS) + ' for J' : ' and none yet for J'}, and the ${({exp:'Expected',slow:'Slow',fast:'Fast'})[RS.path]} 401(k) path. ${A.rothInvested === 'Yes' ? '' : 'The Roth IRA is still treated as uninvested cash. '}Change any of these on the Assumptions and definitions page.</p>`;
 }
 function retK401(A){
@@ -2581,7 +2593,7 @@ function retScen(A){
   $('sDetTitle').textContent = `Details for ${retLabel(RS.scenario)}: retire in ${R}`;
   const card = (t, html) => `<div class="panel"><h3 style="margin-top:0">${t}</h3>${html}</div>`;
   $('sDetail').innerHTML =
-    card('Target and gap', `<p>Target nest egg ${money(r.need)}; projected ${money(r.have)} (${rPct(r.funded * 100, 0)} funded). ${r.needed > r.planned ? `Reaching it takes about <b>${money(r.needed)}</b> a month from ${rMonthName(rYM(A.freedStart))}, versus ${money(r.planned)} planned.` : `The planned ${money(r.planned)} a month covers it; about ${money(r.needed)} would be enough.`}</p>`) +
+    card('Target and gap', `<p>Target nest egg ${money(r.need)}; projected ${money(r.have)} (${rPct(r.funded * 100, 0)} funded). ${r.needed > r.planned ? `Reaching it takes about <b>${money(r.needed)}</b> a month from ${rMonthName(rYM(A.freedStart))}, versus ${money(r.planned)} planned.` : (r.needed < 1 ? `The 401(k) and Roth IRA alone reach it, so the planned ${money(r.planned)} a month is extra cushion.` : `The planned ${money(r.planned)} a month covers it; about ${money(r.needed)} would be enough.`)}</p>`) +
     card('Bridge years', bridgeYears ? `<p>${bridgeYears} years from ${R} until K turns 59½ around ${k59 - 1}. Those years use about <b>${money(r.bridge)}</b> of the target. Projected savings outside the 401(k) at retirement: ${money(r.outsideAtR)}. ${r.kAge >= 55 ? 'Because K is 55 or older in ' + R + ', the rule of 55 also opens the 401(k) of the employer K leaves, if K is still there in or after that year.' : 'K is under 55, so the 401(k) stays locked until 59½ apart from advanced options such as 72(t).'}</p>` : `<p>No bridge years: K is 59½ or older in ${R}, so every account is open without penalty.</p>`) +
     card('Health insurance before Medicare', r.hK + r.hJ ? `<p>K ${r.hK} years and J ${r.hJ} years without Medicare, about <b>${money(r.health)}</b> in total at ${money(A.health)} per person a month.</p>` : '<p>Both are 65 or older at retirement, so Medicare covers both from the start.</p>') +
     card('Mortgage and Social Security', `<p>${r.mortBal > 1 ? `About <b>${money(r.mortBal)}</b> is still owed at the start of ${R}${r.mortPayoff ? ', paid off in ' + rMonthName(r.mortPayoff) : ''}. Paying it off before retiring takes about ${money(r.payExtra)} a month of extra principal from ${rMonthName(Math.max(rYM(A.mortExtraStart), rNow() + 1))}.` : `The mortgage is paid off before ${R}${r.mortPayoff ? ' (' + rMonthName(r.mortPayoff) + ')' : ''}.`} K’s Social Security starts in ${kss} at ${A.kSSAge} (${money(A.kSS * ssFactor(A.kSSAge))} a month)${A.jSS ? `; J’s in ${jss} at ${A.jSSAge} (${money(A.jSS * ssFactor(A.jSSAge))} a month).` : '; J’s is not set yet.'}</p>`);
