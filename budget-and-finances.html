@@ -211,6 +211,10 @@ nav.rtabs button[aria-selected="true"]{background:var(--btnbg);border-color:var(
 #upPanel{margin-top:16px}
 #upPanel details *,#upPanel details *::before,#upPanel details *::after{box-sizing:border-box}
 #upPanel .up-amt{width:110px;padding:5px 8px;border:1px solid var(--rule);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit;text-align:right;font-variant-numeric:tabular-nums}
+#upPanel .up-date{width:142px;padding:4px 6px;border:1px solid var(--rule);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit;font-size:.9rem}
+#upPanel .up-date.set{border-color:var(--card);background:color-mix(in srgb,var(--card) 14%,var(--surface));font-weight:700}
+#upPanel > .tbl table{min-width:900px}#upPanel > .tbl th:first-child,#upPanel td.up-dcell{width:160px;min-width:160px}#upBody td{white-space:normal}#upPanel > .tbl th:nth-child(2){width:22%}#upPanel > .tbl th:nth-child(6){width:20%}#upBody td:nth-child(5) .tag{display:block;width:max-content;margin-bottom:2px}#upBody td:last-child .btn{white-space:nowrap}
+#upPanel .up-wd{display:block;font-size:.8rem;color:var(--muted);margin-bottom:2px}
 #upPanel .up-amt.set{border-color:var(--card);background:color-mix(in srgb,var(--card) 14%,var(--surface));font-weight:700}
 #upBody tr.upchg td,#upBody tr.upchg td:first-child{background:color-mix(in srgb,var(--card) 10%,var(--surface))}
 #upBody tr.upinc td,#upBody tr.upinc td:first-child{background:color-mix(in srgb,var(--in) 11%,var(--surface))}
@@ -287,7 +291,7 @@ details.rcpt[open]>summary h2::before{transform:rotate(90deg)}
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 24</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 25</span>
   <div class="sp"></div>
   <button id="signOutBtn" type="button">Sign out</button>
 </header>
@@ -339,7 +343,7 @@ details.rcpt[open]>summary h2::before{transform:rotate(90deg)}
     <h2 style="margin-top:0">Coming up in the next 14 days: income and bills</h2>
     <p class="note" style="margin-top:-4px" id="upSum"></p>
     <div class="tbl"><table><thead><tr><th>Expected</th><th>Item</th><th class="n">Typical</th><th class="n">Amount</th><th>Category</th><th>Source</th><th></th></tr></thead><tbody id="upBody"></tbody></table></div>
-    <p class="note" style="margin:8px 0 0">Recurring bills are found automatically. Income follows the known pay schedules (K every other Thursday; J on the 15th and the last day of each month; child support every other Monday or Tuesday), and any other regular income is found automatically. To use a different amount for one payment, type it in the Amount box; it applies to that payment only. Changed amounts are highlighted, and “Use typical” goes back.</p>
+    <p class="note" style="margin:8px 0 0">Recurring bills are found automatically. Income follows the known pay schedules (K every other Thursday; J on the 15th and the last day of each month; child support every other Monday or Tuesday), and any other regular income is found automatically. To change one payment, edit its date or type a different amount; the change applies to that payment only. Changed rows are highlighted, and “Undo changes” goes back to the expected date and amount.</p>
     <details class="more up-add"><summary>Add something that’s coming up</summary>
       <div class="row">
         <div><label class="f" for="upType">Type</label><select class="t" id="upType"><option value="bill">Bill or payment</option><option value="income">Income</option></select></div>
@@ -1375,12 +1379,13 @@ $('rxSave').addEventListener('click', async () => {
 
 /* ================= Coming up in the next 14 days (Version 23) ================= */
 /* Stored in households/main/meta/upcoming: items (things added by hand) and overrides (amount for one specific payment). */
-const UP = { items:[], overrides:{} };
-async function upLoad(){ try { const d = await getDoc(ref('meta','upcoming')); if (d.exists()){ const v = d.data(); UP.items = v.items || []; UP.overrides = v.overrides || {}; } } catch (e) {} }
+const UP = { items:[], overrides:{}, dates:{} };   // dates: a moved date for one specific payment (Version 25)
+async function upLoad(){ try { const d = await getDoc(ref('meta','upcoming')); if (d.exists()){ const v = d.data(); UP.items = v.items || []; UP.dates = v.dates || {}; UP.overrides = v.overrides || {}; } } catch (e) {} }
 async function upSave(){
   const keep = addMonths(ymKey(new Date().getFullYear(), new Date().getMonth() + 1), -2);
-  for (const k of Object.keys(UP.overrides)){ const m = /(\d{4}-\d{2})(-\d{2})?$/.exec(k); if (m && m[1] < keep) delete UP.overrides[k]; }   // old one-time amounts expire
-  try { await setDoc(ref('meta','upcoming'), JSON.parse(JSON.stringify({ items:UP.items, overrides:UP.overrides, updated:Date.now() }))); } catch (err) { toast('Could not save: ' + (err.code || err.message)); }
+  for (const k of Object.keys(UP.overrides)){ const m = /(\d{4}-\d{2})(-\d{2})?$/.exec(k); if (m && m[1] < keep) delete UP.overrides[k]; }
+  for (const k of Object.keys(UP.dates)){ if (UP.dates[k] < keep + '-01') delete UP.dates[k]; }   // old one-time amounts expire
+  try { await setDoc(ref('meta','upcoming'), JSON.parse(JSON.stringify({ items:UP.items, overrides:UP.overrides, dates:UP.dates, updated:Date.now() }))); } catch (err) { toast('Could not save: ' + (err.code || err.message)); }
 }
 const upISO = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 const upDay = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); };
@@ -1389,12 +1394,14 @@ function upList(days, opt){
   const withIncome = !opt || opt.income !== false;
   const now = new Date(), t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()), end = new Date(t0.getTime() + days * 864e5), grace = new Date(t0.getTime() - 7 * 864e5);
   const out = [];
-  for (const b of detectBills()){ if (b.next < t0 || b.next > end) continue;
-    const key = 'r|' + normDesc(b.desc) + '|' + b.cat + '|' + ym(upISO(b.next)), o = UP.overrides[key];
-    out.push({ key, date:b.next, desc:b.desc, cat:b.cat, typical:b.amt, amt:o !== undefined ? +o : b.amt, changed:o !== undefined, source:'Recurring', last:b.last, inc:false }); }
-  if (withIncome) for (const g of detectIncome()) for (const d of g.next){ if (d < new Date(t0.getTime() - (g.alt ? 864e5 : 0)) || d > end) continue;
-    const key = 'i|' + normDesc(g.desc) + '|' + g.cat + '|' + upISO(d), o = UP.overrides[key];
-    out.push({ key, date:d, desc:g.desc, cat:g.cat, typical:g.amt, amt:o !== undefined ? +o : g.amt, changed:o !== undefined, source:'Recurring', last:g.last, inc:true, kind:g.kind, alt:g.alt, rule:g.rule }); }
+  for (const b of detectBills()){
+    const key = 'r|' + normDesc(b.desc) + '|' + b.cat + '|' + ym(upISO(b.next)), o = UP.overrides[key], md = UP.dates[key], date = md ? upDay(md) : b.next;
+    if (date < (md ? grace : t0) || date > end) continue;
+    out.push({ key, date, orig:b.next, moved:!!md, desc:b.desc, cat:b.cat, typical:b.amt, amt:o !== undefined ? +o : b.amt, changed:o !== undefined, source:'Recurring', last:b.last, inc:false, past:date < t0 }); }
+  if (withIncome) for (const g of detectIncome()) for (const d of g.next){
+    const key = 'i|' + normDesc(g.desc) + '|' + g.cat + '|' + upISO(d), o = UP.overrides[key], md = UP.dates[key], date = md ? upDay(md) : d;
+    if (date < (md ? grace : new Date(t0.getTime() - (g.alt ? 864e5 : 0))) || date > end) continue;
+    out.push({ key, date, orig:d, moved:!!md, desc:g.desc, cat:g.cat, typical:g.amt, amt:o !== undefined ? +o : g.amt, changed:o !== undefined, source:'Recurring', last:g.last, inc:true, kind:g.kind, alt:g.alt && !md, rule:g.rule, past:date < t0 }); }
   for (const it of UP.items){ const d = upDay(it.date), inc = it.type === 'income'; if (d < grace || d > end || (inc && !withIncome)) continue;
     out.push({ key:'m|' + it.id, id:it.id, date:d, desc:it.desc, cat:it.cat || '', typical:null, amt:+it.amount, changed:false, source:'Added by you', last:'', account:it.account || '', past:d < t0, inc }); }
   return out.sort((a, b) => a.date - b.date || a.desc.localeCompare(b.desc));
@@ -1466,21 +1473,30 @@ function detectIncome(){
 }
 const upFmt = d => d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
 function renderUpcoming(){
-  const rows = upList(14), bills = rows.filter(r => !r.inc), incs = rows.filter(r => r.inc), total = bills.reduce((s, r) => s + r.amt, 0), itot = incs.reduce((s, r) => s + r.amt, 0), nChanged = rows.filter(r => r.changed).length, nAdded = rows.filter(r => r.source !== 'Recurring').length;
-  $('upSum').innerHTML = rows.length ? `<b class="pos">${money(itot, true)}</b> of income expected (${incs.length} deposit${incs.length === 1 ? '' : 's'}) and <b>${money(total, true)}</b> of bills (${bills.length} payment${bills.length === 1 ? '' : 's'}), for a net of <b class="${itot - total >= 0 ? 'pos' : 'neg'}">${itot - total >= 0 ? '+' : '−'}${money(Math.abs(itot - total), true)}</b>${nAdded ? `; ${nAdded} added by you` : ''}${nChanged ? `; ${nChanged} with an amount you changed` : ''}.` : 'Nothing expected in the next 14 days.';
-  $('upBody').innerHTML = rows.length ? rows.map(r => `<tr class="${r.inc ? 'upinc' : ''}${r.changed ? ' upchg' : ''}${r.source !== 'Recurring' ? ' upadd' : ''}${r.past ? ' uppast' : ''}"><td>${r.alt ? upFmt(r.date) + '<br>or ' + upFmt(new Date(r.date.getTime() + 864e5)) : upFmt(r.date)}${r.past ? '<br><span class="tag bad">Date passed</span>' : ''}</td><td class="wrap">${esc(r.desc)}${r.account ? `<br><span class="note">${esc(r.account)}</span>` : ''}</td><td class="n">${r.typical !== null ? (r.inc ? '+' : '') + money(r.typical, true) : ''}</td><td class="n"><input class="up-amt${r.changed ? ' set' : ''}" type="number" step="0.01" inputmode="decimal" data-upk="${esc(r.key)}" value="${r.changed || r.source !== 'Recurring' ? (+r.amt).toFixed(2) : ''}" placeholder="${(+r.amt).toFixed(2)}" aria-label="Amount for ${esc(r.desc)}"></td><td>${r.inc ? '<span class="tag ok">Income</span> ' : ''}${esc(r.cat)}</td><td>${r.source === 'Recurring' ? (r.inc ? (r.rule ? esc(r.rule) + '<br>' : '') + 'Last received ' : 'Last paid ') + fmtDate(r.last) : '<span class="tag">Added by you</span>'}</td><td>${r.id ? `<button class="btn sec small" type="button" data-updel="${r.id}">Remove</button>` : (r.changed ? `<button class="btn sec small" type="button" data-upreset="${esc(r.key)}">Use typical</button>` : '')}</td></tr>`).join('')
+  const rows = upList(14), bills = rows.filter(r => !r.inc), incs = rows.filter(r => r.inc), total = bills.reduce((s, r) => s + r.amt, 0), itot = incs.reduce((s, r) => s + r.amt, 0), nChanged = rows.filter(r => r.changed).length, nMoved = rows.filter(r => r.moved).length, nAdded = rows.filter(r => r.source !== 'Recurring').length;
+  $('upSum').innerHTML = rows.length ? `<b class="pos">${money(itot, true)}</b> of income expected (${incs.length} deposit${incs.length === 1 ? '' : 's'}) and <b>${money(total, true)}</b> of bills (${bills.length} payment${bills.length === 1 ? '' : 's'}), for a net of <b class="${itot - total >= 0 ? 'pos' : 'neg'}">${itot - total >= 0 ? '+' : '−'}${money(Math.abs(itot - total), true)}</b>${nAdded ? `; ${nAdded} added by you` : ''}${nChanged ? `; ${nChanged} with an amount you changed` : ''}${nMoved ? `; ${nMoved} with a date you changed` : ''}.` : 'Nothing expected in the next 14 days.';
+  $('upBody').innerHTML = rows.length ? rows.map(r => `<tr class="${r.inc ? 'upinc' : ''}${r.changed || r.moved ? ' upchg' : ''}${r.source !== 'Recurring' ? ' upadd' : ''}${r.past ? ' uppast' : ''}"><td class="up-dcell"><span class="up-wd">${r.date.toLocaleDateString('en-US', { weekday:'short' })}${r.alt ? ' or ' + new Date(r.date.getTime() + 864e5).toLocaleDateString('en-US', { weekday:'short' }) : ''}</span><input class="up-date${r.moved ? ' set' : ''}" type="date" data-upd="${esc(r.key)}" value="${upISO(r.date)}" aria-label="Date for ${esc(r.desc)}">${r.moved ? `<br><span class="note">Moved from ${upFmt(r.orig)}</span>` : ''}${r.past ? '<br><span class="tag bad">Date passed</span>' : ''}</td><td class="wrap">${esc(r.desc)}${r.account ? `<br><span class="note">${esc(r.account)}</span>` : ''}</td><td class="n">${r.typical !== null ? (r.inc ? '+' : '') + money(r.typical, true) : ''}</td><td class="n"><input class="up-amt${r.changed ? ' set' : ''}" type="number" step="0.01" inputmode="decimal" data-upk="${esc(r.key)}" value="${r.changed || r.source !== 'Recurring' ? (+r.amt).toFixed(2) : ''}" placeholder="${(+r.amt).toFixed(2)}" aria-label="Amount for ${esc(r.desc)}"></td><td>${r.inc ? '<span class="tag ok">Income</span> ' : ''}${esc(r.cat)}</td><td>${r.source === 'Recurring' ? (r.inc ? (r.rule ? esc(r.rule) + '<br>' : '') + 'Last received ' : 'Last paid ') + fmtDate(r.last) : '<span class="tag">Added by you</span>'}</td><td>${r.id ? `<button class="btn sec small" type="button" data-updel="${r.id}">Remove</button>` : (r.changed || r.moved ? `<button class="btn sec small" type="button" data-upreset="${esc(r.key)}">Undo changes</button>` : '')}</td></tr>`).join('')
     + `<tr class="tot"><td></td><td>Income expected</td><td></td><td class="n pos">+${money(itot, true)}</td><td></td><td></td><td></td></tr>`
     + `<tr class="tot"><td></td><td>Bills expected</td><td></td><td class="n">${money(total, true)}</td><td></td><td></td><td></td></tr>`
     + `<tr class="tot"><td></td><td>Net for the 14 days</td><td></td><td class="n ${itot - total >= 0 ? 'pos' : 'neg'}">${itot - total >= 0 ? '+' : '−'}${money(Math.abs(itot - total), true)}</td><td></td><td></td><td></td></tr>`
     : '<tr><td colspan="7" class="muted">Nothing expected in the next 14 days.</td></tr>';
   const later = UP.items.filter(it => upDay(it.date) > new Date(Date.now() + 14 * 864e5)).sort((a, b) => a.date < b.date ? -1 : 1);
-  $('upLater').innerHTML = later.length ? '<h4>Added for later: each moves into the list above once it is 14 days away</h4><div class="tbl"><table><tbody>' + later.map(it => `<tr><td>${fmtDate(it.date)}</td><td class="wrap">${esc(it.desc)}${it.type === 'income' ? ' <span class="tag ok">Income</span>' : ''}</td><td class="n">${it.type === 'income' ? '+' : ''}${money(+it.amount, true)}</td><td>${esc(it.cat || '')}</td><td><button class="btn sec small" type="button" data-updel="${it.id}">Remove</button></td></tr>`).join('') + '</tbody></table></div>' : '';
+  const movedOut = upList(75).filter(r => r.moved && r.date > new Date(Date.now() + 14 * 864e5));
+  $('upLater').innerHTML = (movedOut.length ? '<h4>Moved past the next 14 days</h4><div class="tbl"><table><tbody>' + movedOut.map(r => `<tr><td>${fmtDate(upISO(r.date))}<br><span class="note">from ${upFmt(r.orig)}</span></td><td class="wrap">${esc(r.desc)}</td><td class="n">${r.inc ? '+' : ''}${money(r.amt, true)}</td><td>${esc(r.cat)}</td><td><button class="btn sec small" type="button" data-upreset="${esc(r.key)}">Undo changes</button></td></tr>`).join('') + '</tbody></table></div>' : '') + (later.length ? '<h4>Added for later: each moves into the list above once it is 14 days away</h4><div class="tbl"><table><tbody>' + later.map(it => `<tr><td>${fmtDate(it.date)}</td><td class="wrap">${esc(it.desc)}${it.type === 'income' ? ' <span class="tag ok">Income</span>' : ''}</td><td class="n">${it.type === 'income' ? '+' : ''}${money(+it.amount, true)}</td><td>${esc(it.cat || '')}</td><td><button class="btn sec small" type="button" data-updel="${it.id}">Remove</button></td></tr>`).join('') + '</tbody></table></div>' : '');
+  if (movedOut.length) $('upPanel').querySelector('details.up-add').open = true;
   const isInc = $('upType').value === 'income', cats = S.config.categories.filter(c => isInc ? c.type === 'Income' : (c.type === 'Expense' || c.type === 'Savings' || c.type === 'Transfer' || c.name === 'Card Payment')).map(c => c.name).sort((a, b) => a.localeCompare(b));
   const keepC = $('upCat').value; $('upCat').innerHTML = opts(cats, 'Choose a category'); if (cats.includes(keepC)) $('upCat').value = keepC;
   const keepA = $('upAcct').value; $('upAcct').innerHTML = opts(S.config.accounts.map(a => a.name), 'Any account (optional)'); $('upAcct').value = keepA;
   if (!$('upDate').value) $('upDate').value = upISO(new Date(Date.now() + 7 * 864e5));
 }
 document.addEventListener('change', e => {
+  const dt = e.target.closest('[data-upd]');
+  if (dt){ const key = dt.dataset.upd, v = dt.value;
+    if (key.startsWith('m|')){ const it = UP.items.find(x => 'm|' + x.id === key); if (!it || !v){ renderUpcoming(); return; } it.date = v; }
+    else { const r = upList(60).find(x => x.key === key) || upList(14).find(x => x.key === key);
+      if (!v || (r && upISO(r.orig) === v)) delete UP.dates[key]; else UP.dates[key] = v; }
+    upSave(); renderUpcoming(); if (!$('tab-bills').classList.contains('hidden')) render.bills();
+    const far = v && upDay(v) > new Date(Date.now() + 14 * 864e5); toast(far ? 'Date saved; it leaves this list until it is 14 days away' : 'Date saved'); return; }
   const i = e.target.closest('[data-upk]'); if (!i) return;
   const key = i.dataset.upk, v = i.value.trim();
   if (key.startsWith('m|')){ const it = UP.items.find(x => 'm|' + x.id === key); if (!it) return; if (v === '' || isNaN(+v)){ toast('Enter an amount'); renderUpcoming(); return; } it.amount = Math.round(+v * 100) / 100; }
@@ -1492,7 +1508,7 @@ document.addEventListener('change', e => {
 document.addEventListener('click', e => {
   const del = e.target.closest('[data-updel]'), rs = e.target.closest('[data-upreset]');
   if (del){ if (!confirm('Remove this item?')) return; UP.items = UP.items.filter(x => x.id !== del.dataset.updel); upSave(); renderUpcoming(); }
-  if (rs){ delete UP.overrides[rs.dataset.upreset]; upSave(); renderUpcoming(); }
+  if (rs){ delete UP.overrides[rs.dataset.upreset]; delete UP.dates[rs.dataset.upreset]; upSave(); renderUpcoming(); }
 });
 $('upType').addEventListener('change', () => { $('upCat').value = ''; renderUpcoming(); });
 window.__up = { upList, detectIncome, incomeTx:() => S.tx.filter(t => typeOf(catUsed(t)) === 'Income' && t.date >= '2026-05-01').map(t => [t.date, catUsed(t), t.desc, t.amount, t.account]) };
