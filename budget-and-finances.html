@@ -208,6 +208,19 @@ nav.rtabs button[aria-selected="true"]{background:var(--btnbg);border-color:var(
 #recentBody tr.acolor.click:hover td{background:color-mix(in srgb,var(--ac) 26%,var(--surface))}
 .adot{display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--ac);margin-right:8px;vertical-align:-1px;box-shadow:0 0 0 1px color-mix(in srgb,var(--ac) 60%,var(--ink))}
 #sAcct input[type=color]{width:46px;height:32px;padding:2px;border:1px solid var(--rule);border-radius:6px;background:var(--surface);cursor:pointer}
+#upPanel{margin-top:16px}
+#upPanel details *,#upPanel details *::before,#upPanel details *::after{box-sizing:border-box}
+#upPanel .up-amt{width:110px;padding:5px 8px;border:1px solid var(--rule);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit;text-align:right;font-variant-numeric:tabular-nums}
+#upPanel .up-amt.set{border-color:var(--card);background:color-mix(in srgb,var(--card) 14%,var(--surface));font-weight:700}
+#upBody tr.upchg td,#upBody tr.upchg td:first-child{background:color-mix(in srgb,var(--card) 10%,var(--surface))}
+#upBody tr.upadd td,#upBody tr.upadd td:first-child{background:color-mix(in srgb,var(--ledger) 8%,var(--surface))}
+#upPanel .up-add{margin-top:12px}#upPanel .up-add .row{margin-top:8px;align-items:end}#upPanel .up-add .row>div{flex:0 1 160px;min-width:0}#upPanel .up-add .row>div.grow{flex:1 1 220px}
+#upPanel h4{margin:14px 0 6px;font-size:.95rem}
+@keyframes staleFlash{0%,100%{background:#E01B1B;color:#FFFFFF}50%{background:#FFC2C2;color:#7A0000}}
+#recentBody tr.stale td,#recentBody tr.stale td:first-child,#recentBody tr.stale.acolor td,#recentBody tr.stale.acolor td:first-child{animation:staleFlash 1.2s ease-in-out infinite;font-weight:700;font-style:normal}
+#recentBody tr.stale td:first-child{box-shadow:inset 5px 0 0 #8B0000}
+#recentBody tr.stale td .stale-tag{display:inline-block;margin-left:6px;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+@media (prefers-reduced-motion:reduce){#recentBody tr.stale td,#recentBody tr.stale td:first-child{animation:none;background:#E01B1B;color:#FFFFFF}}
 details.rcpt{margin-top:16px}
 details.rcpt *,details.rcpt *::before,details.rcpt *::after{box-sizing:border-box}
 details.rcpt>summary{cursor:pointer;list-style:none;display:flex;flex-direction:column;gap:2px}
@@ -272,7 +285,7 @@ details.rcpt[open]>summary h2::before{transform:rotate(90deg)}
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 22</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 23</span>
   <div class="sp"></div>
   <button id="signOutBtn" type="button">Sign out</button>
 </header>
@@ -320,6 +333,25 @@ details.rcpt[open]>summary h2::before{transform:rotate(90deg)}
       <div class="panel"><h3 style="margin-top:0">Money in and out, last six months</h3><div class="chart small"><canvas id="cHomeTrend"></canvas></div></div>
     </div>
   </div>
+  <div class="panel" id="upPanel">
+    <h2 style="margin-top:0">Coming up in the next 14 days</h2>
+    <p class="note" style="margin-top:-4px" id="upSum"></p>
+    <div class="tbl"><table><thead><tr><th>Expected</th><th>Bill</th><th class="n">Typical</th><th class="n">Amount</th><th>Category</th><th>Source</th><th></th></tr></thead><tbody id="upBody"></tbody></table></div>
+    <p class="note" style="margin:8px 0 0">Recurring bills are found automatically. To use a different amount for one payment, type it in the Amount box; it applies to that payment only. Changed amounts are highlighted, and “Use typical” goes back.</p>
+    <details class="more up-add"><summary>Add something that’s coming up</summary>
+      <div class="row">
+        <div><label class="f" for="upDate">Date</label><input class="t" id="upDate" type="date"></div>
+        <div class="grow"><label class="f" for="upDesc">What it is</label><input class="t" id="upDesc" placeholder="For example: Chase card payment"></div>
+        <div><label class="f" for="upAmt">Amount</label><input class="t" id="upAmt" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+        <div><label class="f" for="upCat">Category</label><select class="t" id="upCat"></select></div>
+        <div><label class="f" for="upAcct">Paid from</label><select class="t" id="upAcct"></select></div>
+        <div><button class="btn" type="button" id="upAdd">Add</button></div>
+      </div>
+      <div class="err" id="upErr" role="alert"></div>
+      <p class="note">It shows in the list above once it is 14 days away, and stays a week past its date until you remove it.</p>
+      <div id="upLater"></div>
+    </details>
+  </div>
   <details class="panel rcpt" id="rxPanel">
     <summary><h2>Itemize a receipt</h2><span class="note" id="rxSumNote">Split one store order across categories, with the tax spread by each category’s share of the subtotal.</span></summary>
     <div class="rcpt-head">
@@ -351,7 +383,7 @@ details.rcpt[open]>summary h2::before{transform:rotate(90deg)}
     </div>
     <div class="err" id="rxErr" role="alert"></div>
   </details>
-  <h3>Last two weeks</h3>
+  <h3>Last two weeks, plus anything still pending</h3>
   <p class="note" id="recentSum" style="margin:-4px 0 10px"></p>
   <div class="tbl"><table><thead><tr><th>Posted</th><th>Date</th><th>Account</th><th class="n">Amount</th><th>Description</th><th>Category</th></tr></thead><tbody id="recentBody"></tbody></table></div>
   <p class="note">Every transaction dated in the last 14 days. New entries start as pending; check the box once the transaction has posted at the bank. Select anywhere else on a row to fix or delete it.</p>
@@ -527,7 +559,8 @@ details.rcpt[open]>summary h2::before{transform:rotate(90deg)}
   <p class="note" style="margin-top:-6px">Recurring bills are found automatically: any bill, savings, or card payment that shows up in at least three of the last six months. Days and amounts are the typical values.</p>
   <div class="grid g3" id="blKpis"></div>
   <h3>Coming up in the next 14 days</h3>
-  <div class="tbl"><table><thead><tr><th>Expected</th><th>Bill</th><th class="n">Typical amount</th><th>Category</th><th>Last paid</th></tr></thead><tbody id="blNext"></tbody></table></div>
+  <p class="note" style="margin-top:-6px">Includes items added on Home and any one-time amounts typed there. To change them, use the Coming up panel on Home.</p>
+  <div class="tbl"><table><thead><tr><th>Expected</th><th>Bill</th><th class="n">Amount</th><th>Category</th><th>Last paid</th></tr></thead><tbody id="blNext"></tbody></table></div>
   <h3>Every recurring bill by day of the month</h3>
   <div class="tbl"><table><thead><tr><th class="n">Usual day</th><th>Bill</th><th class="n">Typical amount</th><th class="n">Range</th><th>Category</th><th>Seen</th><th>Last paid</th></tr></thead><tbody id="blAll"></tbody></table></div>
 </section>
@@ -977,6 +1010,7 @@ async function loadAll(){
   S.months = {}; snap.forEach(d => { S.months[d.id] = (d.data().rows || []); });
   rebuildTx();
   await retLoad();
+  await upLoad();
 }
 function rebuildTx(){
   S.tx = [];
@@ -1040,7 +1074,7 @@ function monthTotals(k){
   for (const c of S.config.categories){ if (c.type !== 'Expense') continue; const b = budgetFor(c.name, Y, M-1); if (c.group === 'Fixed' || c.group === 'Variable bill') out.billsB += b; else out.dayB += b; }
   return out;
 }
-function renderHome(){ renderReceipt();
+function renderHome(){ renderReceipt(); renderUpcoming();
   renderRecent();
   const now = new Date(), k = todayISO().slice(0,7), dim = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate(), elapsed = now.getDate() / dim;
   const h = now.getHours(); $('hGreet').textContent = (h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening') + '. Today is ' + now.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' }) + '.';
@@ -1134,10 +1168,12 @@ $('txForm').addEventListener('submit', async e => {
 function postBox(t){ return `<input type="checkbox" class="post" data-post="${t.id}" aria-label="Posted at the bank"${isPosted(t) ? ' checked' : ''}>`; }
 function renderRecent(){
   const d = new Date(); d.setDate(d.getDate() - 13); const from = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-  const rows = S.tx.filter(t => t.date >= from).sort((a,b) => a.date === b.date ? (b.created || 0) - (a.created || 0) : (a.date < b.date ? 1 : -1));
-  const pend = rows.filter(t => !isPosted(t));
-  $('recentSum').textContent = rows.length ? `${rows.length} transactions since ${fmtDate(from)}. ${pend.length ? pend.length + ' still pending, totaling ' + money(pend.reduce((s,t) => s + t.amount, 0), true) + '.' : 'Everything has posted.'}` : '';
-  $('recentBody').innerHTML = rows.length ? rows.map(t => { const ac = acctColor(t.account); return `<tr class="click${isPosted(t) ? '' : ' pending'}${ac ? ' acolor' : ''}"${ac ? ` style="--ac:${ac}"` : ''} data-id="${t.id}"><td>${postBox(t)}</td><td>${fmtDate(t.date)}</td><td>${esc(t.account)}</td><td class="n">${money(t.amount,true)}</td><td class="wrap">${esc(t.desc)}</td><td>${esc(catUsed(t))}</td></tr>`; }).join('') : '<tr><td colspan="6" class="muted">No transactions in the last two weeks.</td></tr>';
+  /* Rule (Version 23): pending entries stay on the list however old they are; pending entries more than two weeks old are flagged and shown first. */
+  const isStale = t => !isPosted(t) && t.date < from;
+  const rows = S.tx.filter(t => t.date >= from || !isPosted(t)).sort((a,b) => (isStale(b) - isStale(a)) || (a.date === b.date ? (b.created || 0) - (a.created || 0) : (a.date < b.date ? 1 : -1)));
+  const pend = rows.filter(t => !isPosted(t)), stale = rows.filter(isStale);
+  $('recentSum').innerHTML = rows.length ? `${rows.length - stale.length} transactions since ${fmtDate(from)}. ${pend.length ? pend.length + ' still pending, totaling ' + money(pend.reduce((s,t) => s + t.amount, 0), true) + '.' : 'Everything has posted.'}${stale.length ? ` <b class="neg">${stale.length} pending for more than two weeks, shown first in red: check whether ${stale.length === 1 ? 'it' : 'they'} posted.</b>` : ''}` : '';
+  $('recentBody').innerHTML = rows.length ? rows.map(t => { const ac = acctColor(t.account); return `<tr class="click${isPosted(t) ? '' : ' pending'}${isStale(t) ? ' stale' : ''}${ac ? ' acolor' : ''}"${ac ? ` style="--ac:${ac}"` : ''} data-id="${t.id}"><td>${postBox(t)}</td><td>${fmtDate(t.date)}${isStale(t) ? `<span class="stale-tag">${Math.floor((Date.now() - upDay(t.date)) / 864e5)} days</span>` : ''}</td><td>${esc(t.account)}</td><td class="n">${money(t.amount,true)}</td><td class="wrap">${esc(t.desc)}</td><td>${esc(catUsed(t))}</td></tr>`; }).join('') : '<tr><td colspan="6" class="muted">No transactions in the last two weeks.</td></tr>';
 }
 document.addEventListener('change', async e => {
   const cb = e.target.closest('input.post'); if (!cb) return;
@@ -1332,6 +1368,64 @@ $('rxSave').addEventListener('click', async () => {
     RCP.items = RCP.items.filter(x => !rows.slice(0, done).some(r => r.cat === x.cat)); rcKeep();
     $('rxErr').textContent = `Could not save${done ? ` after ${done} of ${rows.length}; the saved categories were removed from this receipt` : ''}: ` + (err.code || err.message); renderAll();
   }
+});
+
+/* ================= Coming up in the next 14 days (Version 23) ================= */
+/* Stored in households/main/meta/upcoming: items (things added by hand) and overrides (amount for one specific payment). */
+const UP = { items:[], overrides:{} };
+async function upLoad(){ try { const d = await getDoc(ref('meta','upcoming')); if (d.exists()){ const v = d.data(); UP.items = v.items || []; UP.overrides = v.overrides || {}; } } catch (e) {} }
+async function upSave(){
+  const keep = addMonths(ymKey(new Date().getFullYear(), new Date().getMonth() + 1), -2);
+  for (const k of Object.keys(UP.overrides)) if (k.slice(-7) < keep) delete UP.overrides[k];   // old one-time amounts expire
+  try { await setDoc(ref('meta','upcoming'), JSON.parse(JSON.stringify({ items:UP.items, overrides:UP.overrides, updated:Date.now() }))); } catch (err) { toast('Could not save: ' + (err.code || err.message)); }
+}
+const upISO = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+const upDay = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); };
+/* Every payment expected in the window: detected recurring bills plus items added by hand, with any one-time amount applied. */
+function upList(days){
+  const now = new Date(), t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()), end = new Date(t0.getTime() + days * 864e5), grace = new Date(t0.getTime() - 7 * 864e5);
+  const out = [];
+  for (const b of detectBills()){ if (b.next < t0 || b.next > end) continue;
+    const key = 'r|' + normDesc(b.desc) + '|' + b.cat + '|' + ym(upISO(b.next)), o = UP.overrides[key];
+    out.push({ key, date:b.next, desc:b.desc, cat:b.cat, typical:b.amt, amt:o !== undefined ? +o : b.amt, changed:o !== undefined, source:'Recurring', last:b.last }); }
+  for (const it of UP.items){ const d = upDay(it.date); if (d < grace || d > end) continue;
+    out.push({ key:'m|' + it.id, id:it.id, date:d, desc:it.desc, cat:it.cat || '', typical:null, amt:+it.amount, changed:false, source:'Added by you', last:'', account:it.account || '', past:d < t0 }); }
+  return out.sort((a, b) => a.date - b.date || a.desc.localeCompare(b.desc));
+}
+const upFmt = d => d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+function renderUpcoming(){
+  const rows = upList(14), total = rows.reduce((s, r) => s + r.amt, 0), nChanged = rows.filter(r => r.changed).length, nAdded = rows.filter(r => r.source !== 'Recurring').length;
+  $('upSum').textContent = rows.length ? `${rows.length} payment${rows.length === 1 ? '' : 's'} expected, ${money(total, true)} in all${nAdded ? `; ${nAdded} added by you` : ''}${nChanged ? `; ${nChanged} with an amount you changed` : ''}.` : 'Nothing expected in the next 14 days.';
+  $('upBody').innerHTML = rows.length ? rows.map(r => `<tr class="${r.changed ? 'upchg' : ''}${r.source !== 'Recurring' ? ' upadd' : ''}${r.past ? ' uppast' : ''}"><td>${upFmt(r.date)}${r.past ? '<br><span class="tag bad">Date passed</span>' : ''}</td><td class="wrap">${esc(r.desc)}${r.account ? `<br><span class="note">${esc(r.account)}</span>` : ''}</td><td class="n">${r.typical !== null ? money(r.typical, true) : ''}</td><td class="n"><input class="up-amt${r.changed ? ' set' : ''}" type="number" step="0.01" inputmode="decimal" data-upk="${esc(r.key)}" value="${r.changed || r.source !== 'Recurring' ? (+r.amt).toFixed(2) : ''}" placeholder="${(+r.amt).toFixed(2)}" aria-label="Amount for ${esc(r.desc)}"></td><td>${esc(r.cat)}</td><td>${r.source === 'Recurring' ? 'Last paid ' + fmtDate(r.last) : '<span class="tag">Added by you</span>'}</td><td>${r.id ? `<button class="btn sec small" type="button" data-updel="${r.id}">Remove</button>` : (r.changed ? `<button class="btn sec small" type="button" data-upreset="${esc(r.key)}">Use typical</button>` : '')}</td></tr>`).join('')
+    + `<tr class="tot"><td></td><td>Total expected</td><td></td><td class="n">${money(total, true)}</td><td></td><td></td><td></td></tr>`
+    : '<tr><td colspan="7" class="muted">Nothing expected in the next 14 days.</td></tr>';
+  const later = UP.items.filter(it => upDay(it.date) > new Date(Date.now() + 14 * 864e5)).sort((a, b) => a.date < b.date ? -1 : 1);
+  $('upLater').innerHTML = later.length ? '<h4>Added for later: each moves into the list above once it is 14 days away</h4><div class="tbl"><table><tbody>' + later.map(it => `<tr><td>${fmtDate(it.date)}</td><td class="wrap">${esc(it.desc)}</td><td class="n">${money(+it.amount, true)}</td><td>${esc(it.cat || '')}</td><td><button class="btn sec small" type="button" data-updel="${it.id}">Remove</button></td></tr>`).join('') + '</tbody></table></div>' : '';
+  const cats = S.config.categories.filter(c => c.type === 'Expense' || c.type === 'Savings' || c.type === 'Transfer' || c.name === 'Card Payment').map(c => c.name).sort((a, b) => a.localeCompare(b));
+  const keepC = $('upCat').value; $('upCat').innerHTML = opts(cats, 'Choose a category'); if (cats.includes(keepC)) $('upCat').value = keepC;
+  const keepA = $('upAcct').value; $('upAcct').innerHTML = opts(S.config.accounts.map(a => a.name), 'Any account (optional)'); $('upAcct').value = keepA;
+  if (!$('upDate').value) $('upDate').value = upISO(new Date(Date.now() + 7 * 864e5));
+}
+document.addEventListener('change', e => {
+  const i = e.target.closest('[data-upk]'); if (!i) return;
+  const key = i.dataset.upk, v = i.value.trim();
+  if (key.startsWith('m|')){ const it = UP.items.find(x => 'm|' + x.id === key); if (!it) return; if (v === '' || isNaN(+v)){ toast('Enter an amount'); renderUpcoming(); return; } it.amount = Math.round(+v * 100) / 100; }
+  else if (v === '') delete UP.overrides[key];
+  else if (isNaN(+v)){ toast('Enter an amount'); return; }
+  else UP.overrides[key] = Math.round(+v * 100) / 100;
+  upSave(); renderUpcoming(); if (!$('tab-bills').classList.contains('hidden')) render.bills(); toast('Amount saved');
+});
+document.addEventListener('click', e => {
+  const del = e.target.closest('[data-updel]'), rs = e.target.closest('[data-upreset]');
+  if (del){ if (!confirm('Remove this item?')) return; UP.items = UP.items.filter(x => x.id !== del.dataset.updel); upSave(); renderUpcoming(); }
+  if (rs){ delete UP.overrides[rs.dataset.upreset]; upSave(); renderUpcoming(); }
+});
+$('upAdd').addEventListener('click', () => {
+  const date = $('upDate').value, desc = $('upDesc').value.trim(), amt = parseFloat($('upAmt').value);
+  if (!date || !desc || !(amt > 0)){ $('upErr').textContent = 'Enter a date, what it is, and an amount.'; return; }
+  UP.items.push({ id:uid(), date, desc, amount:Math.round(amt * 100) / 100, cat:$('upCat').value, account:$('upAcct').value, created:Date.now() });
+  $('upDesc').value = ''; $('upAmt').value = ''; $('upErr').textContent = ''; upSave(); renderUpcoming();
+  toast(upDay(date) > new Date(Date.now() + 14 * 864e5) ? 'Added; it will appear 14 days ahead' : 'Added');
 });
 /* ---------- Dashboard ---------- */
 let charts = {};
@@ -1611,11 +1705,11 @@ function detectBills(){
 }
 render.bills = () => {
   const bills = detectBills(), now = new Date(), soonEnd = new Date(now.getTime() + 14*864e5);
-  const total = bills.reduce((s,b) => s + b.amt, 0), soon = bills.filter(b => b.next >= new Date(now.getFullYear(), now.getMonth(), now.getDate()) && b.next <= soonEnd).sort((a,b) => a.next - b.next);
+  const total = bills.reduce((s,b) => s + b.amt, 0), soon = upList(14);
   const kk = (v,l) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`;
-  $('blKpis').innerHTML = kk(bills.length, 'Recurring bills found') + kk(money(total), 'Typical monthly total') + kk(money(soon.reduce((s,b) => s + b.amt, 0)), 'Expected in the next 14 days');
+  $('blKpis').innerHTML = kk(bills.length, 'Recurring bills found') + kk(money(total), 'Typical monthly total') + kk(money(soon.reduce((s,b) => s + b.amt, 0)), 'Expected in the next 14 days, including your changes');
   const d = x => x.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
-  $('blNext').innerHTML = soon.length ? soon.map(b => `<tr class="soon"><td>${d(b.next)}</td><td class="wrap">${esc(b.desc)}</td><td class="n">${money(b.amt,true)}</td><td>${esc(b.cat)}</td><td>${fmtDate(b.last)}</td></tr>`).join('') : '<tr><td colspan="5" class="muted">Nothing expected in the next 14 days.</td></tr>';
+  $('blNext').innerHTML = soon.length ? soon.map(b => `<tr class="soon"><td>${d(b.date)}</td><td class="wrap">${esc(b.desc)}</td><td class="n">${money(b.amt,true)}${b.changed ? `<br><span class="note">typical ${money(b.typical,true)}</span>` : ''}</td><td>${esc(b.cat)}</td><td>${b.last ? fmtDate(b.last) : 'Added on Home'}</td></tr>`).join('') : '<tr><td colspan="5" class="muted">Nothing expected in the next 14 days.</td></tr>';
   $('blAll').innerHTML = bills.map(b => `<tr><td class="n">${b.day}</td><td class="wrap">${esc(b.desc)}</td><td class="n">${money(b.amt,true)}</td><td class="n">${Math.abs(b.max - b.min) < 1 ? '' : money(b.min) + ' to ' + money(b.max)}</td><td>${esc(b.cat)}</td><td>${b.seen} of the last 6 months</td><td>${fmtDate(b.last)}</td></tr>`).join('') + `<tr class="tot"><td></td><td>Typical monthly total</td><td class="n">${money(total,true)}</td><td></td><td></td><td></td><td></td></tr>`;
 };
 
