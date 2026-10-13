@@ -291,7 +291,7 @@ details.rcpt[open]>summary h2::before{transform:rotate(90deg)}
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 25</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 27</span>
   <div class="sp"></div>
   <button id="signOutBtn" type="button">Sign out</button>
 </header>
@@ -2099,7 +2099,65 @@ async function migrations(){
   if (has('Savings - PNC Reserve (trip fund)') && !has('Savings - PNC Reserve')){
     try { await applyRenames({ 'Savings - PNC Reserve (trip fund)':'Savings - PNC Reserve' }, {}); toast('Renamed the reserve account'); } catch (e) {}
   }
+  /* Version 26, one time: horse lessons move from Kids Activities to their own Horse Lessons category.
+     Matches descriptions containing "horse lesson" or "making strides" that are in Kids Activities or uncategorized; anything placed in another category on purpose is left alone. */
+  S.config.flags = S.config.flags || {};
+  if (!S.config.flags.horseLessons && S.tx.length){
+    const HL = 'Horse Lessons', isHorse = d => /horse\s*lessons?|making\s*strides/i.test(d || '');
+    try {
+      if (!hasCat(HL)){ const ka = S.config.categories.find(c => c.name === 'Kids Activities'); S.config.categories.push({ name:HL, type:'Expense', group:ka ? ka.group : 'Everyday' }); }
+      let ruleHit = false;
+      S.config.rules = S.config.rules.map(r => { if (!isHorse(r.key)) return r; ruleHit = true; return (!r.cat || r.cat === 'Kids Activities') ? Object.assign({}, r, { cat:HL }) : r; });
+      if (!ruleHit) S.config.rules.push({ key:'Horse Lessons', cat:HL, to:'' });
+      const batch = writeBatch(db); let moved = 0;
+      for (const [k, rows] of Object.entries(S.months)){
+        let ch = false;
+        const next = rows.map(t => { if (!isHorse(t.desc) || t.cat === HL) return t; if (t.cat && t.cat !== 'Kids Activities') return t; ch = true; moved++; return Object.assign({}, t, { cat:HL }); });
+        if (ch){ S.months[k] = next; batch.set(ref('months', k), { rows:next }); }
+      }
+      S.config.flags.horseLessons = { on:todayISO(), moved };
+      batch.set(ref('meta','config'), S.config);
+      await batch.commit(); rebuildTx();
+      if (moved) toast(`Moved ${moved} horse lesson transaction${moved === 1 ? '' : 's'} to Horse Lessons`);
+    } catch (e) {}
+  }
+  /* Version 27, one time: a Horse Lessons budget built from the lesson schedule, and Dairy Queen trips on lesson days counted with the lessons.
+     Lessons: $55 once a week, in seasons with a two-week break between them (8-week seasons assumed, so about 41.6 lessons a year, about $190 a month).
+     Dairy Queen after a lesson: $9 to $20, budgeted at $14.50 a trip after every lesson, about $50 a month. Total $240 a month.
+     Kids Activities keeps $35 a month for dek hockey and other activities. January to September 2026 keep their original $150 total, split $115 and $35. */
+  if (S.config.flags.horseLessons && !S.config.flags.horseBudget && S.tx.length && S.budget.rows.length){
+    const HL = 'Horse Lessons', KA = 'Kids Activities', isHorse = d => /horse\s*lessons?|making\s*strides/i.test(d || '');
+    try {
+      const years = [...new Set(S.budget.rows.map(r => +r.year))].filter(y => y >= 2026).sort();
+      for (const y of years){
+        let ka = S.budget.rows.find(r => r.cat === KA && +r.year === y), hl = S.budget.rows.find(r => r.cat === HL && +r.year === y);
+        if (!ka){ ka = { cat:KA, year:y, m:Array(12).fill(0) }; S.budget.rows.push(ka); }
+        if (!hl){ hl = { cat:HL, year:y, m:Array(12).fill(0) }; S.budget.rows.push(hl); }
+        for (let i = 0; i < 12; i++){
+          if (y === 2026 && i < 9){ const tot = +ka.m[i] || 0; ka.m[i] = Math.min(35, tot); hl.m[i] = Math.max(0, tot - ka.m[i]); }
+          else { ka.m[i] = 35; hl.m[i] = 240; }
+        }
+        hl.note = 'Weekly $55 lessons in 8-week seasons with 2-week breaks, plus a Dairy Queen trip after each lesson';
+        ka.note = 'Dek hockey and other activities; horse lessons have their own category';
+      }
+      const lessonDays = new Set(S.tx.filter(t => isHorse(t.desc)).map(t => t.date));
+      const batch = writeBatch(db); let dq = 0;
+      for (const [k, rows] of Object.entries(S.months)){
+        let ch = false;
+        const next = rows.map(t => { if (!/dairy\s*queen/i.test(t.desc || '') || !lessonDays.has(t.date) || /birthday|cake/i.test(t.desc)) return t; const cur = catUsed(t); if (cur && cur !== 'Eating Out') return t; ch = true; dq++; return Object.assign({}, t, { cat:HL }); });
+        if (ch){ S.months[k] = next; batch.set(ref('months', k), { rows:next }); }
+      }
+      /* The Horse Lessons rule goes last so "Dairy Queen after horse lessons" lands in Horse Lessons (the last matching rule wins). */
+      const hr = S.config.rules.filter(r => isHorse(r.key)), other = S.config.rules.filter(r => !isHorse(r.key));
+      S.config.rules = other.concat(hr.length ? hr : [{ key:'Horse Lessons', cat:HL, to:'' }]);
+      S.config.flags.horseBudget = { on:todayISO(), dairyQueenMoved:dq };
+      batch.set(ref('meta','budget'), { rows:S.budget.rows }); batch.set(ref('meta','config'), S.config);
+      await batch.commit(); rebuildTx();
+      toast(`Horse Lessons budget set to $240 a month${dq ? `; ${dq} Dairy Queen trip${dq === 1 ? '' : 's'} on lesson days moved to Horse Lessons` : ''}`);
+    } catch (e) {}
+  }
 }
+window.__mig = migrations;
 
 /* ================= Pivot explorer ================= */
 const dowNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
