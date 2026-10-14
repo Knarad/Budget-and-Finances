@@ -159,7 +159,9 @@ nav.subtabs button[aria-selected="true"]{background:var(--btnbg);border-color:va
 .overview>*{margin-bottom:16px}
 .overview>.grid{margin-bottom:16px}
 .overview .panel{margin-bottom:16px}
-@media (max-width:900px){.home{grid-template-columns:1fr}}
+@media (max-width:900px){.home{grid-template-columns:minmax(0,1fr)}.home>*{min-width:0}}
+/* Version 38: nothing on a phone may be wider than the screen; the Home grid above let one column grow past it, which made the whole page zoom out. */
+input[type=file]{max-width:100%}
 @media (min-width:901px) and (max-width:1180px){#hTiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 nav.rtabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 18px;align-items:center}
 nav.rtabs button{border:1px solid var(--rule);background:var(--surface);border-radius:20px;padding:7px 14px;cursor:pointer;color:var(--muted);font-weight:600;font-size:.9rem}
@@ -305,7 +307,7 @@ tr.sd-tie td{background:color-mix(in srgb,var(--card) 10%,transparent)}
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 36</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 38</span>
   <div class="sp"></div>
   <button id="signOutBtn" type="button">Sign out</button>
 </header>
@@ -2381,6 +2383,9 @@ async function migrations(){
   }
   /* Version 36, one time: the bank statement update (part5l). */
   try { await stmtAll(); } catch (e) { console.error('Statement update', e); toast('The statement update stopped partway; tell Claude: ' + (e.message || e)); }
+  /* Version 37, one time: the Honda Accord and its service history (part5l). */
+  try { await accordLog(); } catch (e) { console.error('Accord log', e); }
+  setTimeout(showNotices, 900);
 }
 window.__mig = migrations;
 
@@ -4024,20 +4029,70 @@ async function stmtAll(){
   }
   F.stmtAll = { on:todayISO() }; await saveCfg();
   window.__v36 = sum;
-  setTimeout(() => v36Notice(sum), 900);
+  NOTICES.push(v36Text(sum));
 }
-function v36Notice(s){
-  const n = x => x.toLocaleString('en-US'), box = document.createElement('div');
-  box.id = 'v36Note'; box.setAttribute('role', 'status');
-  box.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);width:min(560px,calc(100% - 24px));box-sizing:border-box;background:var(--card);color:var(--ink);border:1px solid var(--rule);border-radius:12px;padding:16px 18px;box-shadow:0 8px 28px rgba(0,0,0,.25);z-index:9999;font-size:15px;line-height:1.45';
-  const parts = [];
+const NOTICES = [];
+function v36Text(s){
+  const n = x => x.toLocaleString('en-US'), parts = [];
   if (s.history) parts.push(`added ${n(s.history)} older transactions from December 2023 to June 2025`);
   if (s.dates) parts.push(`moved ${n(s.dates)} dates to the day the bank shows`);
   if (s.refunds) parts.push(`moved ${s.refunds} refunds to Misc Receipts and Refunds`);
   if (s.horse) parts.push('set the Horse Lessons budget to follow the lesson seasons');
   const last = parts.length > 1 ? parts.slice(0, -1).join(', ') + ', and ' + parts[parts.length - 1] : parts[0] || 'had nothing to change';
-  box.innerHTML = `<b>Your bank statements are in.</b> The app ${last}.${s.notFound ? ` ${s.notFound} date change${s.notFound === 1 ? ' was' : 's were'} skipped because the transaction was not found; tell Claude.` : ''} The older history and each batch of date changes can be undone under Details and analysis, Statements.<div style="margin-top:10px;text-align:right"><button class="btn small" type="button" id="v36Ok">Got it</button></div>`;
-  document.body.appendChild(box); document.getElementById('v36Ok').addEventListener('click', () => box.remove());
+  return `<b>Your bank statements are in.</b> The app ${last}.${s.notFound ? ` ${s.notFound} date change${s.notFound === 1 ? ' was' : 's were'} skipped because the transaction was not found; tell Claude.` : ''} The older history and each batch of date changes can be undone under Details and analysis, Statements.`;
+}
+/* Shows everything the one-time sign-in steps did, in one notice that stays until closed. */
+function showNotices(){
+  if (!NOTICES.length || document.getElementById('v36Note')) return;
+  const box = document.createElement('div'); box.id = 'v36Note'; box.setAttribute('role', 'status');
+  box.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);width:min(560px,calc(100% - 24px));box-sizing:border-box;background:var(--card);color:var(--ink);border:1px solid var(--rule);border-radius:12px;padding:16px 18px;box-shadow:0 8px 28px rgba(0,0,0,.25);z-index:9999;font-size:15px;line-height:1.45;max-height:70vh;overflow:auto';
+  box.innerHTML = NOTICES.map(t => `<p style="margin:0 0 8px">${t}</p>`).join('') + '<div style="text-align:right"><button class="btn small" type="button" id="v36Ok">Got it</button></div>';
+  NOTICES.length = 0; document.body.appendChild(box); document.getElementById('v36Ok').addEventListener('click', () => box.remove());
+}
+
+/* ================= Version 37: the 2016 Honda Accord EX-L and its service history (Karl, October 14, 2026; one time, at sign-in) ================= */
+/* Adds the Accord on the Vehicles tab (or updates it if one already exists) and its service log. Karl's seven entries come first; four more come from the budget's own
+   Honda Accord transactions so they do not wait in the "not yet in the log" list. An entry that names a budget transaction is linked to it (txId) and takes its amount as the
+   cost; it is matched by amount, description, and a date within 12 days, and if it cannot be found the entry is still added without a cost. Entries already in the log
+   (same transaction, or same vehicle, date, and type) are not added twice. Flag: config.flags.accordLog. */
+const V37_CAR = { name:'2016 Honda Accord EX-L', year:'2016', make:'Honda', model:'Accord', driver:'K', notes:'Obsidian Blue, EX-L trim' };
+const V37_LOG = [
+  { date:'2025-11-11', type:'tires',   miles:129500, desc:'Export Tire - 4 new tires', shop:'Export Tire', tx:[593.11, /export tire/i] },
+  { date:'2025-12-01', type:'inspect', miles:'',     desc:'Inspection and emission - Randy Redinger Auto', shop:'Randy Redinger Auto', tx:[73.36, /redinger/i] },
+  { date:'2026-03-25', type:'parts',   miles:'',     desc:'Rock Auto - Bought new catalytic converter', shop:'Rock Auto', tx:[229.79, /rock ?auto.*catalytic/i] },
+  { date:'2026-03-29', type:'oil',     miles:134600, desc:'J2 - oil change', shop:'J2' },
+  { date:'2026-04-03', type:'repair',  miles:134800, desc:"Camarote's - install of new catalytic converter", shop:"Camarote's", tx:[137.79, /camarote/i] },
+  { date:'2026-06-20', type:'oil',     miles:138700, desc:'J2 - oil change', shop:'J2' },
+  { date:'2026-08-01', type:'brakes',  miles:140500, desc:'New rear brakes and rotors', shop:'', tx:[161.72, /rock ?auto.*brake/i], notes:'Parts bought from Rock Auto on July 27, 2026; the budget lists them as front and rear brakes' },
+  { date:'2025-06-27', type:'oil',     miles:'',     desc:"Oil change by K's dad (cash from Walmart)", shop:"K's dad", tx:[80.00, /oil change on accord/i], notes:'From the budget' },
+  { date:'2025-07-09', type:'repair',  miles:'',     desc:"Rear springs repair by K's dad", shop:"K's dad", tx:[320.00, /rear springs/i], notes:'From the budget' },
+  { date:'2025-09-16', type:'parts',   miles:'',     desc:"O'Reilly Auto - maintenance supplies", shop:"O'Reilly Auto", tx:[23.30, /o'?reilly.*honda/i], notes:'From the budget' },
+  { date:'2026-01-23', type:'reg',     miles:'',     desc:'Vehicle registration renewal', shop:'PennDOT', tx:[53.00, /registration renewal - honda/i], notes:'From the budget' } ];
+async function accordLog(){
+  const F = S.config.flags = S.config.flags || {};
+  if (F.accordLog || !S.tx.length) return;
+  VH.vehicles = VH.vehicles || []; VH.log = VH.log || [];
+  let car = VH.vehicles.find(v => /accord/i.test((v.model || '') + ' ' + (v.name || ''))), made = !car;
+  if (!car){ car = { id:uid(), active:true, intervals:{} }; VH.vehicles.push(car); }
+  Object.assign(car, { name:V37_CAR.name, year:V37_CAR.year, make:V37_CAR.make, model:V37_CAR.model, driver:car.driver || V37_CAR.driver, notes:car.notes ? car.notes : V37_CAR.notes });
+  const dayN = iso => sdDayN(iso), usedTx = new Set();
+  let added = 0, linked = 0;
+  for (const e of V37_LOG){
+    let t = null;
+    if (e.tx){ const cents = Math.round(e.tx[0] * 100);
+      t = S.tx.filter(x => !usedTx.has(x.id) && Math.round(Math.abs(x.amount) * 100) === cents && e.tx[1].test(x.desc || '') && Math.abs(dayN(x.date) - dayN(e.date)) <= 12)
+             .sort((a, b) => Math.abs(dayN(a.date) - dayN(e.date)) - Math.abs(dayN(b.date) - dayN(e.date)))[0] || null; }
+    if (t) usedTx.add(t.id);
+    const entry = { vid:car.id, date:e.date, miles:e.miles, type:e.type, desc:e.desc, cost:t ? +Math.abs(t.amount) : '', shop:e.shop, notes:e.notes || '', txId:t ? t.id : '' };
+    const have = (t && VH.log.find(x => x.txId === t.id)) || VH.log.find(x => x.vid === car.id && x.date === e.date && x.type === e.type);
+    if (have){ Object.assign(have, entry); } else { VH.log.push(Object.assign({ id:uid() }, entry)); added++; }
+    if (t) linked++;
+  }
+  try { await setDoc(ref('meta','vehicles'), JSON.parse(JSON.stringify({ vehicles:VH.vehicles, log:VH.log, ignored:VH.ignored || [], sub:VH.sub || 'over', updated:Date.now() }))); } catch (e) { return; }
+  F.accordLog = { on:todayISO(), vehicleAdded:made, entries:added, linked };
+  try { await setDoc(ref('meta','config'), S.config); } catch (e) {}
+  window.__v37 = F.accordLog;
+  NOTICES.push(`<b>The ${esc(V37_CAR.name)} is on the Vehicles tab</b> with ${V37_LOG.length} service entries from June 2025 to August 2026, ${linked} of them linked to their budget transactions. Check the Vehicles overview for what is due next.`);
 }
 /* ---------- Data: import ---------- */
 function serialToISO(v){
