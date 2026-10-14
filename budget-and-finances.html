@@ -255,6 +255,18 @@ details.rcpt[open]>summary h2::before{transform:rotate(90deg)}
 .rcpt-items select{padding:4px 6px;border:1px solid var(--rule);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit;font-size:.9rem}
 #rxCats tr.tot td{font-weight:700}
 @media (max-width:760px){.rslide input{width:140px}.g3,.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g2{grid-template-columns:1fr}header.top .stat{display:none}nav.tabs{top:48px}main{padding:14px 10px 90px}}
+/* Vehicles (Version 29) */
+nav.vtabs,nav.mtabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 18px;align-items:center}
+nav.vtabs button,nav.mtabs button{border:1px solid var(--rule);background:var(--surface);border-radius:20px;padding:7px 14px;cursor:pointer;color:var(--muted);font-weight:600;font-size:.9rem}
+nav.vtabs button[aria-selected="true"],nav.mtabs button[aria-selected="true"]{background:var(--btnbg);border-color:var(--btnbg);color:var(--btnfg)}
+.vcard h3{margin:0 0 4px;font-size:1.05rem}
+.vcard .vmiles{margin:8px 0 10px;font-variant-numeric:tabular-nums}
+.vh-in{width:150px;padding:6px 8px;border:1px solid var(--rule);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit;box-sizing:border-box}
+.vh-in.vh-num{width:110px;text-align:right}
+.vh-in.vh-wide{width:100%;min-width:200px}
+@media (max-width:760px){#vhCards{grid-template-columns:minmax(0,1fr)}}
+.vcard{min-width:0}
+#mkPosBody td.wrap{min-width:220px}
 </style>
 </head>
 <body>
@@ -291,7 +303,7 @@ details.rcpt[open]>summary h2::before{transform:rotate(90deg)}
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 27</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 30</span>
   <div class="sp"></div>
   <button id="signOutBtn" type="button">Sign out</button>
 </header>
@@ -299,6 +311,8 @@ details.rcpt[open]>summary h2::before{transform:rotate(90deg)}
   <button role="tab" data-view="home" aria-selected="true">Home</button>
   <button role="tab" data-view="details" aria-selected="false">Details and analysis</button>
   <button role="tab" data-view="retire" aria-selected="false">Retirement</button>
+  <button role="tab" data-view="cars" aria-selected="false">Vehicles</button>
+  <button role="tab" data-view="mkt" aria-selected="false">Markets</button>
 </nav>
 <main>
 
@@ -727,6 +741,126 @@ details.rcpt[open]>summary h2::before{transform:rotate(90deg)}
 </section>
 </section>
 
+<section id="view-cars" class="hidden">
+  <nav class="vtabs" aria-label="Vehicle sections">
+    <button data-vt="over" aria-selected="true">Overview</button>
+    <button data-vt="log" aria-selected="false">Service log</button>
+    <button data-vt="cars" aria-selected="false">Vehicles</button>
+  </nav>
+
+  <section id="vt-over">
+    <h2>Vehicle overview</h2>
+    <p class="note" style="margin-top:-6px">What is due on each vehicle, by date or by mileage, whichever comes first. Current mileage is estimated from the readings in the service log, so every entry with an odometer reading keeps the estimate accurate.</p>
+    <div class="panel hidden" id="vhStart">
+      <h3 style="margin-top:0">Start from the budget history</h3>
+      <p class="note">This finds every Vehicle Maintenance transaction and anything else that looks like vehicle work (oil changes, tires, inspections, registration, parts stores), creates the vehicles named in the descriptions, and adds each one to the service log with the date, cost, and any mileage written in the description. Everything can be corrected afterward.</p>
+      <div class="row"><div><button class="btn" id="vhStartBtn" type="button">Find vehicle history in the budget</button></div></div>
+      <div class="hint" id="vhStartMsg"></div>
+    </div>
+    <div class="grid g2" id="vhCards"></div>
+    <div style="margin:4px 0 8px"><button class="btn sec small" id="vhGoAdd" type="button">Add a vehicle to track</button></div>
+    <h3>Vehicle transactions not yet in the service log <span class="note" id="vhCandN"></span></h3>
+    <p class="note" style="margin-top:-6px">New Vehicle Maintenance entries from Home appear here. Add each to the log, or mark it as not vehicle work so it stops appearing.</p>
+    <div style="margin-bottom:8px"><button class="btn sec small hidden" id="vhCandAll" type="button">Add all to the log</button></div>
+    <div class="tbl"><table><thead><tr><th>Date</th><th>Description</th><th class="n">Amount</th><th>Best guess</th><th></th></tr></thead><tbody id="vhCandBody"></tbody></table></div>
+  </section>
+
+  <section id="vt-log" class="hidden">
+    <h2>Service log</h2>
+    <div class="panel">
+      <h3 style="margin-top:0">Record service or an odometer reading</h3>
+      <div class="row">
+        <div><label class="f" for="vhVeh">Vehicle</label><select class="t" id="vhVeh"></select></div>
+        <div><label class="f" for="vhDate">Date done</label><input class="t" id="vhDate" type="date"></div>
+        <div><label class="f" for="vhMiles">Mileage</label><input class="t" id="vhMiles" type="number" inputmode="numeric" step="1" min="0" placeholder="Odometer"></div>
+        <div><label class="f" for="vhType">Type of work</label><select class="t" id="vhType"></select></div>
+      </div>
+      <div class="row">
+        <div style="flex:2 1 260px"><label class="f" for="vhDesc">What was done</label><input class="t" id="vhDesc" placeholder="For example: 0W-20 synthetic, new filter"></div>
+        <div><label class="f" for="vhShop">Shop or who did it</label><input class="t" id="vhShop"></div>
+        <div><label class="f" for="vhCost">Cost</label><input class="t" id="vhCost" type="number" inputmode="decimal" step="0.01" min="0"></div>
+        <div><button class="btn" id="vhSave" type="button">Save entry</button></div>
+      </div>
+      <div class="hint" id="vhMsg"></div>
+    </div>
+    <div class="row" style="margin-bottom:8px"><div style="flex:0 1 260px"><label class="f" for="vhFilter">Show</label><select class="t" id="vhFilter"></select></div><div><span class="note" id="vhLogSum"></span></div></div>
+    <p class="note">Change any cell and it saves. Entries marked From the budget came from a transaction; the transaction itself is not changed.</p>
+    <div class="tbl"><table><thead><tr><th>Date</th><th>Vehicle</th><th>Type</th><th class="n">Miles</th><th>What was done</th><th>Shop or who</th><th class="n">Cost</th><th></th></tr></thead><tbody id="vhLogBody"></tbody></table></div>
+  </section>
+
+  <section id="vt-cars" class="hidden">
+    <h2>Vehicles</h2>
+    <p class="note" style="margin-top:-6px">Each vehicle's details and service intervals. Defaults: oil every 5,000 miles or 6 months, tire rotation every 6,000 miles or 6 months, inspection and registration every 12 months. Change them to match the owner's manual.</p>
+    <div id="vhCarBody"></div>
+    <div class="panel">
+      <h3 style="margin-top:0">Add a vehicle</h3>
+      <div class="row">
+        <div><label class="f" for="vhNewYear">Year</label><input class="t" id="vhNewYear" inputmode="numeric"></div>
+        <div><label class="f" for="vhNewMake">Make</label><input class="t" id="vhNewMake"></div>
+        <div><label class="f" for="vhNewModel">Model</label><input class="t" id="vhNewModel"></div>
+        <div><label class="f" for="vhNewName">Name (optional)</label><input class="t" id="vhNewName" placeholder="Defaults to year, make, and model"></div>
+        <div><label class="f" for="vhNewDriver">Main driver</label><input class="t" id="vhNewDriver"></div>
+        <div><label class="f" for="vhNewMiles">Odometer today</label><input class="t" id="vhNewMiles" type="number" inputmode="numeric" min="0"></div>
+        <div><button class="btn sec" id="vhAddCar" type="button">Add vehicle</button></div>
+      </div>
+      <div class="hint" id="vhCarMsg"></div>
+    </div>
+  </section>
+</section>
+
+<section id="view-mkt" class="hidden">
+  <nav class="mtabs" aria-label="Market sections">
+    <button data-mt="pos" aria-selected="true">Positions</button>
+    <button data-mt="log" aria-selected="false">Trade log</button>
+  </nav>
+
+  <section id="mt-pos">
+    <h2>Positions</h2>
+    <p class="note" style="margin-top:-6px">Built from the trade log using average cost. Prices are typed in by hand from the brokerage screen; the market value and unrealized gain use the last price entered. Options are 100 shares per contract.</p>
+    <div class="grid g3" id="mkKpis"></div>
+    <h3>Open positions</h3>
+    <div class="tbl"><table><thead><tr><th>Position</th><th>Account</th><th class="n">Quantity</th><th class="n">Average cost</th><th class="n">Cost basis</th><th class="n">Last price</th><th class="n">Market value</th><th class="n">Unrealized</th><th>Opened and exit plan</th></tr></thead><tbody id="mkPosBody"></tbody></table></div>
+    <h3>Cash in each account from the log</h3>
+    <p class="note" style="margin-top:-6px">Deposits, withdrawals, dividends, fees, and every buy and sell. It matches the brokerage only if every transaction in the account has been recorded.</p>
+    <div class="tbl" style="max-width:520px"><table><thead><tr><th>Account</th><th class="n">Cash</th></tr></thead><tbody id="mkCashBody"></tbody></table></div>
+  </section>
+
+  <section id="mt-log" class="hidden">
+    <h2>Trade log</h2>
+    <div class="panel" id="mkForm">
+      <h3 style="margin-top:0">Record a trade or transaction</h3>
+      <div class="row">
+        <div><label class="f" for="mkAction">Type</label><select class="t" id="mkAction"></select></div>
+        <div><label class="f" for="mkDate">Date</label><input class="t" id="mkDate" type="date"></div>
+        <div><label class="f" for="mkAcct">Account</label><input class="t" id="mkAcct" list="mkAcctList" placeholder="For example: Roth IRA - K"><datalist id="mkAcctList"></datalist></div>
+        <div><label class="f" for="mkSym" id="mkSymLbl">Symbol</label><input class="t" id="mkSym" list="mkSymList" autocapitalize="characters" placeholder="For example: VTI"><datalist id="mkSymList"></datalist></div>
+      </div>
+      <div class="row mk-opt hidden">
+        <div><label class="f" for="mkRight">Call or put</label><select class="t" id="mkRight"><option value="call">Call</option><option value="put">Put</option></select></div>
+        <div><label class="f" for="mkStrike">Strike price</label><input class="t" id="mkStrike" type="number" step="0.01" min="0" inputmode="decimal"></div>
+        <div><label class="f" for="mkExpiry">Expiration date</label><input class="t" id="mkExpiry" type="date"></div>
+      </div>
+      <div class="row">
+        <div class="mk-trade mk-qty"><label class="f" for="mkQty" id="mkQtyLbl">Shares</label><input class="t" id="mkQty" type="number" step="any" min="0" inputmode="decimal"></div>
+        <div class="mk-trade mk-price"><label class="f" for="mkPrice" id="mkPriceLbl">Price per share</label><input class="t" id="mkPrice" type="number" step="any" min="0" inputmode="decimal"></div>
+        <div class="mk-cash hidden"><label class="f" for="mkAmt">Amount</label><input class="t" id="mkAmt" type="number" step="0.01" min="0" inputmode="decimal"></div>
+        <div class="mk-trade"><label class="f" for="mkFees">Fees and commissions</label><input class="t" id="mkFees" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0"></div>
+      </div>
+      <div class="row mk-plan">
+        <div style="flex:1 1 260px"><label class="f" for="mkWhy">Why I made this trade</label><input class="t" id="mkWhy"></div>
+        <div style="flex:1 1 260px"><label class="f" for="mkExit">Exit plan (target, stop, or date)</label><input class="t" id="mkExit" placeholder="For example: sell at $250 or below $190, or by June 2027"></div>
+      </div>
+      <div class="row">
+        <div style="flex:3 1 300px"><label class="f" for="mkNotes">Notes</label><input class="t" id="mkNotes"></div>
+        <div><button class="btn" id="mkSave" type="button">Save entry</button> <button class="btn sec hidden" id="mkCancel" type="button">Cancel editing</button></div>
+      </div>
+      <div class="hint" id="mkMsg"></div>
+    </div>
+    <div class="row" style="margin-bottom:8px"><div style="flex:0 1 260px"><label class="f" for="mkFilter">Filter by symbol or account</label><input class="t" id="mkFilter"></div><div><span class="note" id="mkLogSum"></span></div></div>
+    <div class="tbl"><table><thead><tr><th>Date</th><th>Account</th><th>Type</th><th>Position</th><th class="n">Quantity and price</th><th class="n">Fees</th><th class="n">Cash in or out</th><th class="n">Realized</th><th>Why, exit plan, and notes</th><th></th></tr></thead><tbody id="mkLogBody"></tbody></table></div>
+  </section>
+</section>
+
 <section id="view-retire" class="hidden">
   <div class="panel rpick">
     <div class="rpick-row">
@@ -1018,6 +1152,8 @@ async function loadAll(){
   rebuildTx();
   await retLoad();
   await upLoad();
+  await vehLoad();
+  await mkLoad();
 }
 function rebuildTx(){
   S.tx = [];
@@ -1071,7 +1207,7 @@ function fillSelects(){
 const statusTag = s => `<span class="tag ${s==='OK'?'ok':(s==='History'?'':'bad')}">${esc(s)}</span>`;
 const currentView = () => document.querySelector('nav.views button[aria-selected="true"]').dataset.view;
 const currentSub = () => document.querySelector('nav.subtabs button[aria-selected="true"]').dataset.tab;
-function renderAll(){ fillSelects(); fillExtra(); show('emptyNote', S.config.accounts.length === 0); document.querySelector('.overview').classList.toggle('hidden', S.tx.length === 0); if (currentView() === 'home') renderHome(); else if (currentView() === 'retire') renderRetire(); else render[currentSub()](); }
+function renderAll(){ fillSelects(); fillExtra(); show('emptyNote', S.config.accounts.length === 0); document.querySelector('.overview').classList.toggle('hidden', S.tx.length === 0); if (currentView() === 'home') renderHome(); else if (currentView() === 'retire') renderRetire(); else if (currentView() === 'cars') renderVeh(); else if (currentView() === 'mkt') renderMk(); else render[currentSub()](); }
 function monthTotals(k){
   const out = { bills:0, billsB:0, day:0, dayB:0, inc:0, out:0, byCat:{} }; const Y = +k.slice(0,4), M = +k.slice(5,7);
   for (const t of S.tx){ if (ym(t.date) !== k) continue; const c = catUsed(t), ty = typeOf(c), g = groupOf(c);
@@ -1245,8 +1381,8 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('modal'
 const render = {};
 document.querySelectorAll('nav.views button').forEach(b => b.addEventListener('click', () => {
   document.querySelectorAll('nav.views button').forEach(x => x.setAttribute('aria-selected', x === b ? 'true' : 'false'));
-  show('view-home', b.dataset.view === 'home'); show('view-details', b.dataset.view === 'details'); show('view-retire', b.dataset.view === 'retire');
-  if (b.dataset.view === 'home') renderHome(); else if (b.dataset.view === 'retire') renderRetire(); else render[currentSub()]();
+  show('view-home', b.dataset.view === 'home'); show('view-details', b.dataset.view === 'details'); show('view-retire', b.dataset.view === 'retire'); show('view-cars', b.dataset.view === 'cars'); show('view-mkt', b.dataset.view === 'mkt');
+  if (b.dataset.view === 'home') renderHome(); else if (b.dataset.view === 'retire') renderRetire(); else if (b.dataset.view === 'cars') renderVeh(); else if (b.dataset.view === 'mkt') renderMk(); else render[currentSub()]();
   window.scrollTo(0, 0);
 }));
 document.querySelectorAll('nav.subtabs button').forEach(b => b.addEventListener('click', () => {
@@ -1411,12 +1547,13 @@ function upList(days, opt){
 /* Known pay schedules (Version 24), used instead of guessing for these categories. */
 const INCOME_RULES = {
   'Paycheck K':   { kind:'biweekly', weekday:4, anchor:'2026-01-08', label:'Every other Thursday' },
-  'Paycheck J':   { kind:'semimonthly', days:[15, 'last'], label:'The 15th and the last day of each month' },
+  'Paycheck J':   { kind:'semimonthly', days:[15, 'last'], weekendBack:true, label:'The 15th and the last day of each month (the Friday before on a weekend)' },
   'Child Support':{ kind:'biweekly', weekday:1, alt:true, label:'Every other week, Monday or Tuesday' } };
 function ruleDates(rule, dates, t0, last){
   const out = [], dayN = d => Math.round(d.getTime() / 864e5), local = n => { const u = new Date(n * 864e5); return new Date(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate()); };
   if (rule.kind === 'semimonthly'){
     for (let m = 0; m < 3; m++) for (const dd of rule.days){ const y = t0.getFullYear(), mo = t0.getMonth() + m, dim = new Date(y, mo + 1, 0).getDate(), d = new Date(y, mo, dd === 'last' ? dim : Math.min(dd, dim));
+      if (rule.weekendBack){ const w = d.getDay(); if (w === 6) d.setDate(d.getDate() - 1); else if (w === 0) d.setDate(d.getDate() - 2); }   // Version 28: a Saturday or Sunday payday posts the Friday before
       if (d >= t0 && (!last || d - last > 5 * 864e5)) out.push(d); }
     return out;
   }
@@ -3084,6 +3221,363 @@ $('raAdd').addEventListener('click', () => {
   RS.snapshots = retSnaps().concat([{ id:uid(), acct:id, date:todayISO(), bal, note:'Starting balance', created:Date.now() }]);
   $('raName').value = ''; $('raMonthly').value = 0; $('raBal').value = 0; $('raMsg').textContent = ''; retSave(); renderRetire(); toast('Account added');
 });
+
+/* ================= Vehicles (Version 29) ================= */
+/* Stored in households/main/meta/vehicles: vehicles, log, ignored (transaction ids left out of the log), sub. Element IDs use the "vh" prefix. */
+const VH = { vehicles:[], log:[], ignored:[], sub:'over', filter:'' };
+const VH_TYPES = [
+  { k:'oil',     label:'Oil change',               mi:5000, mo:6 },
+  { k:'rotate',  label:'Tire rotation',            mi:6000, mo:6 },
+  { k:'tires',   label:'New tires',                mi:'',   mo:'' },
+  { k:'inspect', label:'Inspection and emissions', mi:'',   mo:12 },
+  { k:'reg',     label:'Registration',             mi:'',   mo:12 },
+  { k:'brakes',  label:'Brakes',                   mi:'',   mo:'' },
+  { k:'battery', label:'Battery',                  mi:'',   mo:'' },
+  { k:'filters', label:'Air and cabin filters',    mi:'',   mo:'' },
+  { k:'fluids',  label:'Fluids',                   mi:'',   mo:'' },
+  { k:'repair',  label:'Major repair',             mi:'',   mo:'' },
+  { k:'parts',   label:'Parts purchase',           mi:'',   mo:'' },
+  { k:'other',   label:'Other maintenance',        mi:'',   mo:'' },
+  { k:'odo',     label:'Odometer reading only',    mi:'',   mo:'' } ];
+const vhType = k => VH_TYPES.find(t => t.k === k) || VH_TYPES[VH_TYPES.length - 2];
+const VH_MAKES = ['Honda','Ford','Toyota','Chevy','Chevrolet','Subaru','Jeep','Dodge','Kia','Hyundai','Nissan','Ram','GMC','Mazda','Volkswagen','VW','Buick','Lexus','Acura','Tesla','Chrysler','Mitsubishi','Audi','BMW','Cadillac','Lincoln','Volvo'];
+const vhDay = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); };
+const vhISO = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const vhAddMonths = (iso, n) => { const d = vhDay(iso), day = d.getDate(); d.setDate(1); d.setMonth(d.getMonth() + n); d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate())); return vhISO(d); };
+const vhMi = v => (v === '' || v == null || isNaN(v)) ? '' : Math.round(+v).toLocaleString('en-US');
+const vhName = id => { const v = VH.vehicles.find(x => x.id === id); return v ? v.name : 'Not assigned'; };
+function vhIntervals(v){ const o = {}; for (const t of VH_TYPES){ const s = (v.intervals || {})[t.k]; o[t.k] = s ? { mi:s.mi, mo:s.mo } : { mi:t.mi, mo:t.mo }; } return o; }
+
+/* ---------- load and save ---------- */
+async function vehLoad(){
+  try { const d = await getDoc(ref('meta','vehicles')); if (d.exists()) Object.assign(VH, d.data()); } catch (e) {}
+  VH.vehicles = VH.vehicles || []; VH.log = VH.log || []; VH.ignored = VH.ignored || []; VH.sub = VH.sub || 'over';
+}
+let vhSaveT = null;
+function vehSave(){
+  clearTimeout(vhSaveT);
+  vhSaveT = setTimeout(async () => {
+    const payload = { vehicles:VH.vehicles, log:VH.log, ignored:VH.ignored, sub:VH.sub, updated:Date.now() };
+    try { await setDoc(ref('meta','vehicles'), JSON.parse(JSON.stringify(payload))); } catch (err) { toast('Could not save: ' + (err.code || err.message)); }
+  }, 400);
+}
+
+/* ---------- mileage and what is due ---------- */
+function vhReadings(vid){ return VH.log.filter(e => e.vid === vid && e.miles !== '' && e.miles != null && !isNaN(e.miles)).map(e => ({ date:e.date, miles:+e.miles })).sort((a, b) => a.date < b.date ? -1 : (a.date > b.date ? 1 : a.miles - b.miles)); }
+function vhMiles(vid){
+  const r = vhReadings(vid); if (!r.length) return { est:null, last:null, perDay:null };
+  const last = r[r.length - 1], first = r[0], span = (vhDay(last.date) - vhDay(first.date)) / 864e5;
+  const perDay = span >= 30 && last.miles > first.miles ? (last.miles - first.miles) / span : null;
+  const since = Math.max(0, (vhDay(todayISO()) - vhDay(last.date)) / 864e5);
+  return { est:perDay ? Math.round(last.miles + perDay * since) : last.miles, last, perDay };
+}
+function vhDue(v){
+  const iv = vhIntervals(v), m = vhMiles(v.id), today = todayISO(), out = [];
+  for (const t of VH_TYPES){
+    const s = iv[t.k]; if (!(+s.mi) && !(+s.mo)) continue;
+    const done = VH.log.filter(e => e.vid === v.id && e.type === t.k).sort((a, b) => a.date < b.date ? 1 : -1)[0];
+    if (!done){ out.push({ t, s, done:null, status:'none' }); continue; }
+    const nextDate = +s.mo ? vhAddMonths(done.date, +s.mo) : null;
+    const nextMiles = +s.mi && done.miles !== '' && done.miles != null ? +done.miles + +s.mi : null;
+    let byMilesDate = null; if (nextMiles !== null && m.perDay && m.last){ const d = vhDay(m.last.date); d.setDate(d.getDate() + Math.round((nextMiles - m.last.miles) / m.perDay)); byMilesDate = vhISO(d); }
+    const soonDate = vhISO(new Date(vhDay(today).getTime() + 30 * 864e5));
+    const over = (nextDate && nextDate < today) || (nextMiles !== null && m.est !== null && m.est >= nextMiles);
+    const soon = !over && ((nextDate && nextDate <= soonDate) || (nextMiles !== null && m.est !== null && nextMiles - m.est <= 500) || (byMilesDate && byMilesDate <= soonDate));
+    out.push({ t, s, done, nextDate, nextMiles, byMilesDate, status:over ? 'over' : (soon ? 'soon' : 'ok') });
+  }
+  return out;
+}
+
+/* ---------- vehicle history found in the budget ---------- */
+const VH_TX_RE = /oil change|\btires?\b|rotation|inspection|emissions|\bbrakes?\b|catalytic|vehicle registration|registration renewal|penndot|alternator|transmission|muffler|exhaust|\bbattery\b|wiper|o'?reilly|autozone|advance auto|rock ?auto|napa auto|jiffy lube|valvoline/i;
+function vhCandidates(){
+  const logged = new Set(VH.log.map(e => e.txId).filter(Boolean)), ign = new Set(VH.ignored);
+  return S.tx.filter(t => { if (logged.has(t.id) || ign.has(t.id) || !(t.amount > 0)) return false; const c = catUsed(t);
+    if (c === 'Insurance' || c === 'Fuel' || c === 'Card Payment' || c === 'Transfer') return false;
+    return c === 'Vehicle Maintenance' || VH_TX_RE.test(t.desc || ''); }).sort((a, b) => a.date < b.date ? 1 : -1);
+}
+function vhFindNames(txs){
+  const found = {}, re = new RegExp('\\b(' + VH_MAKES.join('|') + ')\\s+([A-Z][A-Za-z0-9-]+)', 'g');
+  for (const t of txs){ let m; re.lastIndex = 0; while ((m = re.exec(t.desc || ''))){ const key = m[1] + ' ' + m[2]; (found[key] ||= { make:m[1], model:m[2], n:0, driver:'' }).n++;
+    const who = new RegExp("\\b(K|J)(?:'s)?\\s+" + m[1] + '\\b').exec(t.desc || ''); if (who) found[key].driver = who[1]; } }
+  return Object.values(found);
+}
+function vhGuess(t){
+  const d = t.desc || '', low = d.toLowerCase();
+  let vid = '';
+  for (const v of VH.vehicles){ if ((v.model && new RegExp('\\b' + v.model.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(d))){ vid = v.id; break; } }
+  if (!vid){ const byMake = VH.vehicles.filter(v => v.make && new RegExp('\\b' + v.make.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(d)); if (byMake.length === 1) vid = byMake[0].id; }
+  const type = /oil change/.test(low) ? 'oil' : /rotat/.test(low) ? 'rotate' : /\btires?\b/.test(low) ? 'tires' : /inspection|emissions/.test(low) ? 'inspect' : /registration/.test(low) ? 'reg' : /\bbrakes?\b/.test(low) ? 'brakes' : /\bbattery\b/.test(low) ? 'battery' : /filter/.test(low) ? 'filters' : /catalytic|spring|alternator|transmission|starter|muffler|exhaust|repair|install/.test(low) ? 'repair' : /o'?reilly|autozone|advance auto|rock ?auto|napa/.test(low) ? 'parts' : 'other';
+  const mm = /(\d{2,3}[,.]?\d{3})\s*(?:mi\b|miles)/i.exec(d) || /mileage\s*(?:of\s*)?(\d{2,3}[,.]?\d{3})/i.exec(d);
+  return { vid, type, miles:mm ? +mm[1].replace(/[,.]/g, '') : '' };
+}
+function vhEntryFromTx(t){ const g = vhGuess(t); return { id:uid(), vid:g.vid, date:t.date, miles:g.miles, type:g.type, desc:t.desc || '', cost:+t.amount || 0, shop:'', notes:'From the budget', txId:t.id }; }
+function vhImportAll(){
+  const c = vhCandidates(); if (!c.length){ toast('No vehicle transactions waiting'); return 0; }
+  let made = 0;
+  for (const f of vhFindNames(c)){ if (VH.vehicles.some(v => v.make === f.make && v.model === f.model)) continue;
+    VH.vehicles.push({ id:uid(), name:f.make + ' ' + f.model, year:'', make:f.make, model:f.model, driver:f.driver, notes:'', active:true, intervals:{} }); made++; }
+  for (const t of c) VH.log.push(vhEntryFromTx(t));
+  vehSave(); toast(`Added ${c.length} entr${c.length === 1 ? 'y' : 'ies'} to the service log${made ? ` and ${made} vehicle${made === 1 ? '' : 's'}` : ''}`); return c.length;
+}
+
+/* ---------- rendering ---------- */
+function vhStatusTag(r){
+  if (r.status === 'none') return '<span class="tag">No record yet</span>';
+  if (r.status === 'over') return '<span class="tag bad">Overdue</span>';
+  if (r.status === 'soon') return '<span class="tag warn">Due soon</span>';
+  return '<span class="tag ok">OK</span>';
+}
+function renderVeh(){
+  document.querySelectorAll('nav.vtabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.vt === VH.sub ? 'true' : 'false'));
+  document.querySelectorAll('#view-cars > section').forEach(s => s.classList.toggle('hidden', s.id !== 'vt-' + VH.sub));
+  vhFillSelects();
+  ({ over:vhOverview, log:vhLogPage, cars:vhCarsPage })[VH.sub]();
+}
+function vhFillSelects(){
+  const opts = VH.vehicles.filter(v => v.active !== false).map(v => `<option value="${v.id}">${esc(v.name)}</option>`).join('');
+  const keep = $('vhVeh').value; $('vhVeh').innerHTML = opts + '<option value="">Not assigned</option>'; if (keep !== undefined && [...$('vhVeh').options].some(o => o.value === keep)) $('vhVeh').value = keep;
+  if (!$('vhType').options.length) $('vhType').innerHTML = VH_TYPES.map(t => `<option value="${t.k}">${esc(t.label)}</option>`).join('');
+  const f = VH.filter; $('vhFilter').innerHTML = '<option value="">All vehicles</option>' + VH.vehicles.map(v => `<option value="${v.id}">${esc(v.name)}</option>`).join('') + '<option value="none">Not assigned</option>'; $('vhFilter').value = f || '';
+  if (!$('vhDate').value) $('vhDate').value = todayISO();
+}
+function vhOverview(){
+  const act = VH.vehicles.filter(v => v.active !== false), c = vhCandidates(), today = todayISO();
+  $('vhStart').classList.toggle('hidden', VH.vehicles.length > 0);
+  $('vhStartMsg').textContent = c.length ? `${c.length} vehicle transaction${c.length === 1 ? '' : 's'} found in the budget.` : 'No vehicle transactions were found in the budget; add a vehicle on the Vehicles page.';
+  $('vhCards').innerHTML = act.map(v => {
+    const m = vhMiles(v.id), due = vhDue(v), recent = VH.log.filter(e => e.vid === v.id && e.type !== 'odo').sort((a, b) => a.date < b.date ? 1 : -1).slice(0, 3);
+    const spent12 = VH.log.filter(e => e.vid === v.id && e.date >= vhAddMonths(today, -12)).reduce((s, e) => s + (+e.cost || 0), 0);
+    const flag = due.some(r => r.status === 'over') ? '<span class="tag bad">Needs attention</span>' : (due.some(r => r.status === 'soon') ? '<span class="tag warn">Something due soon</span>' : '');
+    const mileLine = m.last ? `${m.perDay ? 'About ' + vhMi(m.est) + ' miles now (estimated from ' + vhMi(m.perDay * 365) + ' miles a year)' : vhMi(m.last.miles) + ' miles'}; last reading ${vhMi(m.last.miles)} on ${fmtDate(m.last.date)}` : 'No mileage recorded yet. Log an odometer reading to start the estimate.';
+    const rows = due.map(r => `<tr><td>${esc(r.t.label)}</td><td>${r.done ? fmtDate(r.done.date) + (r.done.miles !== '' && r.done.miles != null ? '<br><span class="note">' + vhMi(r.done.miles) + ' mi</span>' : '') : ''}</td><td>${r.done ? [r.nextDate ? fmtDate(r.nextDate) : '', r.nextMiles !== null && r.nextMiles !== undefined ? vhMi(r.nextMiles) + ' mi' + (r.byMilesDate ? ' (about ' + fmtDate(r.byMilesDate) + ')' : '') : ''].filter(Boolean).join('<br>') : `Every ${[+r.s.mi ? vhMi(r.s.mi) + ' miles' : '', +r.s.mo ? r.s.mo + ' months' : ''].filter(Boolean).join(' or ')}`}</td><td>${vhStatusTag(r)}</td></tr>`).join('');
+    return `<div class="panel vcard"><h3>${esc(v.name)} ${flag}</h3><span class="note">${esc([v.year, v.driver ? 'Driver ' + v.driver : ''].filter(Boolean).join(', '))}</span><p class="vmiles">${mileLine}</p>
+      <div class="tbl"><table><thead><tr><th>Service</th><th>Last done</th><th>Next due</th><th>Status</th></tr></thead><tbody>${rows || '<tr><td colspan="4" class="note">No service intervals set. Set them on the Vehicles page.</td></tr>'}</tbody></table></div>
+      <p class="note">Spent in the last 12 months: ${money(spent12, true)}.${recent.length ? ' Recent work: ' + recent.map(e => esc(vhType(e.type).label) + ' ' + fmtDate(e.date)).join('; ') + '.' : ''}</p></div>`; }).join('') || '';
+  $('vhCandN').textContent = c.length ? `${c.length} waiting` : 'none waiting';
+  $('vhCandAll').classList.toggle('hidden', !c.length || !VH.vehicles.length);
+  $('vhCandBody').innerHTML = c.map(t => { const g = vhGuess(t); return `<tr><td>${fmtDate(t.date)}</td><td class="wrap">${esc(t.desc)}</td><td class="n">${money(t.amount, true)}</td><td>${esc(vhName(g.vid))}<br><span class="note">${esc(vhType(g.type).label)}${g.miles ? ', ' + vhMi(g.miles) + ' mi' : ''}</span></td><td><button class="btn sec small" type="button" data-vhuse="${t.id}">Add to log</button> <button class="btn sec small" type="button" data-vhign="${t.id}">Not vehicle work</button></td></tr>`; }).join('') || '<tr><td colspan="5" class="note">Every vehicle transaction in the budget is in the service log.</td></tr>';
+  document.querySelectorAll('[data-vhuse]').forEach(b => b.addEventListener('click', () => { const t = S.tx.find(x => x.id === b.dataset.vhuse); if (!t) return; VH.log.push(vhEntryFromTx(t)); vehSave(); toast('Added to the service log; check the vehicle, type, and mileage on the Service log page'); renderVeh(); }));
+  document.querySelectorAll('[data-vhign]').forEach(b => b.addEventListener('click', () => { VH.ignored.push(b.dataset.vhign); vehSave(); renderVeh(); }));
+}
+function vhLogPage(){
+  const f = VH.filter, rows = VH.log.filter(e => !f || (f === 'none' ? !VH.vehicles.some(v => v.id === e.vid) : e.vid === f)).sort((a, b) => a.date < b.date ? 1 : (a.date > b.date ? -1 : (+b.miles || 0) - (+a.miles || 0)));
+  const total = rows.reduce((s, e) => s + (+e.cost || 0), 0);
+  $('vhLogSum').textContent = `${rows.length} entr${rows.length === 1 ? 'y' : 'ies'}, ${money(total, true)} in total.`;
+  const vOpts = sel => VH.vehicles.map(v => `<option value="${v.id}"${v.id === sel ? ' selected' : ''}>${esc(v.name)}</option>`).join('') + `<option value=""${VH.vehicles.some(v => v.id === sel) ? '' : ' selected'}>Not assigned</option>`;
+  const tOpts = sel => VH_TYPES.map(t => `<option value="${t.k}"${t.k === sel ? ' selected' : ''}>${esc(t.label)}</option>`).join('');
+  $('vhLogBody').innerHTML = rows.map(e => `<tr data-vhrow="${e.id}"><td><input class="vh-in" type="date" data-vf="date" value="${esc(e.date)}"></td><td><select class="vh-in" data-vf="vid">${vOpts(e.vid)}</select></td><td><select class="vh-in" data-vf="type">${tOpts(e.type)}</select></td><td class="n"><input class="vh-in vh-num" type="number" inputmode="numeric" step="1" min="0" data-vf="miles" value="${e.miles === '' || e.miles == null ? '' : +e.miles}" placeholder="Miles"></td><td class="wrap"><input class="vh-in vh-wide" data-vf="desc" value="${esc(e.desc)}"></td><td><input class="vh-in" data-vf="shop" value="${esc(e.shop || '')}" placeholder="Shop or who"></td><td class="n"><input class="vh-in vh-num" type="number" inputmode="decimal" step="0.01" min="0" data-vf="cost" value="${e.cost === '' || e.cost == null ? '' : (+e.cost).toFixed(2)}"></td><td>${e.txId ? '<span class="tag">From the budget</span>' : ''}<button class="btn sec small" type="button" data-vhdel="${e.id}">Delete</button></td></tr>`).join('') || '<tr><td colspan="8" class="note">No service entries yet.</td></tr>';
+  document.querySelectorAll('#vhLogBody [data-vf]').forEach(i => i.addEventListener('change', () => { const id = i.closest('tr').dataset.vhrow, e = VH.log.find(x => x.id === id); if (!e) return; const k = i.dataset.vf;
+    e[k] = (k === 'miles' || k === 'cost') ? (i.value === '' ? '' : +i.value) : i.value; vehSave(); toast('Saved'); }));
+  document.querySelectorAll('[data-vhdel]').forEach(b => b.addEventListener('click', () => { if (!confirm('Delete this service entry?')) return; const e = VH.log.find(x => x.id === b.dataset.vhdel); VH.log = VH.log.filter(x => x.id !== b.dataset.vhdel); if (e && e.txId && !VH.ignored.includes(e.txId)) VH.ignored.push(e.txId); vehSave(); renderVeh(); }));
+}
+function vhCarsPage(){
+  $('vhCarBody').innerHTML = VH.vehicles.map(v => { const iv = vhIntervals(v);
+    return `<div class="panel" data-vhcar="${v.id}"><div class="row">
+      <div><label class="f">Name</label><input class="t" data-vc="name" value="${esc(v.name)}"></div>
+      <div><label class="f">Year</label><input class="t" data-vc="year" inputmode="numeric" value="${esc(v.year || '')}"></div>
+      <div><label class="f">Make</label><input class="t" data-vc="make" value="${esc(v.make || '')}"></div>
+      <div><label class="f">Model</label><input class="t" data-vc="model" value="${esc(v.model || '')}"></div>
+      <div><label class="f">Main driver</label><input class="t" data-vc="driver" value="${esc(v.driver || '')}"></div>
+      <div><label class="f">Still own it</label><select class="t" data-vc="active"><option value="yes"${v.active !== false ? ' selected' : ''}>Yes</option><option value="no"${v.active === false ? ' selected' : ''}>No, sold or retired</option></select></div></div>
+      <div class="row"><div style="flex:3 1 300px"><label class="f">Notes (oil type, tire size, and so on)</label><input class="t" data-vc="notes" value="${esc(v.notes || '')}"></div></div>
+      <h3>Service intervals</h3><p class="note" style="margin-top:-6px">Whichever comes first. Leave both blank for work that is only recorded, not scheduled.</p>
+      <div class="tbl"><table><thead><tr><th>Service</th><th class="n">Every this many miles</th><th class="n">Or every this many months</th></tr></thead><tbody>${VH_TYPES.filter(t => t.k !== 'odo' && t.k !== 'parts').map(t => `<tr><td>${esc(t.label)}</td><td class="n"><input class="vh-in vh-num" type="number" min="0" step="500" data-vi="${t.k}" data-vu="mi" value="${iv[t.k].mi === '' ? '' : +iv[t.k].mi}"></td><td class="n"><input class="vh-in vh-num" type="number" min="0" step="1" data-vi="${t.k}" data-vu="mo" value="${iv[t.k].mo === '' ? '' : +iv[t.k].mo}"></td></tr>`).join('')}</tbody></table></div>
+      <div style="margin-top:10px"><button class="btn sec small" type="button" data-vhcdel="${v.id}">Remove vehicle</button></div></div>`; }).join('') || '<p class="note">No vehicles yet.</p>';
+  document.querySelectorAll('[data-vc]').forEach(i => i.addEventListener('change', () => { const v = VH.vehicles.find(x => x.id === i.closest('[data-vhcar]').dataset.vhcar); if (!v) return; const k = i.dataset.vc;
+    v[k] = k === 'active' ? i.value === 'yes' : i.value.trim(); if (k === 'name' && !v.name) v.name = [v.make, v.model].filter(Boolean).join(' ') || 'Vehicle'; vehSave(); toast('Saved'); }));
+  document.querySelectorAll('[data-vi]').forEach(i => i.addEventListener('change', () => { const v = VH.vehicles.find(x => x.id === i.closest('[data-vhcar]').dataset.vhcar); if (!v) return; v.intervals = vhIntervals(v); v.intervals[i.dataset.vi][i.dataset.vu] = i.value === '' ? '' : +i.value; vehSave(); toast('Saved'); }));
+  document.querySelectorAll('[data-vhcdel]').forEach(b => b.addEventListener('click', () => { const n = VH.log.filter(e => e.vid === b.dataset.vhcdel).length;
+    if (!confirm(n ? `Remove this vehicle? Its ${n} service entr${n === 1 ? 'y stays' : 'ies stay'} in the log as Not assigned. To keep the vehicle in the history, set Still own it to No instead.` : 'Remove this vehicle?')) return;
+    VH.vehicles = VH.vehicles.filter(v => v.id !== b.dataset.vhcdel); vehSave(); renderVeh(); }));
+}
+
+/* ---------- static controls ---------- */
+document.querySelectorAll('nav.vtabs button').forEach(b => b.addEventListener('click', () => { VH.sub = b.dataset.vt; vehSave(); renderVeh(); }));
+$('vhFilter').addEventListener('change', () => { VH.filter = $('vhFilter').value; renderVeh(); });
+$('vhStartBtn').addEventListener('click', () => { vhImportAll(); renderVeh(); });
+$('vhCandAll').addEventListener('click', () => { if (!confirm('Add every waiting transaction to the service log? You can correct the vehicle, type, and mileage afterward on the Service log page.')) return; vhImportAll(); renderVeh(); });
+$('vhSave').addEventListener('click', () => {
+  const date = $('vhDate').value, type = $('vhType').value, miles = $('vhMiles').value, cost = $('vhCost').value, desc = $('vhDesc').value.trim();
+  if (!date){ $('vhMsg').textContent = 'Enter the date the work was done.'; return; }
+  if (type === 'odo' && !miles){ $('vhMsg').textContent = 'Enter the odometer reading.'; return; }
+  const vid = $('vhVeh').value, m = vhMiles(vid);
+  if (miles && m.last && +miles < m.last.miles && date >= m.last.date && !confirm(`That is fewer miles than the ${vhMi(m.last.miles)} recorded on ${fmtDate(m.last.date)}. Save it anyway?`)) return;
+  VH.log.push({ id:uid(), vid, date, miles:miles === '' ? '' : +miles, type, desc:desc || vhType(type).label, cost:cost === '' ? '' : +cost, shop:$('vhShop').value.trim(), notes:'', txId:'' });
+  vehSave(); ['vhMiles','vhCost','vhDesc','vhShop'].forEach(id => $(id).value = ''); $('vhMsg').textContent = 'Saved. If you paid for this, also enter the payment on Home so the budget sees it; the log entry and the transaction are tracked separately.';
+  renderVeh();
+});
+$('vhGoAdd').addEventListener('click', () => { VH.sub = 'cars'; vehSave(); renderVeh(); $('vhNewYear').scrollIntoView({ behavior:'smooth', block:'center' }); $('vhNewYear').focus(); });
+$('vhAddCar').addEventListener('click', () => {
+  const make = $('vhNewMake').value.trim(), model = $('vhNewModel').value.trim(), name = $('vhNewName').value.trim() || [$('vhNewYear').value.trim(), make, model].filter(Boolean).join(' ');
+  if (!name){ $('vhCarMsg').textContent = 'Enter at least a name, or a make and model.'; return; }
+  const v = { id:uid(), name, year:$('vhNewYear').value.trim(), make, model, driver:$('vhNewDriver').value.trim(), notes:'', active:true, intervals:{} };
+  VH.vehicles.push(v);
+  if ($('vhNewMiles').value) VH.log.push({ id:uid(), vid:v.id, date:todayISO(), miles:+$('vhNewMiles').value, type:'odo', desc:'Starting odometer reading', cost:'', shop:'', notes:'', txId:'' });
+  vehSave(); ['vhNewName','vhNewYear','vhNewMake','vhNewModel','vhNewDriver','vhNewMiles'].forEach(id => $(id).value = ''); $('vhCarMsg').textContent = 'Vehicle added.'; renderVeh();
+});
+window.__veh = { VH, vhCandidates, vhGuess, vhFindNames, vhMiles, vhDue, vhImportAll };
+
+/* ================= Markets: trade journal (Version 30) ================= */
+/* Stored in households/main/meta/markets: trades, prices (last price per position key, entered by hand), sub. Element IDs use the "mk" prefix. */
+const MK = { trades:[], prices:{}, sub:'pos', editId:'' };
+const MK_ACTIONS = [
+  { k:'buy',   label:'Buy shares',              kind:'stock', dir:+1 },
+  { k:'sell',  label:'Sell shares',             kind:'stock', dir:-1 },
+  { k:'bto',   label:'Option: buy to open',     kind:'opt',   dir:+1 },
+  { k:'sto',   label:'Option: sell to open',    kind:'opt',   dir:-1 },
+  { k:'btc',   label:'Option: buy to close',    kind:'opt',   dir:+1 },
+  { k:'stc',   label:'Option: sell to close',   kind:'opt',   dir:-1 },
+  { k:'exp',   label:'Option: expired',         kind:'opt',   dir:0 },
+  { k:'asg',   label:'Option: assigned or exercised', kind:'opt', dir:0 },
+  { k:'div',   label:'Dividend or interest',    kind:'cash' },
+  { k:'dep',   label:'Deposit into the account', kind:'cash' },
+  { k:'wd',    label:'Withdrawal from the account', kind:'cash' },
+  { k:'fee',   label:'Fee',                     kind:'cash' } ];
+const mkAct = k => MK_ACTIONS.find(a => a.k === k) || MK_ACTIONS[0];
+const mkNum = v => (v === '' || v == null || isNaN(v)) ? 0 : +v;
+const mkKey = t => mkAct(t.action).kind === 'opt' ? `${(t.sym || '').toUpperCase()} ${t.expiry || ''} ${+t.strike || ''}${t.right === 'put' ? 'P' : 'C'}` : (t.sym || '').toUpperCase();
+const mkMult = t => mkAct(t.action).kind === 'opt' ? 100 : 1;
+
+/* ---------- load and save ---------- */
+async function mkLoad(){
+  try { const d = await getDoc(ref('meta','markets')); if (d.exists()) Object.assign(MK, d.data()); } catch (e) {}
+  MK.trades = MK.trades || []; MK.prices = MK.prices || {}; MK.sub = MK.sub || 'pos'; MK.editId = '';
+}
+let mkSaveT = null;
+function mkSave(){
+  clearTimeout(mkSaveT);
+  mkSaveT = setTimeout(async () => {
+    const payload = { trades:MK.trades, prices:MK.prices, sub:MK.sub, updated:Date.now() };
+    try { await setDoc(ref('meta','markets'), JSON.parse(JSON.stringify(payload))); } catch (err) { toast('Could not save: ' + (err.code || err.message)); }
+  }, 400);
+}
+
+/* ---------- positions by average cost; works for long and short (sold-to-open) positions ---------- */
+function mkBook(){
+  const pos = {}, cash = {}, per = {}, sorted = MK.trades.slice().sort((a, b) => a.date < b.date ? -1 : (a.date > b.date ? 1 : (a.created || 0) - (b.created || 0)));
+  for (const t of sorted){
+    const a = mkAct(t.action), acct = t.acct || 'Unnamed account', fees = mkNum(t.fees);
+    cash[acct] = cash[acct] || 0;
+    if (a.kind === 'cash'){ const amt = mkNum(t.amount); cash[acct] += (t.action === 'wd' || t.action === 'fee') ? -amt : amt; per[t.id] = { realized:0, income:t.action === 'div' ? amt : 0, fee:t.action === 'fee' ? amt : 0, cashFlow:(t.action === 'wd' || t.action === 'fee') ? -amt : amt }; continue; }
+    const key = acct + '|' + mkKey(t), m = mkMult(t);
+    const p = pos[key] ||= { acct, key:mkKey(t), sym:(t.sym || '').toUpperCase(), opt:a.kind === 'opt', right:t.right, strike:t.strike, expiry:t.expiry, qty:0, cost:0, realized:0, opened:t.date, exit:'', why:'' };
+    let q = a.dir * mkNum(t.qty), price = mkNum(t.price);
+    if (t.action === 'exp' || t.action === 'asg'){ q = -p.qty; price = t.action === 'asg' ? price : 0; }
+    let realized = 0, flow = -(q * price * m) - fees, left = q;
+    if (p.qty !== 0 && Math.sign(q) === -Math.sign(p.qty)){
+      const closeAbs = Math.min(Math.abs(q), Math.abs(p.qty)), qClose = Math.sign(q) * closeAbs, f = closeAbs / Math.abs(p.qty), basis = p.cost * f, feeShare = Math.abs(q) ? fees * closeAbs / Math.abs(q) : 0;
+      realized = (-qClose * price * m) - feeShare - basis; p.qty += qClose; p.cost -= basis; left = q - qClose;
+      if (Math.abs(p.qty) < 1e-9){ p.qty = 0; p.cost = 0; }
+      if (left){ p.cost += left * price * m + (fees - feeShare); p.qty += left; p.opened = t.date; }
+    } else if (q){ if (p.qty === 0) p.opened = t.date; p.cost += q * price * m + fees; p.qty += q; }
+    if (t.exit) p.exit = t.exit; if (t.why) p.why = t.why;
+    p.realized += realized; cash[acct] += flow;
+    per[t.id] = { realized, income:0, fee:fees, cashFlow:flow };
+  }
+  const open = Object.values(pos).filter(p => Math.abs(p.qty) > 1e-9).map(p => { const pr = MK.prices[p.acct + '|' + p.key], m = p.opt ? 100 : 1;
+    const mv = pr ? p.qty * +pr.price * m : null; return { ...p, avg:p.cost / (p.qty * m), price:pr ? +pr.price : null, priceDate:pr ? pr.date : '', mv, unreal:mv === null ? null : mv - p.cost }; });
+  return { open, cash, per, all:Object.values(pos) };
+}
+
+/* ---------- rendering ---------- */
+function renderMk(){
+  document.querySelectorAll('nav.mtabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.mt === MK.sub ? 'true' : 'false'));
+  document.querySelectorAll('#view-mkt > section').forEach(s => s.classList.toggle('hidden', s.id !== 'mt-' + MK.sub));
+  const accts = [...new Set(MK.trades.map(t => t.acct).filter(Boolean))].sort();
+  $('mkAcctList').innerHTML = accts.map(a => `<option value="${esc(a)}">`).join('');
+  $('mkSymList').innerHTML = [...new Set(MK.trades.map(t => (t.sym || '').toUpperCase()).filter(Boolean))].sort().map(s => `<option value="${esc(s)}">`).join('');
+  if (!$('mkAction').options.length) $('mkAction').innerHTML = MK_ACTIONS.map(a => `<option value="${a.k}">${esc(a.label)}</option>`).join('');
+  if (!$('mkDate').value) $('mkDate').value = todayISO();
+  mkFormKind();
+  ({ pos:mkPositions, log:mkLogPage })[MK.sub]();
+}
+function mkFormKind(){
+  const a = mkAct($('mkAction').value), cashOnly = a.kind === 'cash', closeAll = a.k === 'exp' || a.k === 'asg';
+  document.querySelectorAll('.mk-opt').forEach(e => e.classList.toggle('hidden', a.kind !== 'opt'));
+  document.querySelectorAll('.mk-trade').forEach(e => e.classList.toggle('hidden', cashOnly));
+  document.querySelectorAll('.mk-cash').forEach(e => e.classList.toggle('hidden', !cashOnly));
+  document.querySelectorAll('.mk-qty').forEach(e => e.classList.toggle('hidden', cashOnly || closeAll));
+  document.querySelectorAll('.mk-price').forEach(e => e.classList.toggle('hidden', cashOnly || a.k === 'exp'));
+  document.querySelectorAll('.mk-plan').forEach(e => e.classList.toggle('hidden', !['buy','bto','sto'].includes(a.k)));
+  $('mkQtyLbl').textContent = a.kind === 'opt' ? 'Contracts' : 'Shares';
+  $('mkPriceLbl').textContent = a.kind === 'opt' ? (a.k === 'asg' ? 'Price per share at assignment (0 if not needed)' : 'Premium per share') : 'Price per share';
+  $('mkSymLbl').textContent = a.kind === 'opt' ? 'Underlying symbol' : (cashOnly ? 'Symbol (optional)' : 'Symbol');
+}
+function mkPositions(){
+  const B = mkBook(), y = todayISO().slice(0, 4);
+  const realY = MK.trades.filter(t => t.date.slice(0, 4) === y).reduce((s, t) => s + ((B.per[t.id] || {}).realized || 0), 0);
+  const incY = MK.trades.filter(t => t.date.slice(0, 4) === y).reduce((s, t) => s + ((B.per[t.id] || {}).income || 0), 0);
+  const basis = B.open.reduce((s, p) => s + p.cost, 0), priced = B.open.filter(p => p.mv !== null), mv = priced.reduce((s, p) => s + p.mv, 0), un = priced.reduce((s, p) => s + p.unreal, 0);
+  const sgn = v => v > 0.004 ? 'pos' : (v < -0.004 ? 'neg' : '');
+  $('mkKpis').innerHTML = [
+    [String(B.open.length), 'Open positions'],
+    [money(basis, true), 'Cost basis of open positions'],
+    [priced.length ? money(mv, true) : 'No prices yet', `Market value${priced.length < B.open.length ? ` (${priced.length} of ${B.open.length} priced)` : ''}`],
+    [priced.length ? money(un, true) : '', 'Unrealized gain or loss', sgn(un)],
+    [money(realY, true), `Realized gain or loss in ${y}`, sgn(realY)],
+    [money(incY, true), `Dividends and interest in ${y}`] ].map(k => `<div class="kpi"><b class="${k[2] || ''}">${k[0]}</b><span>${k[1]}</span></div>`).join('');
+  $('mkPosBody').innerHTML = B.open.sort((a, b) => a.acct.localeCompare(b.acct) || a.key.localeCompare(b.key)).map(p => { const pk = p.acct + '|' + p.key, m = p.opt ? 100 : 1;
+    const name = p.opt ? `${esc(p.sym)} ${p.right === 'put' ? 'put' : 'call'} ${money(+p.strike, true)}<br><span class="note">Expires ${fmtDate(p.expiry)}${p.expiry && p.expiry < todayISO() ? ' <span class="tag bad">Past expiration</span>' : ''}</span>` : esc(p.sym);
+    return `<tr><td>${name}</td><td>${esc(p.acct)}</td><td class="n">${p.qty < 0 ? '<span class="tag warn">Short</span> ' : ''}${Math.abs(p.qty).toLocaleString('en-US', { maximumFractionDigits:6 })}${p.opt ? ' ct' : ''}</td><td class="n">${money(p.avg, true)}</td><td class="n">${money(p.cost, true)}</td>
+      <td class="n"><input class="vh-in vh-num" type="number" step="0.01" min="0" inputmode="decimal" data-mkp="${esc(pk)}" value="${p.price === null ? '' : p.price}" placeholder="Last price" aria-label="Last price for ${esc(p.key)}">${p.priceDate ? `<br><span class="note">as of ${fmtDate(p.priceDate)}</span>` : ''}</td>
+      <td class="n">${p.mv === null ? '' : money(p.mv, true)}</td><td class="n ${p.unreal === null ? '' : sgn(p.unreal)}">${p.unreal === null ? '' : money(p.unreal, true) + (p.cost ? `<br><span class="note">${(p.unreal / Math.abs(p.cost) * 100).toFixed(1)}%</span>` : '')}</td>
+      <td class="wrap">${fmtDate(p.opened)}${p.exit ? '<br><span class="note">Exit plan: ' + esc(p.exit) + '</span>' : '<br><span class="tag warn">No exit plan written</span>'}</td></tr>`; }).join('') || '<tr><td colspan="9" class="note">No open positions. Record a trade on the Trade log page.</td></tr>';
+  document.querySelectorAll('[data-mkp]').forEach(i => i.addEventListener('change', () => { if (i.value === '') delete MK.prices[i.dataset.mkp]; else MK.prices[i.dataset.mkp] = { price:+i.value, date:todayISO() }; mkSave(); setTimeout(renderMk, 0); }));
+  const ca = Object.entries(B.cash).sort((a, b) => a[0].localeCompare(b[0]));
+  $('mkCashBody').innerHTML = ca.map(([a, v]) => `<tr><td>${esc(a)}</td><td class="n ${sgn(v)}">${money(v, true)}</td></tr>`).join('') || '<tr><td colspan="2" class="note">No accounts yet.</td></tr>';
+}
+function mkLogPage(){
+  const B = mkBook(), f = $('mkFilter').value.trim().toUpperCase();
+  const rows = MK.trades.filter(t => !f || (t.sym || '').toUpperCase().includes(f) || (t.acct || '').toUpperCase().includes(f)).sort((a, b) => a.date < b.date ? 1 : (a.date > b.date ? -1 : (b.created || 0) - (a.created || 0)));
+  const sgn = v => v > 0.004 ? 'pos' : (v < -0.004 ? 'neg' : '');
+  $('mkLogSum').textContent = `${rows.length} entr${rows.length === 1 ? 'y' : 'ies'}; realized gain or loss on these ${money(rows.reduce((s, t) => s + ((B.per[t.id] || {}).realized || 0), 0), true)}.`;
+  $('mkLogBody').innerHTML = rows.map(t => { const a = mkAct(t.action), p = B.per[t.id] || {}, opt = a.kind === 'opt';
+    const what = a.kind === 'cash' ? (t.sym ? esc(t.sym.toUpperCase()) : '') : esc(mkKey(t));
+    const detail = a.kind === 'cash' ? '' : (t.action === 'exp' ? 'All remaining' : `${mkNum(t.qty).toLocaleString('en-US', { maximumFractionDigits:6 })}${opt ? ' ct' : ''} at ${money(mkNum(t.price), true)}`);
+    return `<tr><td>${fmtDate(t.date)}</td><td>${esc(t.acct || '')}</td><td>${esc(a.label)}</td><td>${what}</td><td class="n">${detail}</td><td class="n">${mkNum(t.fees) ? money(mkNum(t.fees), true) : ''}</td><td class="n ${sgn(p.cashFlow || 0)}">${money(p.cashFlow || 0, true)}</td><td class="n ${sgn(p.realized || 0)}">${p.realized ? money(p.realized, true) : ''}</td>
+      <td class="wrap">${t.why ? '<b>Why:</b> ' + esc(t.why) + '<br>' : ''}${t.exit ? '<b>Exit plan:</b> ' + esc(t.exit) + '<br>' : ''}${t.notes ? esc(t.notes) : ''}</td>
+      <td><button class="btn sec small" type="button" data-mkedit="${t.id}">Edit</button> <button class="btn sec small" type="button" data-mkdel="${t.id}">Delete</button></td></tr>`; }).join('') || '<tr><td colspan="10" class="note">No trades recorded yet.</td></tr>';
+  document.querySelectorAll('[data-mkdel]').forEach(b => b.addEventListener('click', () => { if (!confirm('Delete this entry? Positions and gains are recalculated without it.')) return; MK.trades = MK.trades.filter(t => t.id !== b.dataset.mkdel); if (MK.editId === b.dataset.mkdel) mkClear(); mkSave(); renderMk(); }));
+  document.querySelectorAll('[data-mkedit]').forEach(b => b.addEventListener('click', () => { const t = MK.trades.find(x => x.id === b.dataset.mkedit); if (!t) return; MK.editId = t.id;
+    $('mkAction').value = t.action; $('mkDate').value = t.date; $('mkAcct').value = t.acct || ''; $('mkSym').value = t.sym || ''; $('mkQty').value = t.qty ?? ''; $('mkPrice').value = t.price ?? ''; $('mkFees').value = t.fees ?? ''; $('mkAmt').value = t.amount ?? '';
+    $('mkRight').value = t.right || 'call'; $('mkStrike').value = t.strike ?? ''; $('mkExpiry').value = t.expiry || ''; $('mkWhy').value = t.why || ''; $('mkExit').value = t.exit || ''; $('mkNotes').value = t.notes || '';
+    $('mkSave').textContent = 'Save changes'; show('mkCancel'); $('mkMsg').textContent = 'Editing the entry from ' + fmtDate(t.date) + '.'; mkFormKind(); $('mkForm').scrollIntoView({ behavior:'smooth', block:'start' }); }));
+}
+function mkClear(){
+  MK.editId = ''; ['mkSym','mkQty','mkPrice','mkFees','mkAmt','mkStrike','mkExpiry','mkWhy','mkExit','mkNotes'].forEach(id => $(id).value = '');
+  $('mkSave').textContent = 'Save entry'; show('mkCancel', false);
+}
+
+/* ---------- static controls ---------- */
+document.querySelectorAll('nav.mtabs button').forEach(b => b.addEventListener('click', () => { MK.sub = b.dataset.mt; mkSave(); renderMk(); }));
+$('mkAction').addEventListener('change', mkFormKind);
+$('mkFilter').addEventListener('input', () => mkLogPage());
+$('mkCancel').addEventListener('click', () => { mkClear(); $('mkMsg').textContent = ''; });
+$('mkSave').addEventListener('click', () => {
+  const a = mkAct($('mkAction').value), date = $('mkDate').value, acct = $('mkAcct').value.trim(), sym = $('mkSym').value.trim().toUpperCase();
+  const msg = s => { $('mkMsg').textContent = s; };
+  if (!date) return msg('Enter the trade date.');
+  if (!acct) return msg('Enter the account, for example Roth IRA - K or Brokerage.');
+  const t = { id:MK.editId || uid(), created:MK.editId ? ((MK.trades.find(x => x.id === MK.editId) || {}).created || Date.now()) : Date.now(), action:a.k, date, acct, sym,
+    qty:$('mkQty').value === '' ? '' : +$('mkQty').value, price:$('mkPrice').value === '' ? '' : +$('mkPrice').value, fees:$('mkFees').value === '' ? '' : +$('mkFees').value,
+    amount:$('mkAmt').value === '' ? '' : +$('mkAmt').value, right:$('mkRight').value, strike:$('mkStrike').value === '' ? '' : +$('mkStrike').value, expiry:$('mkExpiry').value,
+    why:$('mkWhy').value.trim(), exit:$('mkExit').value.trim(), notes:$('mkNotes').value.trim() };
+  if (a.kind === 'cash'){ if (!(t.amount > 0)) return msg('Enter the amount.'); Object.assign(t, { qty:'', price:'', right:'', strike:'', expiry:'' }); }
+  else {
+    if (!sym) return msg('Enter the symbol.');
+    if (a.kind === 'opt' && (!(t.strike > 0) || !t.expiry)) return msg('Enter the strike price and the expiration date.');
+    if (a.kind !== 'opt'){ t.right = ''; t.strike = ''; t.expiry = ''; }
+    if (a.k !== 'exp' && a.k !== 'asg' && !(t.qty > 0)) return msg(`Enter the number of ${a.kind === 'opt' ? 'contracts' : 'shares'}.`);
+    if (a.k !== 'exp' && !(t.price >= 0 && $('mkPrice').value !== '')) return msg('Enter the price.');
+    if (a.k === 'exp' || a.k === 'asg'){ const B = mkBook(), open = B.open.find(p => p.acct === acct && p.key === mkKey(t)); if (!open && !MK.editId) return msg('No open option matches that account, symbol, type, strike, and expiration.'); }
+    if (['sell','stc','btc'].includes(a.k) && !MK.editId){ const B = mkBook(), open = B.open.find(p => p.acct === acct && p.key === mkKey(t));
+      if (!open && !confirm(`There is no open position in ${mkKey(t)} in ${acct}. Save it anyway? It will be recorded as a new ${a.k === 'btc' ? 'long' : 'short'} position.`)) return; }
+  }
+  MK.trades = MK.trades.filter(x => x.id !== t.id).concat([t]);
+  const was = MK.editId; mkClear(); mkSave(); msg(was ? 'Changes saved.' : 'Saved. Positions and gains are updated.'); renderMk();
+});
+window.__mk = { MK, mkBook };
 /* ---------- Data: import ---------- */
 function serialToISO(v){
   if (v == null || v === '') return '';
