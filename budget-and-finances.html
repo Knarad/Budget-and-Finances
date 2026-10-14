@@ -267,6 +267,8 @@ nav.vtabs button[aria-selected="true"],nav.mtabs button[aria-selected="true"]{ba
 @media (max-width:760px){#vhCards{grid-template-columns:minmax(0,1fr)}}
 .vcard{min-width:0}
 #mkPosBody td.wrap{min-width:220px}
+tr.sd-tie td{background:color-mix(in srgb,var(--card) 10%,transparent)}
+#tab-stmt .chk input{box-sizing:border-box}
 </style>
 </head>
 <body>
@@ -303,7 +305,7 @@ nav.vtabs button[aria-selected="true"],nav.mtabs button[aria-selected="true"]{ba
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 30</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 35</span>
   <div class="sp"></div>
   <button id="signOutBtn" type="button">Sign out</button>
 </header>
@@ -354,7 +356,7 @@ nav.vtabs button[aria-selected="true"],nav.mtabs button[aria-selected="true"]{ba
     </div>
   </div>
   <div class="panel" id="upPanel">
-    <h2 style="margin-top:0">Coming up in the next 14 days: income and bills</h2>
+    <h2 style="margin-top:0">Coming up in the next 30 days: income and bills</h2>
     <p class="note" style="margin-top:-4px" id="upSum"></p>
     <div class="tbl"><table><thead><tr><th>Expected</th><th>Item</th><th class="n">Typical</th><th class="n">Amount</th><th>Category</th><th>Source</th><th></th></tr></thead><tbody id="upBody"></tbody></table></div>
     <p class="note" style="margin:8px 0 0">Recurring bills are found automatically. Income follows the known pay schedules (K every other Thursday; J on the 15th and the last day of each month; child support every other Monday or Tuesday), and any other regular income is found automatically. To change one payment, edit its date or type a different amount; the change applies to that payment only. Changed rows are highlighted, and “Undo changes” goes back to the expected date and amount.</p>
@@ -369,7 +371,7 @@ nav.vtabs button[aria-selected="true"],nav.mtabs button[aria-selected="true"]{ba
         <div><button class="btn" type="button" id="upAdd">Add</button></div>
       </div>
       <div class="err" id="upErr" role="alert"></div>
-      <p class="note">It shows in the list above once it is 14 days away, and stays a week past its date until you remove it.</p>
+      <p class="note">It shows in the list above once it is 30 days away, and stays a week past its date until you remove it.</p>
       <div id="upLater"></div>
     </details>
   </div>
@@ -430,10 +432,59 @@ nav.vtabs button[aria-selected="true"],nav.mtabs button[aria-selected="true"]{ba
   <span class="sublabel">Records</span>
   <button data-tab="month" aria-selected="false">Month</button>
   <button data-tab="list" aria-selected="false">Transactions</button>
+  <button data-tab="stmt" aria-selected="false">Statements</button>
   <button data-tab="accounts" aria-selected="false">Accounts</button>
   <button data-tab="budget" aria-selected="false">Budget</button>
   <button data-tab="data" aria-selected="false">Data and Settings</button>
 </nav>
+
+<section id="tab-stmt" class="hidden">
+  <h2>Statement dates</h2>
+  <p class="note" style="margin-top:-6px">Import a bank or credit card statement to set each transaction to the date on the statement. Only the date changes: the category, amount, description, account, notes, and posted status stay exactly as entered. Each import can be undone.</p>
+  <div class="panel">
+    <div class="row">
+      <div><label class="f" for="sdAcct">Statement for this account</label><select class="t" id="sdAcct"></select></div>
+      <div style="flex:2 1 260px"><label class="f" for="sdFile">Statement file (CSV, QFX, or OFX from online banking)</label><input class="t" id="sdFile" type="file" accept=".csv,.qfx,.ofx,.txt,.pdf"></div>
+      <div style="flex:0 1 150px"><label class="f" for="sdWin">Match within this many days</label><input class="t" id="sdWin" type="number" min="1" max="31" step="1" value="10"></div>
+    </div>
+    <label class="chk" style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="sdTrans" checked> Use the transaction date when the statement lists both a transaction date and a posting date (most card statements do)</label>
+    <div class="row" style="margin-top:10px"><div><button class="btn" id="sdRead" type="button">Read the statement</button></div></div>
+    <div class="hint" id="sdMsg"></div>
+  </div>
+  <div id="sdResult" class="hidden">
+    <p id="sdSum"></p>
+    <h3>Dates that would change</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"><button class="btn" id="sdApplyBtn" type="button">Change dates</button><button class="btn sec small" id="sdAll" type="button">Select every earlier date</button><button class="btn sec small" id="sdNone" type="button">Select none</button></div>
+    <div class="tbl"><table><thead><tr><th></th><th>Date now</th><th>Statement date</th><th>Description</th><th class="n">Amount</th><th>Category</th><th>On the statement</th></tr></thead><tbody id="sdBody"></tbody></table></div>
+    <details class="more" style="margin-top:14px"><summary>Statement lines with no budget row (<span id="sdNoRowN"></span>)</summary>
+      <p class="note">Usually transactions that were never entered, or entered with a different amount. Nothing is added from here.</p>
+      <div class="tbl"><table><thead><tr><th>Date</th><th>On the statement</th><th class="n">Amount</th><th>Direction</th></tr></thead><tbody id="sdNoRow"></tbody></table></div></details>
+    <details class="more" style="margin-top:10px"><summary>Budget rows in these dates with no statement line (<span id="sdNoLineN"></span>)</summary>
+      <p class="note">Pending items, cash, or entries with a different amount or account.</p>
+      <div class="tbl"><table><thead><tr><th>Date</th><th>Description</th><th class="n">Amount</th><th>Category</th></tr></thead><tbody id="sdNoLine"></tbody></table></div></details>
+  </div>
+  <h3>Imported statements</h3>
+  <div class="tbl"><table><thead><tr><th>Imported</th><th>Statement</th><th class="n">Dates changed</th><th></th></tr></thead><tbody id="sdLog"></tbody></table></div>
+
+  <h2 style="margin-top:32px">Older history</h2>
+  <p class="note" style="margin-top:-6px">Adds transactions from before the budget began, from a history file Claude prepares from your statements. Each row is categorized the way the budget categorizes today; mixed stores such as Walmart carry the store's name, and anything uncertain is Unable to categorize. Loading the same file twice adds nothing new.</p>
+  <div class="panel">
+    <div class="row">
+      <div style="flex:2 1 260px"><label class="f" for="hiFile">History file from Claude (History_Batch_NN.csv)</label><input class="t" id="hiFile" type="file" accept=".csv"></div>
+      <div><button class="btn" id="hiRead" type="button">Read the history file</button></div>
+    </div>
+    <div class="hint" id="hiMsg"></div>
+  </div>
+  <div id="hiResult" class="hidden">
+    <p id="hiSum"></p>
+    <div style="margin-bottom:8px"><button class="btn" id="hiAdd" type="button">Add rows</button></div>
+    <div class="tbl" style="max-width:640px"><table><thead><tr><th>Category</th><th class="n">Rows</th><th class="n">Amount</th></tr></thead><tbody id="hiCats"></tbody></table></div>
+    <details class="more" style="margin-top:10px"><summary>Left out because they look like transactions already in the budget</summary>
+      <div class="tbl"><table><thead><tr><th>Date</th><th>On the statement</th><th class="n">Amount</th><th>Match</th></tr></thead><tbody id="hiDups"></tbody></table></div></details>
+  </div>
+  <h3>Older history added</h3>
+  <div class="tbl"><table><thead><tr><th>Statement starting</th><th>Account</th><th>Dates</th><th class="n">Rows</th><th></th></tr></thead><tbody id="hiList"></tbody></table></div>
+</section>
 
 <section id="tab-byacct" class="hidden">
   <h2>Accounts by month</h2>
@@ -579,7 +630,7 @@ nav.vtabs button[aria-selected="true"],nav.mtabs button[aria-selected="true"]{ba
   <h2>Bills</h2>
   <p class="note" style="margin-top:-6px">Recurring bills are found automatically: any bill, savings, or card payment that shows up in at least three of the last six months. Days and amounts are the typical values.</p>
   <div class="grid g3" id="blKpis"></div>
-  <h3>Coming up in the next 14 days</h3>
+  <h3>Coming up in the next 30 days</h3>
   <p class="note" style="margin-top:-6px">Includes items added on Home and any one-time amounts typed there. To change them, use the Coming up panel on Home.</p>
   <div class="tbl"><table><thead><tr><th>Expected</th><th>Bill</th><th class="n">Amount</th><th>Category</th><th>Last paid</th></tr></thead><tbody id="blNext"></tbody></table></div>
   <h3>Every recurring bill by day of the month</h3>
@@ -818,6 +869,15 @@ nav.vtabs button[aria-selected="true"],nav.mtabs button[aria-selected="true"]{ba
     <h2>Positions</h2>
     <p class="note" style="margin-top:-6px">Built from the trade log using average cost. Prices are typed in by hand from the brokerage screen; the market value and unrealized gain use the last price entered. Options are 100 shares per contract.</p>
     <div class="grid g3" id="mkKpis"></div>
+    <div class="panel" style="margin-top:12px">
+      <h3 style="margin-top:0">For the quarterly brief</h3>
+      <p class="note">Copy or download a snapshot of every position, the cash in each account, recent trades with their reasons and exit plans, and the latest retirement balances, then give it to Claude with the quarterly brief request. Claude prices each position as of that day.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="mkCopyBrief" type="button">Copy for a quarterly brief</button><button class="btn sec" id="mkDlBrief" type="button">Download for a quarterly brief</button></div>
+      <div class="hint" id="mkBriefMsg"></div>
+      <p class="note" style="margin-top:10px">For the full quarterly update, export everything in the app instead: accounts, debts, budget against actual, retirement, these investments, vehicles, and the next 30 days.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="qxCopyM" type="button">Copy the full quarterly export</button><button class="btn sec" id="qxDlM" type="button">Download the full quarterly export</button></div>
+      <div class="hint" id="qxMsgM"></div>
+    </div>
     <h3>Open positions</h3>
     <div class="tbl"><table><thead><tr><th>Position</th><th>Account</th><th class="n">Quantity</th><th class="n">Average cost</th><th class="n">Cost basis</th><th class="n">Last price</th><th class="n">Market value</th><th class="n">Unrealized</th><th>Opened and exit plan</th></tr></thead><tbody id="mkPosBody"></tbody></table></div>
     <h3>Cash in each account from the log</h3>
@@ -959,6 +1019,12 @@ nav.vtabs button[aria-selected="true"],nav.mtabs button[aria-selected="true"]{ba
     <h2>Quarterly check-in</h2>
     <p class="note" style="margin-top:-6px">Every three months, for example in January, April, July, and October, answer these ten questions. They take about ten minutes with your statements in hand. Saving a check-in logs the balances, updates the plan with anything that changed, and records how far along the target path you are, so progress can be compared over time.</p>
     <div class="panel rread" id="ciStatus"></div>
+    <div class="panel">
+      <h3 style="margin-top:0">Export for the quarterly update with Claude</h3>
+      <p class="note">One file with everything in the app: account balances, debts, budget against actual for the last quarter and the year, retirement progress and this check-in, investments, vehicle service due, and the next 30 days. Give it to Claude with the quarterly request, and add it to the Project knowledge in place of the previous export so later chats start from it.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="qxCopyR" type="button">Copy the full quarterly export</button><button class="btn sec" id="qxDlR" type="button">Download the full quarterly export</button></div>
+      <div class="hint" id="qxMsgR"></div>
+    </div>
     <div class="panel ci">
       <h3 style="margin-top:0">This check-in</h3>
       <div class="ci-q"><label class="f" for="ciDate">1. Date of this check-in</label><input class="t" id="ciDate" type="date"></div>
@@ -1513,7 +1579,8 @@ $('rxSave').addEventListener('click', async () => {
   }
 });
 
-/* ================= Coming up in the next 14 days (Version 23) ================= */
+/* ================= Coming up in the next 30 days (Version 23; 14 days until Version 31) ================= */
+const UP_DAYS = 30;
 /* Stored in households/main/meta/upcoming: items (things added by hand) and overrides (amount for one specific payment). */
 const UP = { items:[], overrides:{}, dates:{} };   // dates: a moved date for one specific payment (Version 25)
 async function upLoad(){ try { const d = await getDoc(ref('meta','upcoming')); if (d.exists()){ const v = d.data(); UP.items = v.items || []; UP.dates = v.dates || {}; UP.overrides = v.overrides || {}; } } catch (e) {} }
@@ -1530,10 +1597,11 @@ function upList(days, opt){
   const withIncome = !opt || opt.income !== false;
   const now = new Date(), t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()), end = new Date(t0.getTime() + days * 864e5), grace = new Date(t0.getTime() - 7 * 864e5);
   const out = [];
-  for (const b of detectBills()){
-    const key = 'r|' + normDesc(b.desc) + '|' + b.cat + '|' + ym(upISO(b.next)), o = UP.overrides[key], md = UP.dates[key], date = md ? upDay(md) : b.next;
+  for (const b of detectBills()) for (let mo = 0; mo < 3; mo++){   // Version 31: every monthly occurrence inside the window, now that it can reach into the next month
+    const nx = new Date(b.next.getFullYear(), b.next.getMonth() + mo, Math.min(b.day, 28));
+    const key = 'r|' + normDesc(b.desc) + '|' + b.cat + '|' + ym(upISO(nx)), o = UP.overrides[key], md = UP.dates[key], date = md ? upDay(md) : nx;
     if (date < (md ? grace : t0) || date > end) continue;
-    out.push({ key, date, orig:b.next, moved:!!md, desc:b.desc, cat:b.cat, typical:b.amt, amt:o !== undefined ? +o : b.amt, changed:o !== undefined, source:'Recurring', last:b.last, inc:false, past:date < t0 }); }
+    out.push({ key, date, orig:nx, moved:!!md, desc:b.desc, cat:b.cat, typical:b.amt, amt:o !== undefined ? +o : b.amt, changed:o !== undefined, source:'Recurring', last:b.last, inc:false, past:date < t0 }); }
   if (withIncome) for (const g of detectIncome()) for (const d of g.next){
     const key = 'i|' + normDesc(g.desc) + '|' + g.cat + '|' + upISO(d), o = UP.overrides[key], md = UP.dates[key], date = md ? upDay(md) : d;
     if (date < (md ? grace : new Date(t0.getTime() - (g.alt ? 864e5 : 0))) || date > end) continue;
@@ -1610,16 +1678,16 @@ function detectIncome(){
 }
 const upFmt = d => d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
 function renderUpcoming(){
-  const rows = upList(14), bills = rows.filter(r => !r.inc), incs = rows.filter(r => r.inc), total = bills.reduce((s, r) => s + r.amt, 0), itot = incs.reduce((s, r) => s + r.amt, 0), nChanged = rows.filter(r => r.changed).length, nMoved = rows.filter(r => r.moved).length, nAdded = rows.filter(r => r.source !== 'Recurring').length;
-  $('upSum').innerHTML = rows.length ? `<b class="pos">${money(itot, true)}</b> of income expected (${incs.length} deposit${incs.length === 1 ? '' : 's'}) and <b>${money(total, true)}</b> of bills (${bills.length} payment${bills.length === 1 ? '' : 's'}), for a net of <b class="${itot - total >= 0 ? 'pos' : 'neg'}">${itot - total >= 0 ? '+' : '−'}${money(Math.abs(itot - total), true)}</b>${nAdded ? `; ${nAdded} added by you` : ''}${nChanged ? `; ${nChanged} with an amount you changed` : ''}${nMoved ? `; ${nMoved} with a date you changed` : ''}.` : 'Nothing expected in the next 14 days.';
+  const rows = upList(UP_DAYS), bills = rows.filter(r => !r.inc), incs = rows.filter(r => r.inc), total = bills.reduce((s, r) => s + r.amt, 0), itot = incs.reduce((s, r) => s + r.amt, 0), nChanged = rows.filter(r => r.changed).length, nMoved = rows.filter(r => r.moved).length, nAdded = rows.filter(r => r.source !== 'Recurring').length;
+  $('upSum').innerHTML = rows.length ? `<b class="pos">${money(itot, true)}</b> of income expected (${incs.length} deposit${incs.length === 1 ? '' : 's'}) and <b>${money(total, true)}</b> of bills (${bills.length} payment${bills.length === 1 ? '' : 's'}), for a net of <b class="${itot - total >= 0 ? 'pos' : 'neg'}">${itot - total >= 0 ? '+' : '−'}${money(Math.abs(itot - total), true)}</b>${nAdded ? `; ${nAdded} added by you` : ''}${nChanged ? `; ${nChanged} with an amount you changed` : ''}${nMoved ? `; ${nMoved} with a date you changed` : ''}.` : `Nothing expected in the next ${UP_DAYS} days.`;
   $('upBody').innerHTML = rows.length ? rows.map(r => `<tr class="${r.inc ? 'upinc' : ''}${r.changed || r.moved ? ' upchg' : ''}${r.source !== 'Recurring' ? ' upadd' : ''}${r.past ? ' uppast' : ''}"><td class="up-dcell"><span class="up-wd">${r.date.toLocaleDateString('en-US', { weekday:'short' })}${r.alt ? ' or ' + new Date(r.date.getTime() + 864e5).toLocaleDateString('en-US', { weekday:'short' }) : ''}</span><input class="up-date${r.moved ? ' set' : ''}" type="date" data-upd="${esc(r.key)}" value="${upISO(r.date)}" aria-label="Date for ${esc(r.desc)}">${r.moved ? `<br><span class="note">Moved from ${upFmt(r.orig)}</span>` : ''}${r.past ? '<br><span class="tag bad">Date passed</span>' : ''}</td><td class="wrap">${esc(r.desc)}${r.account ? `<br><span class="note">${esc(r.account)}</span>` : ''}</td><td class="n">${r.typical !== null ? (r.inc ? '+' : '') + money(r.typical, true) : ''}</td><td class="n"><input class="up-amt${r.changed ? ' set' : ''}" type="number" step="0.01" inputmode="decimal" data-upk="${esc(r.key)}" value="${r.changed || r.source !== 'Recurring' ? (+r.amt).toFixed(2) : ''}" placeholder="${(+r.amt).toFixed(2)}" aria-label="Amount for ${esc(r.desc)}"></td><td>${r.inc ? '<span class="tag ok">Income</span> ' : ''}${esc(r.cat)}</td><td>${r.source === 'Recurring' ? (r.inc ? (r.rule ? esc(r.rule) + '<br>' : '') + 'Last received ' : 'Last paid ') + fmtDate(r.last) : '<span class="tag">Added by you</span>'}</td><td>${r.id ? `<button class="btn sec small" type="button" data-updel="${r.id}">Remove</button>` : (r.changed || r.moved ? `<button class="btn sec small" type="button" data-upreset="${esc(r.key)}">Undo changes</button>` : '')}</td></tr>`).join('')
     + `<tr class="tot"><td></td><td>Income expected</td><td></td><td class="n pos">+${money(itot, true)}</td><td></td><td></td><td></td></tr>`
     + `<tr class="tot"><td></td><td>Bills expected</td><td></td><td class="n">${money(total, true)}</td><td></td><td></td><td></td></tr>`
-    + `<tr class="tot"><td></td><td>Net for the 14 days</td><td></td><td class="n ${itot - total >= 0 ? 'pos' : 'neg'}">${itot - total >= 0 ? '+' : '−'}${money(Math.abs(itot - total), true)}</td><td></td><td></td><td></td></tr>`
-    : '<tr><td colspan="7" class="muted">Nothing expected in the next 14 days.</td></tr>';
-  const later = UP.items.filter(it => upDay(it.date) > new Date(Date.now() + 14 * 864e5)).sort((a, b) => a.date < b.date ? -1 : 1);
-  const movedOut = upList(75).filter(r => r.moved && r.date > new Date(Date.now() + 14 * 864e5));
-  $('upLater').innerHTML = (movedOut.length ? '<h4>Moved past the next 14 days</h4><div class="tbl"><table><tbody>' + movedOut.map(r => `<tr><td>${fmtDate(upISO(r.date))}<br><span class="note">from ${upFmt(r.orig)}</span></td><td class="wrap">${esc(r.desc)}</td><td class="n">${r.inc ? '+' : ''}${money(r.amt, true)}</td><td>${esc(r.cat)}</td><td><button class="btn sec small" type="button" data-upreset="${esc(r.key)}">Undo changes</button></td></tr>`).join('') + '</tbody></table></div>' : '') + (later.length ? '<h4>Added for later: each moves into the list above once it is 14 days away</h4><div class="tbl"><table><tbody>' + later.map(it => `<tr><td>${fmtDate(it.date)}</td><td class="wrap">${esc(it.desc)}${it.type === 'income' ? ' <span class="tag ok">Income</span>' : ''}</td><td class="n">${it.type === 'income' ? '+' : ''}${money(+it.amount, true)}</td><td>${esc(it.cat || '')}</td><td><button class="btn sec small" type="button" data-updel="${it.id}">Remove</button></td></tr>`).join('') + '</tbody></table></div>' : '');
+    + `<tr class="tot"><td></td><td>Net for the ${UP_DAYS} days</td><td></td><td class="n ${itot - total >= 0 ? 'pos' : 'neg'}">${itot - total >= 0 ? '+' : '−'}${money(Math.abs(itot - total), true)}</td><td></td><td></td><td></td></tr>`
+    : `<tr><td colspan="7" class="muted">Nothing expected in the next ${UP_DAYS} days.</td></tr>`;
+  const later = UP.items.filter(it => upDay(it.date) > new Date(Date.now() + UP_DAYS * 864e5)).sort((a, b) => a.date < b.date ? -1 : 1);
+  const movedOut = upList(75).filter(r => r.moved && r.date > new Date(Date.now() + UP_DAYS * 864e5));
+  $('upLater').innerHTML = (movedOut.length ? `<h4>Moved past the next ${UP_DAYS} days</h4>` + '<div class="tbl"><table><tbody>' + movedOut.map(r => `<tr><td>${fmtDate(upISO(r.date))}<br><span class="note">from ${upFmt(r.orig)}</span></td><td class="wrap">${esc(r.desc)}</td><td class="n">${r.inc ? '+' : ''}${money(r.amt, true)}</td><td>${esc(r.cat)}</td><td><button class="btn sec small" type="button" data-upreset="${esc(r.key)}">Undo changes</button></td></tr>`).join('') + '</tbody></table></div>' : '') + (later.length ? `<h4>Added for later: each moves into the list above once it is ${UP_DAYS} days away</h4>` + '<div class="tbl"><table><tbody>' + later.map(it => `<tr><td>${fmtDate(it.date)}</td><td class="wrap">${esc(it.desc)}${it.type === 'income' ? ' <span class="tag ok">Income</span>' : ''}</td><td class="n">${it.type === 'income' ? '+' : ''}${money(+it.amount, true)}</td><td>${esc(it.cat || '')}</td><td><button class="btn sec small" type="button" data-updel="${it.id}">Remove</button></td></tr>`).join('') + '</tbody></table></div>' : '');
   if (movedOut.length) $('upPanel').querySelector('details.up-add').open = true;
   const isInc = $('upType').value === 'income', cats = S.config.categories.filter(c => isInc ? c.type === 'Income' : (c.type === 'Expense' || c.type === 'Savings' || c.type === 'Transfer' || c.name === 'Card Payment')).map(c => c.name).sort((a, b) => a.localeCompare(b));
   const keepC = $('upCat').value; $('upCat').innerHTML = opts(cats, 'Choose a category'); if (cats.includes(keepC)) $('upCat').value = keepC;
@@ -1630,10 +1698,10 @@ document.addEventListener('change', e => {
   const dt = e.target.closest('[data-upd]');
   if (dt){ const key = dt.dataset.upd, v = dt.value;
     if (key.startsWith('m|')){ const it = UP.items.find(x => 'm|' + x.id === key); if (!it || !v){ renderUpcoming(); return; } it.date = v; }
-    else { const r = upList(60).find(x => x.key === key) || upList(14).find(x => x.key === key);
+    else { const r = upList(60).find(x => x.key === key) || upList(UP_DAYS).find(x => x.key === key);
       if (!v || (r && upISO(r.orig) === v)) delete UP.dates[key]; else UP.dates[key] = v; }
     upSave(); renderUpcoming(); if (!$('tab-bills').classList.contains('hidden')) render.bills();
-    const far = v && upDay(v) > new Date(Date.now() + 14 * 864e5); toast(far ? 'Date saved; it leaves this list until it is 14 days away' : 'Date saved'); return; }
+    const far = v && upDay(v) > new Date(Date.now() + UP_DAYS * 864e5); toast(far ? `Date saved; it leaves this list until it is ${UP_DAYS} days away` : 'Date saved'); return; }
   const i = e.target.closest('[data-upk]'); if (!i) return;
   const key = i.dataset.upk, v = i.value.trim();
   if (key.startsWith('m|')){ const it = UP.items.find(x => 'm|' + x.id === key); if (!it) return; if (v === '' || isNaN(+v)){ toast('Enter an amount'); renderUpcoming(); return; } it.amount = Math.round(+v * 100) / 100; }
@@ -1654,7 +1722,7 @@ $('upAdd').addEventListener('click', () => {
   if (!date || !desc || !(amt > 0)){ $('upErr').textContent = 'Enter a date, what it is, and an amount.'; return; }
   UP.items.push({ id:uid(), type:$('upType').value, date, desc, amount:Math.round(amt * 100) / 100, cat:$('upCat').value, account:$('upAcct').value, created:Date.now() });
   $('upDesc').value = ''; $('upAmt').value = ''; $('upErr').textContent = ''; upSave(); renderUpcoming();
-  toast(upDay(date) > new Date(Date.now() + 14 * 864e5) ? 'Added; it will appear 14 days ahead' : 'Added');
+  toast(upDay(date) > new Date(Date.now() + UP_DAYS * 864e5) ? `Added; it will appear ${UP_DAYS} days ahead` : 'Added');
 });
 /* ---------- Dashboard ---------- */
 let charts = {};
@@ -1933,10 +2001,10 @@ function detectBills(){
   return bills.sort((a,b) => a.day - b.day);
 }
 render.bills = () => {
-  const bills = detectBills(), now = new Date(), soonEnd = new Date(now.getTime() + 14*864e5);
-  const total = bills.reduce((s,b) => s + b.amt, 0), soon = upList(14, { income:false });
+  const bills = detectBills(), now = new Date(), soonEnd = new Date(now.getTime() + UP_DAYS*864e5);
+  const total = bills.reduce((s,b) => s + b.amt, 0), soon = upList(UP_DAYS, { income:false });
   const kk = (v,l) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`;
-  $('blKpis').innerHTML = kk(bills.length, 'Recurring bills found') + kk(money(total), 'Typical monthly total') + kk(money(soon.reduce((s,b) => s + b.amt, 0)), 'Expected in the next 14 days, including your changes');
+  $('blKpis').innerHTML = kk(bills.length, 'Recurring bills found') + kk(money(total), 'Typical monthly total') + kk(money(soon.reduce((s,b) => s + b.amt, 0)), `Expected in the next ${UP_DAYS} days, including your changes`);
   const d = x => x.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
   $('blNext').innerHTML = soon.length ? soon.map(b => `<tr class="soon"><td>${d(b.date)}</td><td class="wrap">${esc(b.desc)}</td><td class="n">${money(b.amt,true)}${b.changed ? `<br><span class="note">typical ${money(b.typical,true)}</span>` : ''}</td><td>${esc(b.cat)}</td><td>${b.last ? fmtDate(b.last) : 'Added on Home'}</td></tr>`).join('') : '<tr><td colspan="5" class="muted">Nothing expected in the next 14 days.</td></tr>';
   $('blAll').innerHTML = bills.map(b => `<tr><td class="n">${b.day}</td><td class="wrap">${esc(b.desc)}</td><td class="n">${money(b.amt,true)}</td><td class="n">${Math.abs(b.max - b.min) < 1 ? '' : money(b.min) + ' to ' + money(b.max)}</td><td>${esc(b.cat)}</td><td>${b.seen} of the last 6 months</td><td>${fmtDate(b.last)}</td></tr>`).join('') + `<tr class="tot"><td></td><td>Typical monthly total</td><td class="n">${money(total,true)}</td><td></td><td></td><td></td><td></td></tr>`;
@@ -2291,6 +2359,24 @@ async function migrations(){
       batch.set(ref('meta','budget'), { rows:S.budget.rows }); batch.set(ref('meta','config'), S.config);
       await batch.commit(); rebuildTx();
       toast(`Horse Lessons budget set to $240 a month${dq ? `; ${dq} Dairy Queen trip${dq === 1 ? '' : 's'} on lesson days moved to Horse Lessons` : ''}`);
+    } catch (e) {}
+  }
+  /* Version 35, one time (Karl, October 14): refunds, returns, and merchant credits get their own income category, Misc Receipts and Refunds.
+     Moves rows now in Other Income whose description says return, refund, credit, or reversal; gifts, cash, coins, and other receipts stay in Other Income. */
+  if (!S.config.flags.refundCat && S.tx.length){
+    const RC = 'Misc Receipts and Refunds', isRefund = d => /\breturn|refund|credit|reversal/i.test(d || '');
+    try {
+      if (!hasCat(RC)) S.config.categories.push({ name:RC, type:'Income', group:'Income' });
+      const batch = writeBatch(db); let moved = 0;
+      for (const [k, rows] of Object.entries(S.months)){
+        let ch = false;
+        const next = rows.map(t => { if (catUsed(t) !== 'Other Income' || !isRefund(t.desc)) return t; ch = true; moved++; return Object.assign({}, t, { cat:RC }); });
+        if (ch){ S.months[k] = next; batch.set(ref('months', k), { rows:next }); }
+      }
+      S.config.flags.refundCat = { on:todayISO(), moved };
+      batch.set(ref('meta','config'), S.config);
+      await batch.commit(); rebuildTx();
+      if (moved) toast(`Moved ${moved} refund${moved === 1 ? '' : 's'} to Misc Receipts and Refunds`);
     } catch (e) {}
   }
 }
@@ -3577,7 +3663,291 @@ $('mkSave').addEventListener('click', () => {
   MK.trades = MK.trades.filter(x => x.id !== t.id).concat([t]);
   const was = MK.editId; mkClear(); mkSave(); msg(was ? 'Changes saved.' : 'Saved. Positions and gains are updated.'); renderMk();
 });
-window.__mk = { MK, mkBook };
+/* ---------- export for a quarterly brief in a Claude chat (Version 31) ---------- */
+function mkBrief(part){
+  const B = mkBook(), today = todayISO(), y = today.slice(0, 4), since = addDays(today, -100), m2 = v => money(v, true);
+  const H = part ? '### ' : '## ', L = part ? [`## Investments`, ``, `Prices below are the last ones typed into the app, not live quotes; price every position as of the update date.`, ``] : [`# Investment snapshot for a quarterly brief`, ``, `Exported ${fmtDate(today)} from the Budget and Finances app. Prices below are the last ones typed into the app, not live quotes; price every position as of the brief date.`, ``];
+  L.push(`${H}Open positions (average cost)`, ``, `| Account | Position | Quantity | Average cost | Cost basis | Last price entered | Opened | Exit plan |`, `| --- | --- | --- | --- | --- | --- | --- | --- |`);
+  for (const p of B.open.sort((a, b) => a.acct.localeCompare(b.acct) || a.key.localeCompare(b.key)))
+    L.push(`| ${p.acct} | ${p.opt ? `${p.sym} ${p.right === 'put' ? 'put' : 'call'}, strike ${m2(+p.strike)}, expires ${p.expiry}` : p.sym} | ${p.qty < 0 ? 'short ' : ''}${Math.abs(p.qty)}${p.opt ? (Math.abs(p.qty) === 1 ? ' contract' : ' contracts') : (Math.abs(p.qty) === 1 ? ' share' : ' shares')} | ${m2(p.avg)} | ${m2(p.cost)} | ${p.price === null ? 'none' : m2(p.price) + ' on ' + p.priceDate} | ${p.opened} | ${p.exit || 'none written'} |`);
+  if (!B.open.length) L.push(`| none | | | | | | | |`);
+  L.push(``, `${H}Cash in each account from the log`, ``, `| Account | Cash |`, `| --- | --- |`);
+  for (const [a, v] of Object.entries(B.cash).sort((a, b) => a[0].localeCompare(b[0]))) L.push(`| ${a} | ${m2(v)} |`);
+  const realY = MK.trades.filter(t => t.date.slice(0, 4) === y).reduce((s, t) => s + ((B.per[t.id] || {}).realized || 0), 0), incY = MK.trades.filter(t => t.date.slice(0, 4) === y).reduce((s, t) => s + ((B.per[t.id] || {}).income || 0), 0);
+  L.push(``, `Realized gain or loss in ${y}: ${m2(realY)}. Dividends and interest in ${y}: ${m2(incY)}.`, ``, `${H}Trade log entries since ${since}`, ``, `| Date | Account | Type | Position | Quantity | Price | Fees | Realized | Why | Exit plan |`, `| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |`);
+  const recent = MK.trades.filter(t => t.date >= since).sort((a, b) => a.date < b.date ? -1 : 1);
+  for (const t of recent){ const a = mkAct(t.action), p = B.per[t.id] || {}; L.push(`| ${t.date} | ${t.acct} | ${a.label} | ${a.kind === 'cash' ? (t.sym || '') : mkKey(t)} | ${a.kind === 'cash' ? m2(mkNum(t.amount)) : (t.qty === '' ? '' : t.qty)} | ${a.kind === 'cash' || t.price === '' ? '' : m2(mkNum(t.price))} | ${mkNum(t.fees) ? m2(mkNum(t.fees)) : ''} | ${p.realized ? m2(p.realized) : ''} | ${t.why || ''} | ${t.exit || ''} |`); }
+  if (!recent.length) L.push(`| none | | | | | | | | | |`);
+  if (part) return L.join('\n');
+  try { const ra = retAccts(); if (ra.length){ L.push(``, `## Retirement accounts (latest balance logged on the Retirement tab)`, ``, `| Account | Type | Balance | As of |`, `| --- | --- | --- | --- |`);
+    for (const a of ra){ const s = retLatest(a.id); L.push(`| ${a.name} | ${a.type} | ${s ? m2(+s.bal) : 'none'} | ${s ? s.date : ''} |`); } } } catch (e) {}
+  L.push(``, `Request: price every open position as of today, report market value and gain or loss against cost basis for each position, each account, and in total, compare the quarter with a broad market index, and flag positions without an exit plan, options near expiration, and any concentration risk.`);
+  return L.join('\n');
+}
+$('mkCopyBrief').addEventListener('click', async () => { const txt = mkBrief(); try { await navigator.clipboard.writeText(txt); $('mkBriefMsg').textContent = 'Copied. Paste it into the Claude chat when you ask for the quarterly brief.'; } catch (e) { $('mkBriefMsg').textContent = 'Copying was blocked by the browser; use Download instead.'; } });
+$('mkDlBrief').addEventListener('click', () => { const blob = new Blob([mkBrief()], { type:'text/markdown' }), a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Investment snapshot ${todayISO()}.md`; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); $('mkBriefMsg').textContent = 'Downloaded. Attach the file to the Claude chat when you ask for the quarterly brief.'; });
+window.__mk = { MK, mkBook, mkBrief };
+
+/* ================= Statement dates (Version 31) ================= */
+/* Reads a bank or card statement (CSV, QFX, or OFX), matches each line to a budget row by account, amount, and nearby date, and changes ONLY the date
+   of the rows chosen. Category, amount, description, account, notes, posted status, and every other field are left exactly as they are.
+   Each import is logged in households/main/meta/stmtLog so it can be undone. Element IDs use the "sd" prefix. */
+const SD = { lines:[], file:'', acct:'', pairs:[], log:null };
+const sdDayN = iso => Math.round(new Date(iso + 'T00:00:00Z').getTime() / 864e5);
+
+function sdCsv(text){
+  const rows = []; let row = [], cell = '', q = false;
+  for (let i = 0; i < text.length; i++){ const c = text[i];
+    if (q){ if (c === '"'){ if (text[i + 1] === '"'){ cell += '"'; i++; } else q = false; } else cell += c; continue; }
+    if (c === '"') q = true; else if (c === ','){ row.push(cell); cell = ''; } else if (c === '\n' || c === '\r'){ if (c === '\r' && text[i + 1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; } else cell += c; }
+  if (cell !== '' || row.length){ row.push(cell); rows.push(row); }
+  return rows.filter(r => r.some(x => String(x).trim() !== ''));
+}
+function sdDate(v){
+  v = String(v || '').trim(); let m;
+  if ((m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(v))) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+  if ((m = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/.exec(v))){ const y = m[3].length === 2 ? '20' + m[3] : m[3]; return `${y}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}`; }
+  if ((m = /^(\d{4})(\d{2})(\d{2})/.exec(v))) return `${m[1]}-${m[2]}-${m[3]}`;
+  return '';
+}
+function sdAmt(v){ let s = String(v || '').trim(); if (!s) return null; const neg = /^\(.*\)$/.test(s) || /^-/.test(s) || /-$/.test(s); s = s.replace(/[$,()\s+-]/g, ''); if (!s || isNaN(+s)) return null; return (neg ? -1 : 1) * +s; }
+function sdParse(text, name, preferTrans){
+  if (/<OFX>|<STMTTRN>/i.test(text)){
+    const out = []; const blocks = text.split(/<STMTTRN>/i).slice(1);
+    for (const b of blocks){ const g = tag => { const m = new RegExp('<' + tag + '>([^<\\r\\n]*)', 'i').exec(b); return m ? m[1].trim() : ''; };
+      const date = sdDate((preferTrans && g('DTUSER')) || g('DTPOSTED')), amt = sdAmt(g('TRNAMT')); if (!date || amt === null) continue;
+      out.push({ date, amt, desc:[g('NAME'), g('MEMO')].filter(Boolean).join(' ') }); }
+    return { lines:out, how:'QFX or OFX file' + (preferTrans ? ', using the transaction date where the file has one' : '') };
+  }
+  const rows = sdCsv(text); let h = -1;
+  for (let i = 0; i < Math.min(rows.length, 20); i++){ const r = rows[i].map(x => String(x).toLowerCase()); if (r.some(x => /date/.test(x)) && r.some(x => /amount|debit|credit|withdraw|deposit/.test(x))){ h = i; break; } }
+  if (h < 0) throw new Error('No header row with a date column and an amount column was found. Download the statement as CSV or QFX from online banking.');
+  const H = rows[h].map(x => String(x).trim().toLowerCase()), find = re => H.findIndex(x => re.test(x));
+  const dTrans = find(/trans.*date|date.*trans/), dPost = find(/post/), dAny = find(/date/);
+  const dCol = preferTrans && dTrans >= 0 ? dTrans : (dPost >= 0 && /date/.test(H[dPost]) ? dPost : (dTrans >= 0 ? dTrans : dAny));
+  const aCol = find(/^amount$|amount/), dbCol = find(/debit|withdraw/), crCol = find(/credit|deposit/);
+  let sCol = find(/^description$|description/); if (sCol < 0) sCol = find(/payee|merchant|name|memo|details/);
+  const out = [];
+  for (const r of rows.slice(h + 1)){ const date = sdDate(r[dCol]); if (!date) continue;
+    let amt = aCol >= 0 ? sdAmt(r[aCol]) : null;
+    if (amt === null){ const d = dbCol >= 0 ? sdAmt(r[dbCol]) : null, c = crCol >= 0 ? sdAmt(r[crCol]) : null; amt = d ? -Math.abs(d) : (c ? Math.abs(c) : null); }
+    if (amt === null || Math.abs(amt) < 0.005) continue;
+    out.push({ date, amt, desc:sCol >= 0 ? String(r[sCol] || '').trim() : '' }); }
+  return { lines:out, how:`CSV file, dates from the "${rows[h][dCol]}" column` };
+}
+
+/* Pair statement lines with budget rows: same account (or the receiving account of a payment or transfer), same amount to the cent,
+   dates within the window. The closest dates pair first; on a tie the budget row dated on or after the statement wins, since entries are usually made a day later. */
+const SD_STOP = new Set(['debit','card','purchase','payment','pos','recurring','direct','deposit','web','pmt','the','and','for','from','latrobe','greensburg','pittsburg','pittsburgh','bentonville','redmond','com','inc','llc','ach','online','transfer','autopay','recur','debitpmt','epay','crd','credit']);
+const sdWords = s => new Set(String(s || '').toLowerCase().replace(/['’]/g, '').replace(/[^a-z]+/g, ' ').split(' ').filter(w => w.length >= 3 && !SD_STOP.has(w)));
+const sdSimilar = (a, b) => { const A = sdWords(a), B = sdWords(b); for (const w of A) if (B.has(w)) return true; return false; };   // an exact shared word; a loose prefix match paired Spee-D fuel with a Peoples gas payment
+function sdMatch(lines, acct, win){
+  const from = lines.reduce((m, l) => l.date < m ? l.date : m, '9999'), to = lines.reduce((m, l) => l.date > m ? l.date : m, '0000');
+  const lo = addDays(from, -win), hi = addDays(to, win);
+  const cands = S.tx.filter(t => (t.account === acct || t.to === acct) && t.date >= lo && t.date <= hi && catUsed(t) !== 'Balance Adjustment');
+  const edges = [];
+  lines.forEach((l, i) => { const c = Math.round(Math.abs(l.amt) * 100);
+    cands.forEach(t => { if (Math.round(Math.abs(t.amount) * 100) !== c) return; const d = sdDayN(t.date) - sdDayN(l.date); if (Math.abs(d) > win) return; edges.push({ i, id:t.id, cost:Math.abs(d) * 2 + (d < 0 ? 1 : 0) }); }); });
+  edges.sort((a, b) => a.cost - b.cost);
+  const usedL = new Set(), usedT = new Set(), pairs = [];
+  for (const e of edges){ if (usedL.has(e.i) || usedT.has(e.id)) continue;
+    const tie = edges.some(x => x !== e && x.cost === e.cost && ((x.i === e.i && !usedT.has(x.id)) || (x.id === e.id && !usedL.has(x.i))));
+    usedL.add(e.i); usedT.add(e.id); const t = S.tx.find(x => x.id === e.id), l = lines[e.i];
+    const same = sdSimilar(t.desc, l.desc);
+    pairs.push({ id:e.id, t, l, from:t.date, to:l.date, side:t.account === acct ? 'from' : 'to', tie, same, later:l.date > t.date, on:!tie && same && t.account === acct && t.date > l.date }); }   // Version 35: a transaction cannot happen after the bank posted it, so only dates later than the statement start checked; an earlier budget date is likely the purchase date
+  const noRow = lines.filter((l, i) => !usedL.has(i));
+  const noLine = cands.filter(t => !usedT.has(t.id) && t.account === acct && t.date >= from && t.date <= to);
+  return { pairs, noRow, noLine, from, to };
+}
+
+async function sdApply(changes, note){
+  if (!changes.length) return 0;
+  const byId = new Map(changes.map(c => [c.id, c.to])), months = new Set();
+  for (const c of changes){ const t = S.tx.find(x => x.id === c.id); if (!t) continue; months.add(ym(t.date)); months.add(ym(c.to)); }
+  const logged = [];
+  await runTransaction(db, async tr => {
+    const docs = {}; for (const k of months){ const s = await tr.get(ref('months', k)); docs[k] = s.exists() ? (s.data().rows || []) : []; }
+    const lg = await tr.get(ref('meta', 'stmtLog')), log = lg.exists() ? (lg.data().batches || []) : [];
+    const moving = [];
+    for (const k of Object.keys(docs)) docs[k] = docs[k].filter(r => { if (!byId.has(r.id) || r.date === byId.get(r.id)) return true; moving.push(r); return false; });
+    for (const r of moving){ const to = byId.get(r.id); logged.push({ id:r.id, from:r.date, to }); const n = Object.assign({}, r, { date:to }); (docs[ym(to)] ||= []).push(n); }
+    for (const [k, rows] of Object.entries(docs)) tr.set(ref('months', k), { rows });
+    if (logged.length) tr.set(ref('meta', 'stmtLog'), { batches:[{ id:uid(), on:new Date().toISOString(), note, changes:logged }].concat(log).slice(0, 25) });
+    for (const [k, rows] of Object.entries(docs)) S.months[k] = rows;
+  });
+  rebuildTx(); SD.log = null; return logged.length;
+}
+async function sdLoadLog(){ if (SD.log) return SD.log; try { const d = await getDoc(ref('meta', 'stmtLog')); SD.log = d.exists() ? (d.data().batches || []) : []; } catch (e) { SD.log = []; } return SD.log; }
+
+render.stmt = async () => {
+  const keep = $('sdAcct').value; $('sdAcct').innerHTML = S.config.accounts.map(a => `<option value="${esc(a.name)}">${esc(a.name)}</option>`).join(''); if (keep) $('sdAcct').value = keep;
+  sdShow();
+  const log = await sdLoadLog();
+  $('sdLog').innerHTML = log.map(b => `<tr><td>${fmtDate(b.on.slice(0, 10))}</td><td class="wrap">${esc(b.note || '')}</td><td class="n">${b.changes.length}</td><td>${b.undone ? '<span class="tag">Undone</span>' : `<button class="btn sec small" type="button" data-sdundo="${b.id}">Undo</button>`}</td></tr>`).join('') || '<tr><td colspan="4" class="note">No statements imported yet.</td></tr>';
+};
+function sdShow(){
+  if (!SD.pairs.length && !SD.noRow){ show('sdResult', false); return; }
+  show('sdResult');
+  const ch = SD.pairs.filter(p => p.side === 'from' && p.from !== p.to), same = SD.pairs.filter(p => p.side === 'from' && p.from === p.to), other = SD.pairs.filter(p => p.side === 'to');
+  const sel = ch.filter(p => p.on).length;
+  $('sdSum').innerHTML = `${SD.lines.length} statement line${SD.lines.length === 1 ? '' : 's'} from ${fmtDate(SD.range.from)} to ${fmtDate(SD.range.to)} (${esc(SD.how)}). ${SD.pairs.length} matched a budget row: <b>${ch.length} with a different date</b> (${ch.filter(p => !p.later).length} where the budget date is later than the statement and ${ch.filter(p => p.later).length} where the bank posted later than the budget date), ${same.length} already on the statement date${other.length ? `, and ${other.length} payment${other.length === 1 ? '' : 's'} or transfer${other.length === 1 ? '' : 's'} into this account, whose date follows the paying account` : ''}. ${SD.noRow.length} statement line${SD.noRow.length === 1 ? '' : 's'} had no budget row and ${SD.noLine.length} budget row${SD.noLine.length === 1 ? '' : 's'} in these dates had no statement line.`;
+  $('sdBody').innerHTML = ch.sort((a, b) => a.to < b.to ? -1 : 1).map(p => `<tr${p.tie ? ' class="sd-tie"' : ''}><td><input type="checkbox" data-sdon="${p.id}"${p.on ? ' checked' : ''} aria-label="Change this date"></td><td>${fmtDate(p.from)}</td><td><b>${fmtDate(p.to)}</b><br><span class="note">${sdDayN(p.to) - sdDayN(p.from) > 0 ? '+' : ''}${sdDayN(p.to) - sdDayN(p.from)} day${Math.abs(sdDayN(p.to) - sdDayN(p.from)) === 1 ? '' : 's'}</span></td><td class="wrap">${esc(p.t.desc)}${p.tie ? '<br><span class="tag warn">Same amount on a nearby date; check before changing</span>' : ''}${!p.tie && !p.later && !p.same ? '<br><span class="tag warn">The descriptions share no word; check that this is the same transaction before changing</span>' : ''}${!p.tie && p.later ? '<br><span class="note">The bank posted it later than the budget date, which is likely the purchase date, so it starts unchecked</span>' : ''}</td><td class="n">${money(p.t.amount, true)}</td><td>${esc(catUsed(p.t))}</td><td class="wrap note">${esc(p.l.desc)}</td></tr>`).join('') || '<tr><td colspan="7" class="note">Every matched row already has the statement date.</td></tr>';
+  $('sdApplyBtn').textContent = `Change ${sel} date${sel === 1 ? '' : 's'}`; $('sdApplyBtn').disabled = !sel;
+  $('sdNoRow').innerHTML = SD.noRow.map(l => `<tr><td>${fmtDate(l.date)}</td><td class="wrap">${esc(l.desc)}</td><td class="n">${money(Math.abs(l.amt), true)}</td><td>${l.amt < 0 ? 'Out' : 'In'}</td></tr>`).join('') || '<tr><td colspan="4" class="note">None.</td></tr>';
+  $('sdNoLine').innerHTML = SD.noLine.map(t => `<tr><td>${fmtDate(t.date)}</td><td class="wrap">${esc(t.desc)}</td><td class="n">${money(t.amount, true)}</td><td>${esc(catUsed(t))}</td></tr>`).join('') || '<tr><td colspan="4" class="note">None.</td></tr>';
+  $('sdNoRowN').textContent = SD.noRow.length; $('sdNoLineN').textContent = SD.noLine.length;
+}
+function sdRun(){
+  const r = sdMatch(SD.lines, SD.acct, Math.max(1, Math.min(31, +$('sdWin').value || 10)));
+  SD.pairs = r.pairs; SD.noRow = r.noRow; SD.noLine = r.noLine; SD.range = { from:r.from, to:r.to }; sdShow();
+}
+$('sdRead').addEventListener('click', async () => {
+  const f = $('sdFile').files[0]; $('sdMsg').textContent = '';
+  if (!f){ $('sdMsg').textContent = 'Choose a statement file first.'; return; }
+  if (/\.pdf$/i.test(f.name)){ $('sdMsg').textContent = 'PDF statements cannot be read here. In online banking, download the same months as CSV or QFX (Quicken), or bring the PDF to a Claude chat.'; return; }
+  try { const p = sdParse(await f.text(), f.name, $('sdTrans').checked); if (!p.lines.length) throw new Error('No transactions were found in that file.');
+    SD.lines = p.lines; SD.how = p.how; SD.file = f.name; SD.acct = $('sdAcct').value; sdRun(); $('sdResult').scrollIntoView({ behavior:'smooth', block:'start' }); }
+  catch (e) { SD.pairs = []; SD.noRow = null; show('sdResult', false); $('sdMsg').textContent = e.message; }
+});
+$('sdWin').addEventListener('change', () => { if (SD.lines.length) sdRun(); });
+document.addEventListener('change', e => { const c = e.target.closest('[data-sdon]'); if (!c) return; const p = SD.pairs.find(x => x.id === c.dataset.sdon); if (p) p.on = c.checked; sdShow(); });
+$('sdAll').addEventListener('click', () => { SD.pairs.forEach(p => { if (p.side === 'from' && p.from !== p.to && !p.later) p.on = true; }); sdShow(); });   // Version 35: never selects a move to a later date
+$('sdNone').addEventListener('click', () => { SD.pairs.forEach(p => p.on = false); sdShow(); });
+$('sdApplyBtn').addEventListener('click', async () => {
+  const ch = SD.pairs.filter(p => p.on && p.side === 'from' && p.from !== p.to).map(p => ({ id:p.id, to:p.to }));
+  if (!ch.length || !confirm(`Change the date on ${ch.length} transaction${ch.length === 1 ? '' : 's'} in ${SD.acct}? Nothing else on them changes, and this import can be undone below.`)) return;
+  try { const n = await sdApply(ch, `${SD.acct}: ${SD.file}, ${fmtDate(SD.range.from)} to ${fmtDate(SD.range.to)}`); toast(`Changed ${n} date${n === 1 ? '' : 's'}`); SD.pairs = []; SD.noRow = null; SD.lines = []; $('sdFile').value = ''; $('sdMsg').textContent = `Changed ${n} date${n === 1 ? '' : 's'}.`; renderAll(); }
+  catch (err) { $('sdMsg').textContent = 'Could not save: ' + (err.code || err.message); }
+});
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-sdundo]'); if (!b) return;
+  const log = await sdLoadLog(), batch = log.find(x => x.id === b.dataset.sdundo); if (!batch) return;
+  const back = batch.changes.filter(c => { const t = S.tx.find(x => x.id === c.id); return t && t.date === c.to; }).map(c => ({ id:c.id, to:c.from }));
+  const skipped = batch.changes.length - back.length;
+  if (!confirm(`Put back the original date on ${back.length} transaction${back.length === 1 ? '' : 's'}?${skipped ? ` ${skipped} ${skipped === 1 ? 'has' : 'have'} been changed again since and will be left alone.` : ''}`)) return;
+  try { await sdApply(back, 'Undo of ' + (batch.note || 'an import'));
+    await runTransaction(db, async tr => { const s = await tr.get(ref('meta', 'stmtLog')); const bs = (s.exists() ? s.data().batches : []).map(x => x.id === batch.id ? Object.assign({}, x, { undone:new Date().toISOString() }) : x).filter(x => !/^Undo of /.test(x.note || '')); tr.set(ref('meta', 'stmtLog'), { batches:bs }); });
+    SD.log = null; toast('Original dates restored'); renderAll(); }
+  catch (err) { toast('Could not undo: ' + (err.code || err.message)); }
+});
+window.__sd = { sdParse, sdMatch, SD };
+
+/* ================= Older history from statements (Version 33) ================= */
+/* Adds rows from a history file prepared in a Claude chat (History_Batch_NN.csv: Date, Account, Amount, Description, Category, To account, Notes, Id, Direction).
+   Rows keep the Id from the file, so the same file can be loaded twice without duplicates. Rows that look like a transaction already in the budget
+   (same account and amount within three days) are left out. New categories such as Walmart or Unable to categorize are created. Element IDs use the "hi" prefix. */
+const HI = { rows:[], upd:[], skipDup:[], skipHave:[], newCats:[], file:'' };   // upd (Version 34): history rows already loaded whose category, To account, or notes changed
+function hiPrep(text){
+  const rows = sdCsv(text); if (!rows.length) throw new Error('The file is empty.');
+  const H = rows[0].map(x => String(x).trim().toLowerCase()), col = n => H.indexOf(n);
+  const need = ['date','account','amount','description','category','id']; const miss = need.filter(n => col(n) < 0);
+  if (miss.length) throw new Error('This is not a history file from Claude; it is missing ' + miss.join(', ') + '.');
+  const have = new Map(S.tx.map(t => [t.id, t])), out = [], dup = [], got = [], upd = [], badAcct = new Set();
+  for (const r of rows.slice(1)){
+    const t = { id:r[col('id')], date:sdDate(r[col('date')]), account:r[col('account')], amount:Math.abs(sdAmt(r[col('amount')]) || 0), desc:r[col('description')], cat:r[col('category')], to:col('to account') >= 0 ? r[col('to account')] : '', notes:col('notes') >= 0 ? r[col('notes')] : '', dir:col('direction') >= 0 ? r[col('direction')] : '', created:0, posted:true, recon:'' };
+    if (!t.id || !t.date || !t.amount) continue;
+    if (!acctInfo(t.account)) badAcct.add(t.account);
+    if (have.has(t.id)){ const x = have.get(t.id); if (String(t.id).startsWith('h-') && (x.cat !== t.cat || (x.to || '') !== (t.to || '') || (x.notes || '') !== (t.notes || ''))) upd.push({ t, was:x }); else got.push(t); continue; }
+    const near = S.tx.find(x => !String(x.id).startsWith('h-') && x.account === t.account && Math.round(x.amount * 100) === Math.round(t.amount * 100) && Math.abs(sdDayN(x.date) - sdDayN(t.date)) <= 3);
+    if (near){ dup.push({ t, near }); continue; }
+    out.push(t);
+  }
+  if (badAcct.size) throw new Error('These accounts are not in the app: ' + [...badAcct].join(', ') + '. Add them under Data and Settings first, or ask Claude to use an existing account.');
+  const cats = {}; for (const t of out.concat(upd.map(u => u.t))) if (!catInfo(t.cat)) (cats[t.cat] ||= new Set()).add(t.dir === 'in' ? 'in' : 'out');
+  return { rows:out, upd, skipDup:dup, skipHave:got, newCats:Object.entries(cats).map(([name, d]) => ({ name, type:d.size === 1 && d.has('in') ? 'Income' : 'Expense', group:d.size === 1 && d.has('in') ? 'Income' : 'Everyday' })) };
+}
+async function hiWrite(add, removeIds, newCats, upd){
+  upd = upd || []; const updBy = new Map(upd.map(u => [u.t.id, u.t]));
+  const months = new Set([...add.map(t => ym(t.date)), ...S.tx.filter(t => removeIds.has(t.id) || updBy.has(t.id)).map(t => ym(t.date))]);
+  await runTransaction(db, async tr => {
+    const docs = {}; for (const k of months){ const s = await tr.get(ref('months', k)); docs[k] = s.exists() ? (s.data().rows || []) : []; }
+    for (const k of Object.keys(docs)) docs[k] = docs[k].filter(r => !removeIds.has(r.id)).map(r => { const u = updBy.get(r.id); return u ? Object.assign({}, r, { cat:u.cat, to:u.to || '', notes:u.notes || '' }) : r; });
+    let seq = 1; for (const t of add){ const r = cleanRow(Object.assign({}, t, { seq:seq++ })); r.posted = true; (docs[ym(t.date)] ||= []).push(r); }
+    if (newCats.length){ for (const c of newCats) if (!catInfo(c.name)) S.config.categories.push(c); tr.set(ref('meta','config'), S.config); }
+    for (const [k, rows] of Object.entries(docs)){ if (rows.length) tr.set(ref('months', k), { rows }); else tr.set(ref('months', k), { rows:[] }); }
+    for (const [k, rows] of Object.entries(docs)) S.months[k] = rows;
+  });
+  rebuildTx();
+}
+function hiShow(){
+  const on = HI.rows.length || HI.upd.length || HI.skipDup.length || HI.skipHave.length; show('hiResult', !!on); if (!on) return;
+  const by = {}; for (const t of HI.rows) by[t.cat] = (by[t.cat] || 0) + 1;
+  const d0 = HI.rows.reduce((m, t) => t.date < m ? t.date : m, '9999'), d1 = HI.rows.reduce((m, t) => t.date > m ? t.date : m, '0000');
+  const updTxt = HI.upd.length ? ` <b>${HI.upd.length} older history row${HI.upd.length === 1 ? '' : 's'} to correct</b>: ${HI.upd.map(u => `${fmtDate(u.t.date)} ${esc(u.t.desc)} from ${esc(u.was.cat)} to ${esc(u.t.cat)}`).join('; ')}.` : '';
+  $('hiSum').innerHTML = (HI.rows.length || HI.upd.length) ? (HI.rows.length ? `<b>${HI.rows.length} row${HI.rows.length === 1 ? '' : 's'} to add</b>, ${fmtDate(d0)} to ${fmtDate(d1)}.` : 'No new rows.') + updTxt + `${HI.skipHave.length ? ` ${HI.skipHave.length} already in the app and skipped.` : ''}${HI.skipDup.length ? ` ${HI.skipDup.length} left out because they look like transactions already in the budget.` : ''}${HI.newCats.length ? ` New categories: ${HI.newCats.map(c => esc(c.name)).join(', ')}.` : ''} Only rows added by a history file are ever corrected; nothing you entered changes. Rows dated on or before an account's opening date count as history and do not change account balances.`
+    : `Nothing new to add: ${HI.skipHave.length} row${HI.skipHave.length === 1 ? ' is' : 's are'} already in the app${HI.skipDup.length ? ` and ${HI.skipDup.length} look like existing transactions` : ''}.`;
+  $('hiCats').innerHTML = Object.entries(by).sort((a, b) => b[1] - a[1]).map(([c, n]) => `<tr><td>${esc(c)}${catInfo(c) ? '' : ' <span class="tag warn">New</span>'}</td><td class="n">${n}</td><td class="n">${money(HI.rows.filter(t => t.cat === c).reduce((s, t) => s + t.amount, 0), true)}</td></tr>`).join('');
+  $('hiDups').innerHTML = HI.skipDup.map(x => `<tr><td>${fmtDate(x.t.date)}</td><td class="wrap">${esc(x.t.desc)}</td><td class="n">${money(x.t.amount, true)}</td><td class="wrap note">In the budget: ${fmtDate(x.near.date)} ${esc(x.near.desc)}</td></tr>`).join('') || '<tr><td colspan="4" class="note">None.</td></tr>';
+  $('hiAdd').disabled = !(HI.rows.length || HI.upd.length); $('hiAdd').textContent = [HI.rows.length ? `Add ${HI.rows.length} row${HI.rows.length === 1 ? '' : 's'}` : '', HI.upd.length ? `${HI.rows.length ? 'correct' : 'Correct'} ${HI.upd.length}` : ''].filter(Boolean).join(' and ') || 'Add rows';
+}
+function hiBatches(){
+  const g = {}; for (const t of S.tx){ const m = /^h-(\d{4}-\d{2}-\d{2})-/.exec(t.id || ''); if (!m) continue; const k = m[1], x = (g[k] ||= { start:k, n:0, from:'9999', to:'0000', acct:t.account }); x.n++; if (t.date < x.from) x.from = t.date; if (t.date > x.to) x.to = t.date; }
+  $('hiList').innerHTML = Object.values(g).sort((a, b) => a.start < b.start ? -1 : 1).map(b => `<tr><td>${fmtDate(b.start)}</td><td>${esc(b.acct)}</td><td>${fmtDate(b.from)} to ${fmtDate(b.to)}</td><td class="n">${b.n}</td><td><button class="btn sec small" type="button" data-hirm="${b.start}">Remove</button></td></tr>`).join('') || '<tr><td colspan="5" class="note">No older history added yet.</td></tr>';
+}
+const sdRenderBase = render.stmt;
+render.stmt = async () => { await sdRenderBase(); hiShow(); hiBatches(); };
+$('hiRead').addEventListener('click', async () => {
+  const f = $('hiFile').files[0]; $('hiMsg').textContent = '';
+  if (!f){ $('hiMsg').textContent = 'Choose the history file from Claude first.'; return; }
+  try { Object.assign(HI, hiPrep(await f.text()), { file:f.name }); hiShow(); }
+  catch (e) { Object.assign(HI, { rows:[], upd:[], skipDup:[], skipHave:[], newCats:[] }); hiShow(); $('hiMsg').textContent = e.message; }
+});
+$('hiAdd').addEventListener('click', async () => {
+  if (!(HI.rows.length || HI.upd.length) || !confirm(`${HI.rows.length ? `Add ${HI.rows.length} older transactions` : ''}${HI.rows.length && HI.upd.length ? ' and ' : ''}${HI.upd.length ? `correct ${HI.upd.length} older history row${HI.upd.length === 1 ? '' : 's'}` : ''} from ${HI.file}?`)) return;
+  $('hiAdd').disabled = true; $('hiRead').disabled = true; $('hiMsg').textContent = 'Saving';
+  try { const n = HI.rows.length, u = HI.upd.length; await hiWrite(HI.rows, new Set(), HI.newCats, HI.upd); Object.assign(HI, { rows:[], upd:[], skipDup:[], skipHave:[], newCats:[] }); $('hiFile').value = ''; $('hiMsg').textContent = `Added ${n} row${n === 1 ? '' : 's'}${u ? ` and corrected ${u}` : ''}.`; toast(`Added ${n} older transactions${u ? `, corrected ${u}` : ''}`); renderAll(); hiBatches(); }
+  catch (err) { $('hiMsg').textContent = 'Could not save: ' + (err.code || err.message); }
+  finally { $('hiRead').disabled = false; hiShow(); }
+});
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-hirm]'); if (!b) return;
+  const ids = new Set(S.tx.filter(t => String(t.id).startsWith('h-' + b.dataset.hirm + '-')).map(t => t.id));
+  if (!ids.size || !confirm(`Remove the ${ids.size} history rows from the statement starting ${fmtDate(b.dataset.hirm)}? The history file can be loaded again later.`)) return;
+  try { await hiWrite([], ids, []); toast(`Removed ${ids.size} rows`); renderAll(); hiBatches(); } catch (err) { toast('Could not remove: ' + (err.code || err.message)); }
+});
+window.__hi = { hiPrep, HI };
+
+/* ================= Full quarterly export for a Claude chat (Version 32) ================= */
+/* One Markdown file with everything a quarterly update needs: accounts, debts, budget against actual, retirement, investments, vehicles, and the next 30 days.
+   Buttons on the Retirement tab's Quarterly check-in page and on the Markets Positions page. Element IDs use the "qx" prefix. */
+function qxExport(){
+  const today = todayISO(), y = +today.slice(0, 4), m = +today.slice(5, 7), m2 = v => money(v, true), L = [], sect = (s, f) => { try { f(); } catch (e) { L.push(`${s} could not be exported: ${e.message}`, ``); } };
+  const qEnd = Math.floor((m - 1) / 3) * 3, qy = qEnd ? y : y - 1, qe = qEnd || 12, qs = qe - 2;
+  L.push(`# Quarterly check-in export`, ``, `Exported ${fmtDate(today)} from the Budget and Finances app. Everything in the app is in this file. Anything not mentioned is unchanged from the previous export unless Karl says otherwise.`, ``);
+  sect('Accounts', () => { const b = balances();
+    L.push(`## Account balances (every entry, posted or pending)`, ``, `| Account | Kind | Balance |`, `| --- | --- | --- |`);
+    for (const a of S.config.accounts) L.push(`| ${a.name} | ${a.kind || 'Cash'} | ${m2(a.kind === 'Card' ? -b.bal[a.name] : b.bal[a.name])}${a.kind === 'Card' ? ' owed' : ''} |`);
+    L.push(``, `Total cash ${m2(b.cash)}; total card debt ${m2(b.card)}.`, ``); });
+  sect('Debts', () => { const d = currentDebts();
+    L.push(`## Debts`, ``, `| Debt | Balance | Rate | Monthly payment |`, `| --- | --- | --- | --- |`);
+    for (const x of d) L.push(`| ${x.name} | ${m2(x.bal)} | ${x.apr ? x.apr + '%' : ''} | ${x.pay ? m2(x.pay) : ''} |`);
+    if (!d.length) L.push(`| none | | | |`); L.push(``); });
+  sect('Budget', () => { const A = actuals(), cats = S.config.categories.map(c => c.name).filter(c => !['Transfer','Adjustment'].includes(typeOf(c))).sort((a, b) => a.localeCompare(b));
+    const lastM = m - 1 || 12, ly = m - 1 ? y : y - 1;
+    L.push(`## Budget against actual`, ``, `Last full quarter: ${qy} months ${qs} to ${qe}. Year to date: ${ly} months 1 to ${lastM} (the current month is excluded).`, ``, `| Category | Type | Quarter actual | Quarter budget | Year-to-date actual | Year-to-date budget |`, `| --- | --- | --- | --- | --- | --- |`);
+    for (const c of cats){ const qa = sumRange(A, c, qy, qs, qe), qb = budRange(c, qy, qs, qe), ya = sumRange(A, c, ly, 1, lastM), yb = budRange(c, ly, 1, lastM);
+      if (Math.abs(qa) + Math.abs(qb) + Math.abs(ya) + Math.abs(yb) < 0.005) continue; L.push(`| ${c} | ${typeOf(c)} | ${m2(qa)} | ${m2(qb)} | ${m2(ya)} | ${m2(yb)} |`); }
+    L.push(``); });
+  sect('Retirement', () => { const A = retA(), R = retYear(A), sc = retScenario(A, R, RS.path), cs = retCiStatus();
+    L.push(`## Retirement`, ``, `Selected scenario ${RS.scenario} (retire in ${R}, K ${R - A.kBirth}, J ${R - A.jBirth}), 401(k) path ${RS.path}. Target nest egg ${m2(sc.need)} in today's dollars; projected ${m2(sc.have)}; ${Math.round(sc.funded * 100)}% funded.`, ``, `| Account | Type | Latest balance | As of |`, `| --- | --- | --- | --- |`);
+    for (const a of retAccts()){ const s = retLatest(a.id); L.push(`| ${a.name} | ${a.type} | ${s ? m2(+s.bal) : 'none'} | ${s ? s.date : ''} |`); }
+    const ov = Object.entries(RS.overrides || {}); if (ov.length){ L.push(``, `Assumptions changed from the defaults:`, ``, `| Assumption | Value |`, `| --- | --- |`); for (const [k, v] of ov){ const d = RET_DEFS.find(x => x.k === k); L.push(`| ${d ? d.label : k} | ${v} |`); } }
+    const c = cs.last; L.push(``, c ? `Last quarterly check-in ${c.date}: savings ${m2(c.total)}, ${Math.round((c.onTrack || 0) * 100)}% of the target path, ${Math.round((c.funded || 0) * 100)}% funded, 401(k) rate ${c.rate}%, pay ${c.pay ? m2(c.pay) : 'not entered'}, saved outside the 401(k) ${c.saved ? m2(c.saved) : 'not entered'}, Roth IRA invested ${c.roth || 'not entered'}${c.note ? `; note: ${c.note}` : ''}. Next check-in due ${cs.next}.` : `No quarterly check-in saved yet.`, ``); });
+  sect('Investments', () => { L.push(mkBrief(true), ``); });
+  sect('Vehicles', () => { const act = VH.vehicles.filter(v => v.active !== false); if (!act.length) return;
+    L.push(`## Vehicles`, ``, `| Vehicle | Estimated miles | Service | Last done | Next due | Status |`, `| --- | --- | --- | --- | --- | --- |`);
+    for (const v of act){ const mi = vhMiles(v.id); for (const r of vhDue(v)) L.push(`| ${v.name} | ${mi.est === null ? '' : vhMi(mi.est)} | ${r.t.label} | ${r.done ? r.done.date : 'none'} | ${[r.nextDate || '', r.nextMiles ? vhMi(r.nextMiles) + ' mi' : ''].filter(Boolean).join(' or ')} | ${({ over:'Overdue', soon:'Due soon', ok:'OK', none:'No record' })[r.status]} |`); }
+    L.push(``); });
+  sect('Coming up', () => { const rows = upList(UP_DAYS), inc = rows.filter(r => r.inc).reduce((s, r) => s + r.amt, 0), bills = rows.filter(r => !r.inc).reduce((s, r) => s + r.amt, 0);
+    L.push(`## Next ${UP_DAYS} days`, ``, `Income expected ${m2(inc)}, bills expected ${m2(bills)}, net ${m2(inc - bills)}.`, ``); });
+  L.push(`## Request`, ``, `Give the full quarterly update from the Market Brief instructions using this export: how the budget did against plan, debt progress, retirement progress against the selected scenario, how the investments are doing (price every open position as of today), vehicle work coming due, and anything that needs attention this quarter.`);
+  return L.join('\n');
+}
+async function qxCopy(msgId){ try { await navigator.clipboard.writeText(qxExport()); $(msgId).textContent = 'Copied. Paste it into the Claude chat for the quarterly update.'; } catch (e) { $(msgId).textContent = 'Copying was blocked by the browser; use Download instead.'; } }
+function qxDownload(msgId){ const blob = new Blob([qxExport()], { type:'text/markdown' }), a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Quarterly check-in export ${todayISO()}.md`; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); $(msgId).textContent = 'Downloaded. Attach it to the Claude chat, and add it to the Project knowledge in place of the previous export.'; }
+$('qxCopyR').addEventListener('click', () => qxCopy('qxMsgR')); $('qxDlR').addEventListener('click', () => qxDownload('qxMsgR'));
+$('qxCopyM').addEventListener('click', () => qxCopy('qxMsgM')); $('qxDlM').addEventListener('click', () => qxDownload('qxMsgM'));
+window.__qx = { qxExport };
 /* ---------- Data: import ---------- */
 function serialToISO(v){
   if (v == null || v === '') return '';
