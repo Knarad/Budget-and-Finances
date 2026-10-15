@@ -43,6 +43,12 @@ header.top .stat{font-size:.82rem;opacity:.92}
 header.top .stat b{font-size:.95rem}
 header.top .sp{flex:1}
 header.top button{background:transparent;border:1px solid rgba(255,255,255,.6);color:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:.85rem}
+/* Version 39: page size buttons. One rounded group; the percentage between them resets to 100%. */
+header.top .zoom{display:flex;align-items:stretch;border:1px solid rgba(255,255,255,.6);border-radius:6px;overflow:hidden}
+header.top .zoom button{border:0;border-radius:0;padding:4px 0;min-width:36px;font-size:1.05rem;line-height:1;font-weight:700}
+header.top .zoom #zVal{font-size:.8rem;font-weight:600;min-width:48px;border-left:1px solid rgba(255,255,255,.35);border-right:1px solid rgba(255,255,255,.35);font-variant-numeric:tabular-nums}
+header.top .zoom button:disabled{opacity:.4;cursor:default}
+#zProbe{position:absolute;left:-9999px;top:0;width:100px;height:1px;visibility:hidden;pointer-events:none}
 nav.tabs{position:sticky;top:52px;z-index:19;background:var(--surface);border-bottom:1px solid var(--rule);display:flex;overflow-x:auto}
 nav.tabs button{flex:0 0 auto;background:none;border:0;border-bottom:3px solid transparent;padding:12px 16px;cursor:pointer;color:var(--muted);font-weight:600}
 nav.tabs button[aria-selected="true"]{color:var(--ledger);border-bottom-color:var(--ledger)}
@@ -271,6 +277,18 @@ nav.vtabs button[aria-selected="true"],nav.mtabs button[aria-selected="true"]{ba
 #mkPosBody td.wrap{min-width:220px}
 tr.sd-tie td{background:color-mix(in srgb,var(--card) 10%,transparent)}
 #tab-stmt .chk input{box-sizing:border-box}
+
+/* Version 39: at a larger page size a phone is effectively narrower, so nothing may hold a fixed width wider than its box. Charts, check-in fields, and balance
+   boxes shrink with their box; on a phone the summary tiles drop from two across to one when two no longer fit, and checklist due dates move under their item. */
+.chart{min-width:0}.chart canvas{max-width:100%}
+.ci .ci-q .t{max-width:min(360px,100%)}
+.ci-bals{grid-template-columns:repeat(auto-fill,minmax(min(230px,100%),1fr))}
+@media (max-width:760px){
+  .g2{grid-template-columns:minmax(0,1fr)}
+  .g3,.g4{grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr))}
+  .grid>*{min-width:0}
+  .ckitem{grid-template-columns:26px minmax(0,1fr)}.ckitem .due{grid-column:2;text-align:left;white-space:normal}
+}
 </style>
 </head>
 <body>
@@ -307,8 +325,9 @@ tr.sd-tie td{background:color-mix(in srgb,var(--card) 10%,transparent)}
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 38</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 39</span>
   <div class="sp"></div>
+  <div class="zoom" role="group" aria-label="Page size"><button id="zOut" type="button" aria-label="Make everything smaller" title="Make everything smaller">&minus;</button><button id="zVal" type="button" title="Back to normal size">100%</button><button id="zIn" type="button" aria-label="Make everything bigger" title="Make everything bigger">+</button></div>
   <button id="signOutBtn" type="button">Sign out</button>
 </header>
 <nav class="tabs views" role="tablist" aria-label="Views">
@@ -1120,6 +1139,7 @@ tr.sd-tie td{background:color-mix(in srgb,var(--card) 10%,transparent)}
   <div class="err" id="eErr"></div>
 </div></div>
 <div id="toast" class="toast hidden" role="status"></div>
+<div id="zProbe" aria-hidden="true"></div>
 <div id="hscroll" class="hidden" aria-hidden="true"><div></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -1729,7 +1749,24 @@ $('upAdd').addEventListener('click', () => {
 /* ---------- Dashboard ---------- */
 let charts = {};
 function css(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
-function mkChart(id, cfg){ if (charts[id]) charts[id].destroy(); if (window.Chart) charts[id] = new Chart($(id), cfg); }
+/* Version 39: at a page size other than 100% the chart library places a finger or pointer by mixing zoomed and unzoomed measurements, so touching a bar found
+   nothing. This plugin recomputes the position from the screen coordinates and the chart's on-screen box, which stay in the same units at any page size. */
+const zoomPointFix = { id:'zoomPointFix', beforeEvent(chart, args){
+  const e = args.event, n = e && e.native; if (!n) return;
+  const s = (n.touches && n.touches.length) ? n.touches[0] : (n.changedTouches && n.changedTouches.length) ? n.changedTouches[0] : n;
+  if (s.clientX == null) return;
+  const r = chart.canvas.getBoundingClientRect(); if (!r.width || !r.height || Math.abs(r.width - chart.width) < 0.5) return; // nothing to correct at 100%
+  e.x = Math.round((s.clientX - r.left) * chart.width / r.width); e.y = Math.round((s.clientY - r.top) * chart.height / r.height);
+  const a = chart.chartArea; if (a) args.inChartArea = e.x >= a.left - 0.5 && e.x <= a.right + 0.5 && e.y >= a.top - 0.5 && e.y <= a.bottom + 0.5;
+} };
+/* Sideways bar charts that pick by row: the row is found by height, not by how far a bar reaches, so touching a bar names that bar's row (before Version 39 some
+   budget against actual rows could show the next row's figures). */
+function mkChart(id, cfg){
+  if (charts[id]) charts[id].destroy(); if (!window.Chart) return;
+  if (!mkChart.fixed){ Chart.register(zoomPointFix); mkChart.fixed = true; }
+  const o = cfg.options; if (o && o.indexAxis === 'y' && o.interaction && o.interaction.mode === 'index' && !o.interaction.axis) o.interaction = Object.assign({}, o.interaction, { axis:'y' });
+  charts[id] = new Chart($(id), cfg);
+}
 function lastMonthWithData(year){ let m = 0; for (const t of S.tx) if (+t.date.slice(0,4) === year) m = Math.max(m, +t.date.slice(5,7)); return m || 12; }
 function setDashDefaults(){
   const y = +$('dYear').value || new Date().getFullYear();
@@ -4271,16 +4308,16 @@ else {
 const hs = $('hscroll'), hsIn = hs.firstElementChild; let hsTarget = null, hsGroup = null, hsSyncing = false;
 function syncGroup(x, src){ if (!hsGroup) return; hsSyncing = true; for (const el of hsGroup) if (el !== src && Math.abs(el.scrollLeft - x) > 0.5) el.scrollLeft = x; if (src !== hs && Math.abs(hs.scrollLeft - x) > 0.5) hs.scrollLeft = x; hsSyncing = false; }
 function updateHScroll(){
-  const vh = window.innerHeight;
+  const vh = window.innerHeight, zk = zoomScale(); // screen positions are measured zoomed; styles inside the zoomed page are set unzoomed
   const ba = $('tab-byacct');
   if (ba && ba.offsetParent !== null){ // one shared bar moves every table on Accounts by month
     const top = [...document.querySelectorAll('header.top, nav.tabs')].reduce((m, el) => Math.max(m, el.getBoundingClientRect().bottom), 0);
-    $('baBody').style.setProperty('--stickTop', Math.max(0, Math.round(top)) + 'px');
+    $('baBody').style.setProperty('--stickTop', Math.max(0, Math.round(top / zk)) + 'px');
     const boxes = [...ba.querySelectorAll('#baBody .tbl')].filter(el => el.offsetParent !== null); hsGroup = null;
     if (!boxes.length){ hs.classList.add('hidden'); hsTarget = null; return; }
     const maxW = Math.max(...boxes.map(el => el.querySelector('table').offsetWidth)), cw = boxes[0].clientWidth;
     if (maxW <= cw + 1){ hs.classList.add('hidden'); hsTarget = null; $('baBody').style.setProperty('--bx', '0px'); return; }
-    hs.style.left = boxes[0].getBoundingClientRect().left + 'px'; hs.style.width = cw + 'px'; hsIn.style.width = maxW + 'px';
+    hs.style.left = boxes[0].getBoundingClientRect().left / zk + 'px'; hs.style.width = cw + 'px'; hsIn.style.width = maxW + 'px';
     hs.classList.remove('hidden'); hsTarget = 'ba';
     const x = Math.min(hs.scrollLeft, maxW - cw); $('baBody').style.setProperty('--bx', Math.max(0, x) + 'px'); return;
   }
@@ -4292,13 +4329,32 @@ function updateHScroll(){
   hsTarget = pick;
   if (!pick){ hs.classList.add('hidden'); return; }
   const r = pick.getBoundingClientRect();
-  hs.style.left = r.left + 'px'; hs.style.width = r.width + 'px'; hsIn.style.width = pick.scrollWidth + 'px';
+  hs.style.left = r.left / zk + 'px'; hs.style.width = r.width / zk + 'px'; hsIn.style.width = pick.scrollWidth + 'px';
   hs.classList.remove('hidden');
   if (Math.abs(hs.scrollLeft - pick.scrollLeft) > 1) hs.scrollLeft = pick.scrollLeft;
 }
 hs.addEventListener('scroll', () => { if (hsSyncing) return; if (hsTarget === 'ba'){ $('baBody').style.setProperty('--bx', hs.scrollLeft + 'px'); return; } if (hsTarget === 'group') syncGroup(hs.scrollLeft, hs); else if (hsTarget && Math.abs(hsTarget.scrollLeft - hs.scrollLeft) > 1) hsTarget.scrollLeft = hs.scrollLeft; });
 document.addEventListener('scroll', e => { if (hsSyncing) return; if (hsTarget === 'group' && hsGroup && hsGroup.includes(e.target)){ syncGroup(e.target.scrollLeft, e.target); return; } if (e.target === hsTarget && Math.abs(hs.scrollLeft - hsTarget.scrollLeft) > 1) hs.scrollLeft = hsTarget.scrollLeft; }, true);
 window.addEventListener('scroll', updateHScroll, { passive:true }); window.addEventListener('resize', updateHScroll);
+/* ---------- Version 39: page size (zoom) buttons in the header ----------
+   CSS zoom on the body makes the whole page, tables and charts included, lay itself out again at the new size, so it still fits the screen instead of spilling off
+   the side. Each device remembers its own size (the phone and the computer can differ). The percentage between the buttons puts it back to 100%. */
+const ZOOMS = [0.8, 0.9, 1, 1.1, 1.2, 1.35, 1.5];
+let ZI = 2;
+try { const i = ZOOMS.indexOf(+localStorage.getItem('bf-zoom')); if (i >= 0) ZI = i; } catch (e) {}
+function zoomScale(){ const p = $('zProbe'); return p && p.offsetWidth ? (p.getBoundingClientRect().width / p.offsetWidth) || 1 : 1; }
+function applyZoom(){
+  const z = ZOOMS[ZI];
+  document.body.style.zoom = z === 1 ? '' : String(z);
+  $('zVal').textContent = Math.round(z * 100) + '%'; $('zOut').disabled = ZI === 0; $('zIn').disabled = ZI === ZOOMS.length - 1;
+  try { localStorage.setItem('bf-zoom', String(z)); } catch (e) {}
+  requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
+}
+$('zOut').addEventListener('click', () => { if (ZI > 0){ ZI--; applyZoom(); } });
+$('zIn').addEventListener('click', () => { if (ZI < ZOOMS.length - 1){ ZI++; applyZoom(); } });
+$('zVal').addEventListener('click', () => { ZI = 2; applyZoom(); });
+applyZoom();
+window.__zoom = { get:() => ZOOMS[ZI], set:z => { const i = ZOOMS.indexOf(z); if (i >= 0){ ZI = i; applyZoom(); } } };
 document.addEventListener('click', () => setTimeout(updateHScroll, 50));
 setInterval(updateHScroll, 500);
 $('baBody').addEventListener('wheel', e => { const dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : (e.shiftKey ? e.deltaY : 0); if (!dx || hsTarget !== 'ba') return; e.preventDefault(); hs.scrollLeft += dx; }, { passive:false });
