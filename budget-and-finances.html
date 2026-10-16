@@ -325,7 +325,7 @@ tr.sd-tie td{background:color-mix(in srgb,var(--card) 10%,transparent)}
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 39</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 40</span>
   <div class="sp"></div>
   <div class="zoom" role="group" aria-label="Page size"><button id="zOut" type="button" aria-label="Make everything smaller" title="Make everything smaller">&minus;</button><button id="zVal" type="button" title="Back to normal size">100%</button><button id="zIn" type="button" aria-label="Make everything bigger" title="Make everything bigger">+</button></div>
   <button id="signOutBtn" type="button">Sign out</button>
@@ -4339,8 +4339,9 @@ window.addEventListener('scroll', updateHScroll, { passive:true }); window.addEv
 /* ---------- Version 39: page size (zoom) buttons in the header ----------
    CSS zoom on the body makes the whole page, tables and charts included, lay itself out again at the new size, so it still fits the screen instead of spilling off
    the side. Each device remembers its own size (the phone and the computer can differ). The percentage between the buttons puts it back to 100%. */
-const ZOOMS = [0.8, 0.9, 1, 1.1, 1.2, 1.35, 1.5];
-let ZI = 2;
+const ZOOMS = [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.35, 1.5]; // Version 40: down to 50% in steps of 10 (Karl, October 15, 2026)
+const Z100 = ZOOMS.indexOf(1);
+let ZI = Z100;
 try { const i = ZOOMS.indexOf(+localStorage.getItem('bf-zoom')); if (i >= 0) ZI = i; } catch (e) {}
 function zoomScale(){ const p = $('zProbe'); return p && p.offsetWidth ? (p.getBoundingClientRect().width / p.offsetWidth) || 1 : 1; }
 function applyZoom(){
@@ -4352,7 +4353,7 @@ function applyZoom(){
 }
 $('zOut').addEventListener('click', () => { if (ZI > 0){ ZI--; applyZoom(); } });
 $('zIn').addEventListener('click', () => { if (ZI < ZOOMS.length - 1){ ZI++; applyZoom(); } });
-$('zVal').addEventListener('click', () => { ZI = 2; applyZoom(); });
+$('zVal').addEventListener('click', () => { ZI = Z100; applyZoom(); });
 applyZoom();
 window.__zoom = { get:() => ZOOMS[ZI], set:z => { const i = ZOOMS.indexOf(z); if (i >= 0){ ZI = i; applyZoom(); } } };
 document.addEventListener('click', () => setTimeout(updateHScroll, 50));
