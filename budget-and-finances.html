@@ -289,6 +289,10 @@ tr.sd-tie td{background:color-mix(in srgb,var(--card) 10%,transparent)}
   .grid>*{min-width:0}
   .ckitem{grid-template-columns:26px minmax(0,1fr)}.ckitem .due{grid-column:2;text-align:left;white-space:normal}
 }
+/* Version 41: the receipt itemizer sits right under Add a transaction, in the same column; there its two tables stack instead of sitting side by side. */
+.home-left{display:flex;flex-direction:column;gap:16px;min-width:0}
+.home-left>details.rcpt{margin-top:0}
+.home-left .rcpt-tables{grid-template-columns:minmax(0,1fr)}
 </style>
 </head>
 <body>
@@ -325,7 +329,7 @@ tr.sd-tie td{background:color-mix(in srgb,var(--card) 10%,transparent)}
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 40</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 41</span>
   <div class="sp"></div>
   <div class="zoom" role="group" aria-label="Page size"><button id="zOut" type="button" aria-label="Make everything smaller" title="Make everything smaller">&minus;</button><button id="zVal" type="button" title="Back to normal size">100%</button><button id="zIn" type="button" aria-label="Make everything bigger" title="Make everything bigger">+</button></div>
   <button id="signOutBtn" type="button">Sign out</button>
@@ -343,6 +347,7 @@ tr.sd-tie td{background:color-mix(in srgb,var(--card) 10%,transparent)}
   <div id="emptyNote" class="panel hidden"><b>No data yet.</b> Open Details and analysis, then Data and Settings, and import your workbook to load accounts, categories, the budget, and history.</div>
   <p class="greet" id="hGreet"></p>
   <div class="home">
+   <div class="home-left">
     <div class="panel entry">
       <h2 id="formTitle">Add a transaction</h2>
       <form id="txForm" autocomplete="off">
@@ -361,6 +366,38 @@ tr.sd-tie td{background:color-mix(in srgb,var(--card) 10%,transparent)}
       </form>
       <p class="note" style="margin-top:10px">Bought something on a credit card? Choose the card above. Paying a card bill? Choose the checking account and the category Card Payment.</p>
     </div>
+  <details class="panel rcpt" id="rxPanel">
+      <summary><h2>Itemize a receipt</h2><span class="note" id="rxSumNote">Split one Walmart, Sam’s Club, or Amazon order (or any store) across categories, with the tax spread by each category’s share of the subtotal.</span></summary>
+      <div class="rcpt-head">
+        <div class="rcpt-store"><label class="f" for="rxStore">Store</label><div class="seg rcpt-seg" id="rxStoreSeg" role="group" aria-label="Quick store"><button type="button" data-st="Walmart">Walmart</button><button type="button" data-st="Sam's Club">Sam's Club</button><button type="button" data-st="Amazon">Amazon</button></div><input class="t" id="rxStore" value="Walmart" aria-label="Store name"></div>
+        <div><label class="f" for="rxDate">Date</label><input class="t" id="rxDate" type="date"></div>
+        <div><label class="f" for="rxAcct">Paid from</label><select class="t" id="rxAcct"></select></div>
+        <div><label class="f" for="rxSub">Receipt subtotal</label><input class="t" id="rxSub" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></div>
+        <div><label class="f" for="rxTax">Tax</label><input class="t" id="rxTax" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+        <div><label class="f">Receipt total</label><div class="rcpt-total" id="rxTotal">$0.00</div></div>
+      </div>
+      <h3>Add each item</h3>
+      <div class="rcpt-add">
+        <div><label class="f" for="rxAmt">Amount</label><input class="t" id="rxAmt" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></div>
+        <div class="grow"><label class="f" for="rxCat">Category</label><select class="t" id="rxCat"></select></div>
+        <div class="grow"><label class="f" for="rxNote">Item (optional)</label><input class="t" id="rxNote" placeholder="For example: dog food"></div>
+        <div><button class="btn" type="button" id="rxAdd">Add item</button></div>
+      </div>
+      <div class="rcpt-chips" id="rxChips"></div>
+      <p class="note" style="margin:6px 0 0">Press Enter in the Amount or Item box to add. The category stays selected for the next item. Enter a discount or a returned item as a negative amount.</p>
+      <div class="rcpt-status" id="rxStatus"></div>
+      <div class="grid g2 rcpt-tables">
+        <div><h3>By category</h3><div class="tbl"><table><thead><tr><th>Category</th><th class="n">Items</th><th class="n">Subtotal</th><th class="n">Share</th><th class="n">Tax</th><th class="n">Total</th></tr></thead><tbody id="rxCats"></tbody></table></div></div>
+        <div><h3>Items entered</h3><div class="tbl rcpt-items"><table><thead><tr><th>#</th><th class="n">Amount</th><th>Category</th><th>Item</th><th></th></tr></thead><tbody id="rxItems"></tbody></table></div></div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <button class="btn" type="button" id="rxSave" disabled>Save transactions</button>
+        <button class="btn sec" type="button" id="rxClear">Start over</button>
+        <span class="note" id="rxSaveNote"></span>
+      </div>
+      <div class="err" id="rxErr" role="alert"></div>
+    </details>
+   </div>
     <div class="overview">
       <div class="panel">
         <h2 id="hMonthTitle">This month</h2>
@@ -386,6 +423,7 @@ tr.sd-tie td{background:color-mix(in srgb,var(--card) 10%,transparent)}
         <div><label class="f" for="upType">Type</label><select class="t" id="upType"><option value="bill">Bill or payment</option><option value="income">Income</option></select></div>
         <div><label class="f" for="upDate">Date</label><input class="t" id="upDate" type="date"></div>
         <div class="grow"><label class="f" for="upDesc">What it is</label><input class="t" id="upDesc" placeholder="For example: Chase card payment, or a bonus"></div>
+        <div><label class="f" for="upRepeat">Repeats</label><select class="t" id="upRepeat"><option value="">Once</option><option value="weekly">Every week on that day</option></select></div>
         <div><label class="f" for="upAmt">Amount</label><input class="t" id="upAmt" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
         <div><label class="f" for="upCat">Category</label><select class="t" id="upCat"></select></div>
         <div><label class="f" for="upAcct">Account</label><select class="t" id="upAcct"></select></div>
@@ -396,37 +434,6 @@ tr.sd-tie td{background:color-mix(in srgb,var(--card) 10%,transparent)}
       <div id="upLater"></div>
     </details>
   </div>
-  <details class="panel rcpt" id="rxPanel">
-    <summary><h2>Itemize a receipt</h2><span class="note" id="rxSumNote">Split one store order across categories, with the tax spread by each category’s share of the subtotal.</span></summary>
-    <div class="rcpt-head">
-      <div class="rcpt-store"><label class="f" for="rxStore">Store</label><div class="seg rcpt-seg" id="rxStoreSeg" role="group" aria-label="Quick store"><button type="button" data-st="Walmart">Walmart</button><button type="button" data-st="Sam's Club">Sam's Club</button></div><input class="t" id="rxStore" value="Walmart" aria-label="Store name"></div>
-      <div><label class="f" for="rxDate">Date</label><input class="t" id="rxDate" type="date"></div>
-      <div><label class="f" for="rxAcct">Paid from</label><select class="t" id="rxAcct"></select></div>
-      <div><label class="f" for="rxSub">Receipt subtotal</label><input class="t" id="rxSub" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></div>
-      <div><label class="f" for="rxTax">Tax</label><input class="t" id="rxTax" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
-      <div><label class="f">Receipt total</label><div class="rcpt-total" id="rxTotal">$0.00</div></div>
-    </div>
-    <h3>Add each item</h3>
-    <div class="rcpt-add">
-      <div><label class="f" for="rxAmt">Amount</label><input class="t" id="rxAmt" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></div>
-      <div class="grow"><label class="f" for="rxCat">Category</label><select class="t" id="rxCat"></select></div>
-      <div class="grow"><label class="f" for="rxNote">Item (optional)</label><input class="t" id="rxNote" placeholder="For example: dog food"></div>
-      <div><button class="btn" type="button" id="rxAdd">Add item</button></div>
-    </div>
-    <div class="rcpt-chips" id="rxChips"></div>
-    <p class="note" style="margin:6px 0 0">Press Enter in the Amount or Item box to add. The category stays selected for the next item. Enter a discount or a returned item as a negative amount.</p>
-    <div class="rcpt-status" id="rxStatus"></div>
-    <div class="grid g2 rcpt-tables">
-      <div><h3>By category</h3><div class="tbl"><table><thead><tr><th>Category</th><th class="n">Items</th><th class="n">Subtotal</th><th class="n">Share</th><th class="n">Tax</th><th class="n">Total</th></tr></thead><tbody id="rxCats"></tbody></table></div></div>
-      <div><h3>Items entered</h3><div class="tbl rcpt-items"><table><thead><tr><th>#</th><th class="n">Amount</th><th>Category</th><th>Item</th><th></th></tr></thead><tbody id="rxItems"></tbody></table></div></div>
-    </div>
-    <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-      <button class="btn" type="button" id="rxSave" disabled>Save transactions</button>
-      <button class="btn sec" type="button" id="rxClear">Start over</button>
-      <span class="note" id="rxSaveNote"></span>
-    </div>
-    <div class="err" id="rxErr" role="alert"></div>
-  </details>
   <h3>Last two weeks, plus anything still pending</h3>
   <p class="note" id="recentSum" style="margin:-4px 0 10px"></p>
   <div class="tbl"><table><thead><tr><th>Posted</th><th>Date</th><th>Account</th><th class="n">Amount</th><th>Description</th><th>Category</th></tr></thead><tbody id="recentBody"></tbody></table></div>
@@ -1296,6 +1303,7 @@ const statusTag = s => `<span class="tag ${s==='OK'?'ok':(s==='History'?'':'bad'
 const currentView = () => document.querySelector('nav.views button[aria-selected="true"]').dataset.view;
 const currentSub = () => document.querySelector('nav.subtabs button[aria-selected="true"]').dataset.tab;
 function renderAll(){ fillSelects(); fillExtra(); show('emptyNote', S.config.accounts.length === 0); document.querySelector('.overview').classList.toggle('hidden', S.tx.length === 0); if (currentView() === 'home') renderHome(); else if (currentView() === 'retire') renderRetire(); else if (currentView() === 'cars') renderVeh(); else if (currentView() === 'mkt') renderMk(); else render[currentSub()](); }
+window.__renderAll = renderAll; // for the test harness
 function monthTotals(k){
   const out = { bills:0, billsB:0, day:0, dayB:0, inc:0, out:0, byCat:{} }; const Y = +k.slice(0,4), M = +k.slice(5,7);
   for (const t of S.tx){ if (ym(t.date) !== k) continue; const c = catUsed(t), ty = typeOf(c), g = groupOf(c);
@@ -1557,7 +1565,7 @@ function renderReceipt(){
   $('rxSave').disabled = !!why;
   $('rxSave').textContent = k.cats.length > 1 ? `Save ${k.cats.length} transactions` : 'Save transaction';
   $('rxSaveNote').textContent = why || `Saves ${k.cats.map(c => `${RCP.store.trim() || 'Store'} - ${c} ${rcMoney(k.by[c].total)}`).join(', ')}; together ${rcMoney(k.items + k.tax)}.`;
-  $('rxSumNote').textContent = RCP.items.length ? `Receipt in progress: ${RCP.items.length} item${RCP.items.length === 1 ? '' : 's'}, ${rcMoney(k.items)} entered${k.sub !== null ? ' of ' + rcMoney(k.sub) : ''}.` : 'Split one store order across categories, with the tax spread by each category’s share of the subtotal.';
+  $('rxSumNote').textContent = RCP.items.length ? `Receipt in progress: ${RCP.items.length} item${RCP.items.length === 1 ? '' : 's'}, ${rcMoney(k.items)} entered${k.sub !== null ? ' of ' + rcMoney(k.sub) : ''}.` : 'Split one Walmart, Sam’s Club, or Amazon order (or any store) across categories, with the tax spread by each category’s share of the subtotal.';
 }
 function rcAddItem(){
   $('rxErr').textContent = '';
@@ -1628,7 +1636,19 @@ function upList(days, opt){
     const key = 'i|' + normDesc(g.desc) + '|' + g.cat + '|' + upISO(d), o = UP.overrides[key], md = UP.dates[key], date = md ? upDay(md) : d;
     if (date < (md ? grace : new Date(t0.getTime() - (g.alt ? 864e5 : 0))) || date > end) continue;
     out.push({ key, date, orig:d, moved:!!md, desc:g.desc, cat:g.cat, typical:g.amt, amt:o !== undefined ? +o : g.amt, changed:o !== undefined, source:'Recurring', last:g.last, inc:true, kind:g.kind, alt:g.alt && !md, rule:g.rule, past:date < t0 }); }
-  for (const it of UP.items){ const d = upDay(it.date), inc = it.type === 'income'; if (d < grace || d > end || (inc && !withIncome)) continue;
+  for (const it of UP.items){
+    if (it.repeat === 'weekly'){   // Version 41: an item added by hand that repeats every week on the weekday of its start date
+      const inc = it.type === 'income'; if (inc && !withIncome) continue;
+      const start = upDay(it.date); let d = new Date(start);
+      if (d < t0){ const gap = Math.ceil((t0 - d) / (7 * 864e5)); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + gap * 7); }
+      for (; d <= end; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7)){
+        const key = 'w|' + it.id + '|' + upISO(d), o = UP.overrides[key], md = UP.dates[key], date = md ? upDay(md) : d;
+        if (date < (md ? grace : t0) || date > end) continue;
+        out.push({ key, id:it.id, repeat:'weekly', date, orig:d, moved:!!md, desc:it.desc, cat:it.cat || '', typical:+it.amount, amt:o !== undefined ? +o : +it.amount, changed:o !== undefined, source:'Added by you', last:'', account:it.account || '', past:date < t0, inc });
+      }
+      continue;
+    }
+    const d = upDay(it.date), inc = it.type === 'income'; if (d < grace || d > end || (inc && !withIncome)) continue;
     out.push({ key:'m|' + it.id, id:it.id, date:d, desc:it.desc, cat:it.cat || '', typical:null, amt:+it.amount, changed:false, source:'Added by you', last:'', account:it.account || '', past:d < t0, inc }); }
   return out.sort((a, b) => a.date - b.date || a.desc.localeCompare(b.desc));
 }
@@ -1702,12 +1722,12 @@ const upFmt = d => d.toLocaleDateString('en-US', { weekday:'short', month:'short
 function renderUpcoming(){
   const rows = upList(UP_DAYS), bills = rows.filter(r => !r.inc), incs = rows.filter(r => r.inc), total = bills.reduce((s, r) => s + r.amt, 0), itot = incs.reduce((s, r) => s + r.amt, 0), nChanged = rows.filter(r => r.changed).length, nMoved = rows.filter(r => r.moved).length, nAdded = rows.filter(r => r.source !== 'Recurring').length;
   $('upSum').innerHTML = rows.length ? `<b class="pos">${money(itot, true)}</b> of income expected (${incs.length} deposit${incs.length === 1 ? '' : 's'}) and <b>${money(total, true)}</b> of bills (${bills.length} payment${bills.length === 1 ? '' : 's'}), for a net of <b class="${itot - total >= 0 ? 'pos' : 'neg'}">${itot - total >= 0 ? '+' : '−'}${money(Math.abs(itot - total), true)}</b>${nAdded ? `; ${nAdded} added by you` : ''}${nChanged ? `; ${nChanged} with an amount you changed` : ''}${nMoved ? `; ${nMoved} with a date you changed` : ''}.` : `Nothing expected in the next ${UP_DAYS} days.`;
-  $('upBody').innerHTML = rows.length ? rows.map(r => `<tr class="${r.inc ? 'upinc' : ''}${r.changed || r.moved ? ' upchg' : ''}${r.source !== 'Recurring' ? ' upadd' : ''}${r.past ? ' uppast' : ''}"><td class="up-dcell"><span class="up-wd">${r.date.toLocaleDateString('en-US', { weekday:'short' })}${r.alt ? ' or ' + new Date(r.date.getTime() + 864e5).toLocaleDateString('en-US', { weekday:'short' }) : ''}</span><input class="up-date${r.moved ? ' set' : ''}" type="date" data-upd="${esc(r.key)}" value="${upISO(r.date)}" aria-label="Date for ${esc(r.desc)}">${r.moved ? `<br><span class="note">Moved from ${upFmt(r.orig)}</span>` : ''}${r.past ? '<br><span class="tag bad">Date passed</span>' : ''}</td><td class="wrap">${esc(r.desc)}${r.account ? `<br><span class="note">${esc(r.account)}</span>` : ''}</td><td class="n">${r.typical !== null ? (r.inc ? '+' : '') + money(r.typical, true) : ''}</td><td class="n"><input class="up-amt${r.changed ? ' set' : ''}" type="number" step="0.01" inputmode="decimal" data-upk="${esc(r.key)}" value="${r.changed || r.source !== 'Recurring' ? (+r.amt).toFixed(2) : ''}" placeholder="${(+r.amt).toFixed(2)}" aria-label="Amount for ${esc(r.desc)}"></td><td>${r.inc ? '<span class="tag ok">Income</span> ' : ''}${esc(r.cat)}</td><td>${r.source === 'Recurring' ? (r.inc ? (r.rule ? esc(r.rule) + '<br>' : '') + 'Last received ' : 'Last paid ') + fmtDate(r.last) : '<span class="tag">Added by you</span>'}</td><td>${r.id ? `<button class="btn sec small" type="button" data-updel="${r.id}">Remove</button>` : (r.changed || r.moved ? `<button class="btn sec small" type="button" data-upreset="${esc(r.key)}">Undo changes</button>` : '')}</td></tr>`).join('')
+  $('upBody').innerHTML = rows.length ? rows.map(r => `<tr class="${r.inc ? 'upinc' : ''}${r.changed || r.moved ? ' upchg' : ''}${r.source !== 'Recurring' ? ' upadd' : ''}${r.past ? ' uppast' : ''}"><td class="up-dcell"><span class="up-wd">${r.date.toLocaleDateString('en-US', { weekday:'short' })}${r.alt ? ' or ' + new Date(r.date.getTime() + 864e5).toLocaleDateString('en-US', { weekday:'short' }) : ''}</span><input class="up-date${r.moved ? ' set' : ''}" type="date" data-upd="${esc(r.key)}" value="${upISO(r.date)}" aria-label="Date for ${esc(r.desc)}">${r.moved ? `<br><span class="note">Moved from ${upFmt(r.orig)}</span>` : ''}${r.past ? '<br><span class="tag bad">Date passed</span>' : ''}</td><td class="wrap">${esc(r.desc)}${r.account ? `<br><span class="note">${esc(r.account)}</span>` : ''}</td><td class="n">${r.typical !== null ? (r.inc ? '+' : '') + money(r.typical, true) : ''}</td><td class="n"><input class="up-amt${r.changed ? ' set' : ''}" type="number" step="0.01" inputmode="decimal" data-upk="${esc(r.key)}" value="${r.changed || r.source !== 'Recurring' ? (+r.amt).toFixed(2) : ''}" placeholder="${(+r.amt).toFixed(2)}" aria-label="Amount for ${esc(r.desc)}"></td><td>${r.inc ? '<span class="tag ok">Income</span> ' : ''}${esc(r.cat)}</td><td>${r.source === 'Recurring' ? (r.inc ? (r.rule ? esc(r.rule) + '<br>' : '') + 'Last received ' : 'Last paid ') + fmtDate(r.last) : '<span class="tag">Added by you</span>' + (r.repeat ? `<br><span class="note">Every ${r.orig.toLocaleDateString('en-US', { weekday:'long' })}</span>` : '')}</td><td>${r.repeat && (r.changed || r.moved) ? `<button class="btn sec small" type="button" data-upreset="${esc(r.key)}">Undo changes</button> ` : ''}${r.id ? `<button class="btn sec small" type="button" data-updel="${r.id}"${r.repeat ? ' data-upweekly="1"' : ''}>${r.repeat ? 'Stop repeating' : 'Remove'}</button>` : (r.changed || r.moved ? `<button class="btn sec small" type="button" data-upreset="${esc(r.key)}">Undo changes</button>` : '')}</td></tr>`).join('')
     + `<tr class="tot"><td></td><td>Income expected</td><td></td><td class="n pos">+${money(itot, true)}</td><td></td><td></td><td></td></tr>`
     + `<tr class="tot"><td></td><td>Bills expected</td><td></td><td class="n">${money(total, true)}</td><td></td><td></td><td></td></tr>`
     + `<tr class="tot"><td></td><td>Net for the ${UP_DAYS} days</td><td></td><td class="n ${itot - total >= 0 ? 'pos' : 'neg'}">${itot - total >= 0 ? '+' : '−'}${money(Math.abs(itot - total), true)}</td><td></td><td></td><td></td></tr>`
     : `<tr><td colspan="7" class="muted">Nothing expected in the next ${UP_DAYS} days.</td></tr>`;
-  const later = UP.items.filter(it => upDay(it.date) > new Date(Date.now() + UP_DAYS * 864e5)).sort((a, b) => a.date < b.date ? -1 : 1);
+  const later = UP.items.filter(it => it.repeat !== 'weekly' && upDay(it.date) > new Date(Date.now() + UP_DAYS * 864e5)).sort((a, b) => a.date < b.date ? -1 : 1);
   const movedOut = upList(75).filter(r => r.moved && r.date > new Date(Date.now() + UP_DAYS * 864e5));
   $('upLater').innerHTML = (movedOut.length ? `<h4>Moved past the next ${UP_DAYS} days</h4>` + '<div class="tbl"><table><tbody>' + movedOut.map(r => `<tr><td>${fmtDate(upISO(r.date))}<br><span class="note">from ${upFmt(r.orig)}</span></td><td class="wrap">${esc(r.desc)}</td><td class="n">${r.inc ? '+' : ''}${money(r.amt, true)}</td><td>${esc(r.cat)}</td><td><button class="btn sec small" type="button" data-upreset="${esc(r.key)}">Undo changes</button></td></tr>`).join('') + '</tbody></table></div>' : '') + (later.length ? `<h4>Added for later: each moves into the list above once it is ${UP_DAYS} days away</h4>` + '<div class="tbl"><table><tbody>' + later.map(it => `<tr><td>${fmtDate(it.date)}</td><td class="wrap">${esc(it.desc)}${it.type === 'income' ? ' <span class="tag ok">Income</span>' : ''}</td><td class="n">${it.type === 'income' ? '+' : ''}${money(+it.amount, true)}</td><td>${esc(it.cat || '')}</td><td><button class="btn sec small" type="button" data-updel="${it.id}">Remove</button></td></tr>`).join('') + '</tbody></table></div>' : '');
   if (movedOut.length) $('upPanel').querySelector('details.up-add').open = true;
@@ -1734,7 +1754,7 @@ document.addEventListener('change', e => {
 });
 document.addEventListener('click', e => {
   const del = e.target.closest('[data-updel]'), rs = e.target.closest('[data-upreset]');
-  if (del){ if (!confirm('Remove this item?')) return; UP.items = UP.items.filter(x => x.id !== del.dataset.updel); upSave(); renderUpcoming(); }
+  if (del){ if (!confirm(del.dataset.upweekly ? 'Stop this weekly item? Every week of it leaves the list.' : 'Remove this item?')) return; UP.items = UP.items.filter(x => x.id !== del.dataset.updel); upSave(); renderUpcoming(); }
   if (rs){ delete UP.overrides[rs.dataset.upreset]; delete UP.dates[rs.dataset.upreset]; upSave(); renderUpcoming(); }
 });
 $('upType').addEventListener('change', () => { $('upCat').value = ''; renderUpcoming(); });
@@ -1742,9 +1762,10 @@ window.__up = { upList, detectIncome, incomeTx:() => S.tx.filter(t => typeOf(cat
 $('upAdd').addEventListener('click', () => {
   const date = $('upDate').value, desc = $('upDesc').value.trim(), amt = parseFloat($('upAmt').value);
   if (!date || !desc || !(amt > 0)){ $('upErr').textContent = 'Enter a date, what it is, and an amount.'; return; }
-  UP.items.push({ id:uid(), type:$('upType').value, date, desc, amount:Math.round(amt * 100) / 100, cat:$('upCat').value, account:$('upAcct').value, created:Date.now() });
-  $('upDesc').value = ''; $('upAmt').value = ''; $('upErr').textContent = ''; upSave(); renderUpcoming();
-  toast(upDay(date) > new Date(Date.now() + UP_DAYS * 864e5) ? `Added; it will appear ${UP_DAYS} days ahead` : 'Added');
+  const rep = $('upRepeat').value === 'weekly';
+  UP.items.push(Object.assign({ id:uid(), type:$('upType').value, date, desc, amount:Math.round(amt * 100) / 100, cat:$('upCat').value, account:$('upAcct').value, created:Date.now() }, rep ? { repeat:'weekly' } : {}));
+  $('upDesc').value = ''; $('upAmt').value = ''; $('upRepeat').value = ''; $('upErr').textContent = ''; upSave(); renderUpcoming();
+  toast(rep ? `Added; it repeats every ${upDay(date).toLocaleDateString('en-US', { weekday:'long' })}` : upDay(date) > new Date(Date.now() + UP_DAYS * 864e5) ? `Added; it will appear ${UP_DAYS} days ahead` : 'Added');
 });
 /* ---------- Dashboard ---------- */
 let charts = {};
@@ -2422,6 +2443,10 @@ async function migrations(){
   try { await stmtAll(); } catch (e) { console.error('Statement update', e); toast('The statement update stopped partway; tell Claude: ' + (e.message || e)); }
   /* Version 37, one time: the Honda Accord and its service history (part5l). */
   try { await accordLog(); } catch (e) { console.error('Accord log', e); }
+  /* Version 41, one time: rename Home Decorations (part5l). */
+  try { await decorRename(); } catch (e) { console.error('Category rename', e); }
+  /* Version 41, one time: the weekly Friday Walmart trip in Coming up (part5l). */
+  try { await walmartWeekly(); } catch (e) { console.error('Walmart weekly', e); }
   setTimeout(showNotices, 900);
 }
 window.__mig = migrations;
@@ -4130,6 +4155,51 @@ async function accordLog(){
   try { await setDoc(ref('meta','config'), S.config); } catch (e) {}
   window.__v37 = F.accordLog;
   NOTICES.push(`<b>The ${esc(V37_CAR.name)} is on the Vehicles tab</b> with ${V37_LOG.length} service entries from June 2025 to August 2026, ${linked} of them linked to their budget transactions. Check the Vehicles overview for what is due next.`);
+}
+
+/* ================= Version 41: Home Decorations becomes "Home Decorations, Seasonal, Holiday" (Karl, October 16, 2026; one time, at sign-in) ================= */
+/* Karl created the category himself in the app, so it is found by name whatever its exact spelling (Home Decor, Home Decoration, Home Decorations, any capitals).
+   The rename reaches everywhere a category name is stored: the category list, the rules, every transaction, the budget, and the Coming up list (its own items and the
+   keys that hold changed amounts and moved dates). If the category is not there, the new one is created as everyday spending so it is ready to use. Flag: decorRename. */
+const V41_NEW = 'Home Decorations, Seasonal, Holiday';
+async function decorRename(){
+  const F = S.config.flags = S.config.flags || {};
+  if (F.decorRename || !S.config.categories || !S.tx.length) return;
+  if (S.config.categories.some(c => c.name === V41_NEW)){ F.decorRename = { on:todayISO(), already:true }; try { await setDoc(ref('meta','config'), S.config); } catch (e) {} return; }
+  const old = S.config.categories.find(c => /^home\s*decor(ation)?s?$/i.test(String(c.name).trim()));
+  if (!old){
+    S.config.categories.push({ name:V41_NEW, type:'Expense', group:'Everyday' });
+    F.decorRename = { on:todayISO(), created:true }; try { await setDoc(ref('meta','config'), S.config); } catch (e) { return; }
+    NOTICES.push(`<b>Added the category ${esc(V41_NEW)}.</b> No Home Decorations category was found to rename, so the new one was created under everyday spending.`);
+    return;
+  }
+  const from = old.name, n = S.tx.filter(t => catUsed(t) === from).length;
+  await applyRenames({}, { [from]:V41_NEW });
+  if (typeof UP !== 'undefined' && UP){
+    let up = false; const fix = k => k.split('|').map(p => p === from ? (up = true, V41_NEW) : p).join('|');
+    (UP.items || []).forEach(it => { if (it.cat === from){ it.cat = V41_NEW; up = true; } });
+    for (const box of ['overrides', 'dates']){ const o = UP[box] || {}, next = {}; for (const [k, v] of Object.entries(o)) next[fix(k)] = v; UP[box] = next; }
+    if (up){ try { await setDoc(ref('meta','upcoming'), JSON.parse(JSON.stringify({ items:UP.items, overrides:UP.overrides, dates:UP.dates, updated:Date.now() }))); } catch (e) {} }
+  }
+  F.decorRename = { on:todayISO(), from, transactions:n }; try { await setDoc(ref('meta','config'), S.config); } catch (e) {}
+  NOTICES.push(`<b>${esc(from)} is now ${esc(V41_NEW)}.</b> ${n ? `Its ${n} transaction${n === 1 ? '' : 's'}, ` : ''}its budget and any rule that fills it in moved with it.`);
+}
+
+/* ================= Version 41: a $200 Walmart trip every Friday in Coming up (Karl, October 16, 2026; one time, at sign-in) ================= */
+/* Added as a weekly item of the kind anyone can now add on the Coming up form (Repeats: Every week on that day). It starts on the next Friday, today included,
+   is paid from Checking - PNC Shared, and is filed under the Walmart category when the app has one (the older history created it), otherwise Groceries.
+   Each week's amount or date can be changed on its own row; Stop repeating removes it. Flag: walmartWeekly. */
+async function walmartWeekly(){
+  const F = S.config.flags = S.config.flags || {};
+  if (F.walmartWeekly || !S.tx.length || typeof UP === 'undefined') return;
+  if (!UP.items.some(it => it.repeat === 'weekly' && /walmart trip/i.test(it.desc || ''))){
+    const t = new Date(), d = new Date(t.getFullYear(), t.getMonth(), t.getDate() + ((5 - t.getDay() + 7) % 7));
+    UP.items.push({ id:uid(), type:'expense', repeat:'weekly', date:upISO(d), desc:'Walmart trip', amount:200, cat:catInfo('Walmart') ? 'Walmart' : 'Groceries',
+                    account:acctInfo('Checking - PNC Shared') ? 'Checking - PNC Shared' : '', created:Date.now() });
+    try { await setDoc(ref('meta','upcoming'), JSON.parse(JSON.stringify({ items:UP.items, overrides:UP.overrides, dates:UP.dates, updated:Date.now() }))); } catch (e) { return; }
+    NOTICES.push('<b>Coming up now includes a $200 Walmart trip every Friday.</b> Change any week’s amount or date on its row, or use Stop repeating to remove it.');
+  }
+  F.walmartWeekly = { on:todayISO() }; try { await setDoc(ref('meta','config'), S.config); } catch (e) {}
 }
 /* ---------- Data: import ---------- */
 function serialToISO(v){
