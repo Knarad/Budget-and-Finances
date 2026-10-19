@@ -293,6 +293,9 @@ tr.sd-tie td{background:color-mix(in srgb,var(--card) 10%,transparent)}
 .home-left{display:flex;flex-direction:column;gap:16px;min-width:0}
 .home-left>details.rcpt{margin-top:0}
 .home-left .rcpt-tables{grid-template-columns:minmax(0,1fr)}
+/* Version 44: rows saved by Itemize a receipt carry a tag and their order's total. */
+.tag.itm{background:color-mix(in srgb,var(--ledger) 16%,var(--surface));color:var(--ledger);font-weight:700;white-space:nowrap;margin-left:4px}
+.note.itm-of{font-size:.75rem;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -329,7 +332,7 @@ tr.sd-tie td{background:color-mix(in srgb,var(--card) 10%,transparent)}
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 43</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 44</span>
   <div class="sp"></div>
   <div class="zoom" role="group" aria-label="Page size"><button id="zOut" type="button" aria-label="Make everything smaller" title="Make everything smaller">&minus;</button><button id="zVal" type="button" title="Back to normal size">100%</button><button id="zIn" type="button" aria-label="Make everything bigger" title="Make everything bigger">+</button></div>
   <button id="signOutBtn" type="button">Sign out</button>
@@ -1257,7 +1260,7 @@ function rebuildTx(){
   S.tx.sort((a,b) => a.date === b.date ? (a.seq||0)-(b.seq||0) : (a.date < b.date ? -1 : 1));
 }
 const isPosted = t => t.posted === undefined ? !t.created : !!t.posted;
-function cleanRow(r){ return { id:r.id, date:r.date, account:r.account||'', amount:Math.round((+r.amount||0)*100)/100, desc:r.desc||'', cat:r.cat||'', to:r.to||'', notes:r.notes||'', created:r.created||0, seq:r.seq||0, posted:isPosted(r), recon:r.recon||'' }; }
+function cleanRow(r){ return { id:r.id, date:r.date, account:r.account||'', amount:Math.round((+r.amount||0)*100)/100, desc:r.desc||'', cat:r.cat||'', to:r.to||'', notes:r.notes||'', created:r.created||0, seq:r.seq||0, posted:isPosted(r), recon:r.recon||'', ...(r.rcpt ? { rcpt:r.rcpt } : {}) }; }   // rcpt (Version 44): the itemized order a row belongs to
 async function addTx(row){
   row = cleanRow(row); const k = ym(row.date);
   await setDoc(ref('months', k), { rows: arrayUnion(row) }, { merge:true });
@@ -1413,7 +1416,8 @@ function renderRecent(){
   const rows = S.tx.filter(t => t.date >= from || !isPosted(t)).sort((a,b) => (isStale(b) - isStale(a)) || (a.date === b.date ? (b.created || 0) - (a.created || 0) : (a.date < b.date ? 1 : -1)));
   const pend = rows.filter(t => !isPosted(t)), stale = rows.filter(isStale);
   $('recentSum').innerHTML = rows.length ? `${rows.length - stale.length} transactions since ${fmtDate(from)}. ${pend.length ? pend.length + ' still pending, totaling ' + money(pend.reduce((s,t) => s + t.amount, 0), true) + '.' : 'Everything has posted.'}${stale.length ? ` <b class="neg">${stale.length} pending for more than two weeks, shown first in red: check whether ${stale.length === 1 ? 'it' : 'they'} posted.</b>` : ''}` : '';
-  $('recentBody').innerHTML = rows.length ? rows.map(t => { const ac = acctColor(t.account); return `<tr class="click${isPosted(t) ? '' : ' pending'}${isStale(t) ? ' stale' : ''}${ac ? ' acolor' : ''}"${ac ? ` style="--ac:${ac}"` : ''} data-id="${t.id}"><td>${postBox(t)}</td><td>${fmtDate(t.date)}${isStale(t) ? `<span class="stale-tag">${Math.floor((Date.now() - upDay(t.date)) / 864e5)} days</span>` : ''}</td><td>${esc(t.account)}</td><td class="n">${money(t.amount,true)}</td><td class="wrap">${esc(t.desc)}</td><td>${esc(catUsed(t))}</td></tr>`; }).join('') : '<tr><td colspan="6" class="muted">No transactions in the last two weeks.</td></tr>';
+  const rcG = rcOrderTotals();
+  $('recentBody').innerHTML = rows.length ? rows.map(t => { const ac = acctColor(t.account); return `<tr class="click${isPosted(t) ? '' : ' pending'}${isStale(t) ? ' stale' : ''}${ac ? ' acolor' : ''}"${ac ? ` style="--ac:${ac}"` : ''} data-id="${t.id}"><td>${postBox(t)}</td><td>${fmtDate(t.date)}${isStale(t) ? `<span class="stale-tag">${Math.floor((Date.now() - upDay(t.date)) / 864e5)} days</span>` : ''}</td><td>${esc(t.account)}</td><td class="n">${rcAmtCell(t, rcG)}</td><td class="wrap">${rcDescCell(t, rcG)}</td><td>${esc(catUsed(t))}</td></tr>`; }).join('') : '<tr><td colspan="6" class="muted">No transactions in the last two weeks.</td></tr>';
 }
 document.addEventListener('change', async e => {
   const cb = e.target.closest('input.post'); if (!cb) return;
@@ -1489,6 +1493,12 @@ document.querySelectorAll('nav.subtabs button').forEach(b => b.addEventListener(
 }));
 
 /* ---------- Transactions list ---------- */
+/* Version 44: rows saved together by Itemize a receipt make up one order. New saves carry the order's id (rcpt); older ones are recognized by the itemizer's note and
+   their shared save time. Each row shows an Itemized tag and the order's full total, added up from the order's rows as they stand now. */
+const rcOrderKey = t => t.rcpt ? 'r' + t.rcpt : (/^Itemized receipt:/.test(t.notes || '') && t.created ? 'c' + t.created : '');
+function rcOrderTotals(){ const g = {}; for (const t of S.tx){ const k = rcOrderKey(t); if (!k) continue; const o = (g[k] ||= { total:0, n:0 }); o.total = Math.round((o.total + t.amount) * 100) / 100; o.n++; } return g; }
+const rcAmtCell = (t, g) => { const o = g[rcOrderKey(t)]; return money(t.amount, true) + (o ? `<br><span class="note itm-of">of ${money(o.total, true)} order</span>` : ''); };
+const rcDescCell = (t, g) => { const o = g[rcOrderKey(t)]; return esc(t.desc) + (o ? ` <span class="tag itm" title="Saved by Itemize a receipt; ${o.n} row${o.n === 1 ? '' : 's'} make up this ${money(o.total, true)} order">Itemized${o.n > 1 ? ` · ${o.n} rows` : ''}</span>` : ''); };
 render.list = () => {
   if (!$('lMonth').dataset.init){ const first = $('lMonth').options[1]; if (first) $('lMonth').value = first.value; $('lMonth').dataset.init = 1; }
   const m = $('lMonth').value, a = $('lAcct').value, c = $('lCat').value, q = $('lSearch').value.toLowerCase();
@@ -1496,7 +1506,8 @@ render.list = () => {
   let inc = 0, out = 0; for (const t of rows){ const ty = typeOf(catUsed(t)); if (ty === 'Income') inc += t.amount; else if (ty === 'Expense' || ty === 'Savings') out += t.amount; }
   $('lSummary').textContent = `${rows.length} transactions. Income ${money(inc,true)}. Spending and savings ${money(out,true)}. Transfers excluded from both.`;
   const shown = rows.slice().reverse().slice(0, 600);
-  $('listBody').innerHTML = shown.map(t => { const s = status(t); return `<tr class="click${s==='History'?' hist':''}${isPosted(t)?'':' pending'}" data-id="${t.id}"><td>${postBox(t)}</td><td>${fmtDate(t.date)}</td><td>${esc(t.account)}</td><td class="n">${money(t.amount,true)}</td><td class="wrap">${esc(t.desc)}</td><td>${esc(catUsed(t))}</td><td>${esc(toUsed(t))}</td><td>${statusTag(s)}</td></tr>`; }).join('') + (rows.length > 600 ? '<tr><td colspan="8" class="muted">Showing the latest 600. Narrow the filters to see more.</td></tr>' : '');
+  const rcG = rcOrderTotals();
+  $('listBody').innerHTML = shown.map(t => { const s = status(t); return `<tr class="click${s==='History'?' hist':''}${isPosted(t)?'':' pending'}" data-id="${t.id}"><td>${postBox(t)}</td><td>${fmtDate(t.date)}</td><td>${esc(t.account)}</td><td class="n">${rcAmtCell(t, rcG)}</td><td class="wrap">${rcDescCell(t, rcG)}</td><td>${esc(catUsed(t))}</td><td>${esc(toUsed(t))}</td><td>${statusTag(s)}</td></tr>`; }).join('') + (rows.length > 600 ? '<tr><td colspan="8" class="muted">Showing the latest 600. Narrow the filters to see more.</td></tr>' : '');
 };
 ['lMonth','lAcct','lCat'].forEach(id => $(id).addEventListener('change', render.list)); $('lSearch').addEventListener('input', render.list);
 
@@ -1599,7 +1610,7 @@ $('rxSave').addEventListener('click', async () => {
   const itemNotes = RCP.items.map(i => i.note).filter(Boolean).join(', ');
   const note = `Itemized receipt: ${RCP.items.length} items, ${rcMoney(k.items)} plus ${rcMoney(k.tax)} tax${k.disc ? `, less ${rcMoney(k.disc)} points, gift card, or discount` : ''}, receipt total ${rcMoney(k.items + k.tax - k.disc)}`;
   const rows = k.cats.map((c, i) => { const mine = RCP.items.filter(x => x.cat === c && x.note).map(x => x.note).join(', ');
-    return { id:uid(), date:RCP.date, account:RCP.acct, amount:k.by[c].total / 100, desc:`${store} - ${c}`, cat:c, to:'', notes:(note + (mine ? '. Items: ' + mine : '')).slice(0, 300), created:base, seq:base + i }; });
+    return { id:uid(), date:RCP.date, account:RCP.acct, amount:k.by[c].total / 100, desc:`${store} - ${c}`, cat:c, to:'', notes:(note + (mine ? '. Items: ' + mine : '')).slice(0, 300), created:base, seq:base + i, rcpt:base }; });
   for (const r of rows){ const st = status(r); if (st !== 'OK' && st !== 'History'){ $('rxErr').textContent = `${r.desc}: ${st}`; return; } }
   $('rxSave').disabled = true; $('rxErr').textContent = '';
   let done = 0;
