@@ -329,7 +329,7 @@ tr.sd-tie td{background:color-mix(in srgb,var(--card) 10%,transparent)}
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 42</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 43</span>
   <div class="sp"></div>
   <div class="zoom" role="group" aria-label="Page size"><button id="zOut" type="button" aria-label="Make everything smaller" title="Make everything smaller">&minus;</button><button id="zVal" type="button" title="Back to normal size">100%</button><button id="zIn" type="button" aria-label="Make everything bigger" title="Make everything bigger">+</button></div>
   <button id="signOutBtn" type="button">Sign out</button>
@@ -374,6 +374,7 @@ tr.sd-tie td{background:color-mix(in srgb,var(--card) 10%,transparent)}
         <div><label class="f" for="rxAcct">Paid from</label><select class="t" id="rxAcct"></select></div>
         <div><label class="f" for="rxSub">Receipt subtotal</label><input class="t" id="rxSub" type="number" inputmode="decimal" step="0.01" placeholder="0.00"></div>
         <div><label class="f" for="rxTax">Tax</label><input class="t" id="rxTax" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+        <div><label class="f" for="rxDisc">Points, gift card, or discount</label><input class="t" id="rxDisc" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00" title="Taken off the whole order, such as reward points, a gift card balance, or a coupon on the order"></div>
         <div><label class="f">Receipt total</label><div class="rcpt-total" id="rxTotal">$0.00</div></div>
       </div>
       <h3>Add each item</h3>
@@ -387,7 +388,7 @@ tr.sd-tie td{background:color-mix(in srgb,var(--card) 10%,transparent)}
       <p class="note" style="margin:6px 0 0">Press Enter in the Amount or Item box to add. The category stays selected for the next item. Enter a discount or a returned item as a negative amount.</p>
       <div class="rcpt-status" id="rxStatus"></div>
       <div class="grid g2 rcpt-tables">
-        <div><h3>By category</h3><div class="tbl"><table><thead><tr><th>Category</th><th class="n">Items</th><th class="n">Subtotal</th><th class="n">Share</th><th class="n">Tax</th><th class="n">Total</th></tr></thead><tbody id="rxCats"></tbody></table></div></div>
+        <div><h3>By category</h3><div class="tbl"><table><thead><tr><th>Category</th><th class="n">Items</th><th class="n">Subtotal</th><th class="n">Share</th><th class="n">Tax</th><th class="n" id="rxDiscTh" hidden>Points or discount</th><th class="n">Total</th></tr></thead><tbody id="rxCats"></tbody></table></div></div>
         <div><h3>Items entered</h3><div class="tbl rcpt-items"><table><thead><tr><th>#</th><th class="n">Amount</th><th>Category</th><th>Item</th><th></th></tr></thead><tbody id="rxItems"></tbody></table></div></div>
       </div>
       <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
@@ -1502,7 +1503,7 @@ render.list = () => {
 /* ================= Itemize a receipt (Version 19) ================= */
 /* The draft lives in this browser (localStorage) until it is saved, so a half-entered receipt survives a refresh. */
 const RC_KEY = 'bf-receipt';
-const rcBlank = () => ({ store:'Walmart', date:'', acct:'', sub:'', tax:'', items:[], cat:'' });
+const rcBlank = () => ({ store:'Walmart', date:'', acct:'', sub:'', tax:'', disc:'', items:[], cat:'' });
 let RCP = rcBlank(), rcInit = false;
 try { const v = JSON.parse(localStorage.getItem(RC_KEY) || 'null'); if (v && Array.isArray(v.items)) RCP = Object.assign(rcBlank(), v); } catch (e) {}
 function rcKeep(){ try { localStorage.setItem(RC_KEY, JSON.stringify(RCP)); } catch (e) {} }
@@ -1520,17 +1521,18 @@ function rcFavorites(){
 function rcCalc(){
   const by = {}; let items = 0;
   for (const it of RCP.items){ const c = rcCents(it.amt); items += c; (by[it.cat] ||= { cents:0, n:0 }); by[it.cat].cents += c; by[it.cat].n++; }
-  const tax = rcCents(RCP.tax), cats = Object.keys(by).sort((a, b) => by[b].cents - by[a].cents || a.localeCompare(b));
-  let given = 0;
-  for (const c of cats){ by[c].share = items ? by[c].cents / items : 0; by[c].tax = items ? Math.round(tax * by[c].cents / items) : 0; given += by[c].tax; }
-  if (cats.length && items) by[cats[0]].tax += tax - given;
-  for (const c of cats) by[c].total = by[c].cents + by[c].tax;
+  const tax = rcCents(RCP.tax), disc = Math.abs(rcCents(RCP.disc)), cats = Object.keys(by).sort((a, b) => by[b].cents - by[a].cents || a.localeCompare(b));
+  let given = 0, gd = 0;
+  /* Version 43: points, a gift card, or an order coupon come off the whole order, spread by each category's share exactly like the tax. */
+  for (const c of cats){ by[c].share = items ? by[c].cents / items : 0; by[c].tax = items ? Math.round(tax * by[c].cents / items) : 0; given += by[c].tax; by[c].disc = items ? Math.round(disc * by[c].cents / items) : 0; gd += by[c].disc; }
+  if (cats.length && items){ by[cats[0]].tax += tax - given; by[cats[0]].disc += disc - gd; }
+  for (const c of cats) by[c].total = by[c].cents + by[c].tax - by[c].disc;
   const sub = String(RCP.sub).trim() === '' ? null : rcCents(RCP.sub);
-  return { by, cats, items, tax, sub, left:sub === null ? null : sub - items };
+  return { by, cats, items, tax, disc, sub, left:sub === null ? null : sub - items };
 }
 function rcSync(){
   $('rxStore').value = RCP.store; $('rxDate').value = RCP.date || todayISO(); RCP.date = $('rxDate').value;
-  $('rxAcct').value = RCP.acct; $('rxSub').value = RCP.sub; $('rxTax').value = RCP.tax; $('rxCat').value = RCP.cat;
+  $('rxAcct').value = RCP.acct; $('rxSub').value = RCP.sub; $('rxTax').value = RCP.tax; $('rxDisc').value = RCP.disc || ''; $('rxCat').value = RCP.cat;
 }
 function renderReceipt(){
   const cats = rxCats(), accts = S.config.accounts.map(a => a.name);
@@ -1540,7 +1542,7 @@ function renderReceipt(){
   document.querySelectorAll('#rxStoreSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.st.toLowerCase() === (RCP.store || '').trim().toLowerCase() ? 'true' : 'false'));
   $('rxChips').innerHTML = rcFavorites().map(c => `<button type="button" data-rcc="${esc(c)}" aria-pressed="${c === RCP.cat}">${esc(c)}</button>`).join('');
   const k = rcCalc(), subUsed = k.sub === null ? k.items : k.sub;
-  $('rxTotal').textContent = rcMoney(subUsed + k.tax);
+  $('rxTotal').textContent = rcMoney(subUsed + k.tax - k.disc); $('rxDiscTh').hidden = !k.disc;
   const st = $('rxStatus');
   if (!RCP.items.length){ st.className = 'rcpt-status'; st.textContent = 'Add the first item from the receipt.'; }
   else if (k.sub === null){ st.className = 'rcpt-status'; st.textContent = `${RCP.items.length} item${RCP.items.length === 1 ? '' : 's'} add up to ${rcMoney(k.items)}. Enter the receipt subtotal to check them against it.`; }
@@ -1548,9 +1550,9 @@ function renderReceipt(){
   else if (k.left > 0){ st.className = 'rcpt-status bad'; st.textContent = `Items add up to ${rcMoney(k.items)}: ${rcMoney(k.left)} still to enter to reach the ${rcMoney(k.sub)} subtotal.`; }
   else { st.className = 'rcpt-status bad'; st.textContent = `Items add up to ${rcMoney(k.items)}, which is ${rcMoney(-k.left)} more than the ${rcMoney(k.sub)} subtotal. Check for an item entered twice.`; }
   $('rxCats').innerHTML = k.cats.length ? k.cats.map(c => { const b = k.by[c];
-    return `<tr><td>${esc(c)}</td><td class="n">${b.n}</td><td class="n">${rcMoney(b.cents)}</td><td class="n">${(b.share * 100).toFixed(1)}%</td><td class="n">${rcMoney(b.tax)}</td><td class="n"><b>${rcMoney(b.total)}</b></td></tr>`; }).join('') +
-    `<tr class="tot"><td>Total</td><td class="n">${RCP.items.length}</td><td class="n">${rcMoney(k.items)}</td><td class="n">100%</td><td class="n">${rcMoney(k.tax)}</td><td class="n">${rcMoney(k.items + k.tax)}</td></tr>`
-    : '<tr><td colspan="6" class="muted">Categories appear here as items are added.</td></tr>';
+    return `<tr><td>${esc(c)}</td><td class="n">${b.n}</td><td class="n">${rcMoney(b.cents)}</td><td class="n">${(b.share * 100).toFixed(1)}%</td><td class="n">${rcMoney(b.tax)}</td>${k.disc ? `<td class="n">−${rcMoney(b.disc)}</td>` : ''}<td class="n"><b>${rcMoney(b.total)}</b></td></tr>`; }).join('') +
+    `<tr class="tot"><td>Total</td><td class="n">${RCP.items.length}</td><td class="n">${rcMoney(k.items)}</td><td class="n">100%</td><td class="n">${rcMoney(k.tax)}</td>${k.disc ? `<td class="n">−${rcMoney(k.disc)}</td>` : ''}<td class="n">${rcMoney(k.items + k.tax - k.disc)}</td></tr>`
+    : `<tr><td colspan="${k.disc ? 7 : 6}" class="muted">Categories appear here as items are added.</td></tr>`;
   $('rxItems').innerHTML = RCP.items.length ? RCP.items.map((it, i) => ({ it, i })).reverse().map(({ it, i }) =>
     `<tr><td>${i + 1}</td><td class="n">${rcMoney(rcCents(it.amt))}</td><td><select data-rci="${it.id}" aria-label="Category for item ${i + 1}">${opts(cats).replace(`value="${esc(it.cat)}"`, `value="${esc(it.cat)}" selected`)}</select></td><td class="wrap">${esc(it.note || '')}</td><td><button class="btn sec small" type="button" data-rcd="${it.id}" aria-label="Remove item ${i + 1}">Remove</button></td></tr>`).join('')
     : '<tr><td colspan="5" class="muted">No items yet.</td></tr>';
@@ -1561,10 +1563,10 @@ function renderReceipt(){
   else if (!RCP.acct) why = 'Choose the account it was paid from.';
   else if (k.sub === null) why = 'Enter the receipt subtotal.';
   else if (k.left !== 0) why = 'The items must add up to the subtotal before saving.';
-  else if (neg.length) why = `${neg.join(', ')} adds up to zero or less; move those discounts into another category.`;
+  else if (neg.length) why = `${neg.join(', ')} adds up to zero or less after its share of the tax and points. Put a discount that came off one item in that item's category, and enter points, a gift card, or an order coupon in the Points, gift card, or discount box instead of as an item.`;
   $('rxSave').disabled = !!why;
   $('rxSave').textContent = k.cats.length > 1 ? `Save ${k.cats.length} transactions` : 'Save transaction';
-  $('rxSaveNote').textContent = why || `Saves ${k.cats.map(c => `${RCP.store.trim() || 'Store'} - ${c} ${rcMoney(k.by[c].total)}`).join(', ')}; together ${rcMoney(k.items + k.tax)}.`;
+  $('rxSaveNote').textContent = why || `Saves ${k.cats.map(c => `${RCP.store.trim() || 'Store'} - ${c} ${rcMoney(k.by[c].total)}`).join(', ')}; together ${rcMoney(k.items + k.tax - k.disc)}.`;
   $('rxSumNote').textContent = RCP.items.length ? `Receipt in progress: ${RCP.items.length} item${RCP.items.length === 1 ? '' : 's'}, ${rcMoney(k.items)} entered${k.sub !== null ? ' of ' + rcMoney(k.sub) : ''}.` : 'Split one Walmart, Sam’s Club, or Amazon order (or any store) across categories, with the tax spread by each category’s share of the subtotal.';
 }
 function rcAddItem(){
@@ -1581,6 +1583,7 @@ $('rxDate').addEventListener('change', () => { RCP.date = $('rxDate').value; rcK
 $('rxAcct').addEventListener('change', () => { RCP.acct = $('rxAcct').value; rcKeep(); renderReceipt(); });
 $('rxSub').addEventListener('input', () => { RCP.sub = $('rxSub').value; rcKeep(); renderReceipt(); });
 $('rxTax').addEventListener('input', () => { RCP.tax = $('rxTax').value; rcKeep(); renderReceipt(); });
+$('rxDisc').addEventListener('input', () => { RCP.disc = $('rxDisc').value; rcKeep(); renderReceipt(); });
 $('rxCat').addEventListener('change', () => { RCP.cat = $('rxCat').value; rcKeep(); renderReceipt(); });
 $('rxChips').addEventListener('click', e => { const b = e.target.closest('[data-rcc]'); if (!b) return; RCP.cat = b.dataset.rcc; $('rxCat').value = RCP.cat; rcKeep(); renderReceipt(); $('rxAmt').focus(); });
 $('rxAdd').addEventListener('click', rcAddItem);
@@ -1594,7 +1597,7 @@ $('rxClear').addEventListener('click', () => {
 $('rxSave').addEventListener('click', async () => {
   const k = rcCalc(), store = RCP.store.trim() || 'Store', base = Date.now();
   const itemNotes = RCP.items.map(i => i.note).filter(Boolean).join(', ');
-  const note = `Itemized receipt: ${RCP.items.length} items, ${rcMoney(k.items)} plus ${rcMoney(k.tax)} tax, receipt total ${rcMoney(k.items + k.tax)}`;
+  const note = `Itemized receipt: ${RCP.items.length} items, ${rcMoney(k.items)} plus ${rcMoney(k.tax)} tax${k.disc ? `, less ${rcMoney(k.disc)} points, gift card, or discount` : ''}, receipt total ${rcMoney(k.items + k.tax - k.disc)}`;
   const rows = k.cats.map((c, i) => { const mine = RCP.items.filter(x => x.cat === c && x.note).map(x => x.note).join(', ');
     return { id:uid(), date:RCP.date, account:RCP.acct, amount:k.by[c].total / 100, desc:`${store} - ${c}`, cat:c, to:'', notes:(note + (mine ? '. Items: ' + mine : '')).slice(0, 300), created:base, seq:base + i }; });
   for (const r of rows){ const st = status(r); if (st !== 'OK' && st !== 'History'){ $('rxErr').textContent = `${r.desc}: ${st}`; return; } }
