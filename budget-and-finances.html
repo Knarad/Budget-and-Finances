@@ -221,7 +221,7 @@ nav.rtabs button[aria-selected="true"]{background:var(--btnbg);border-color:var(
 #upPanel .up-amt{width:110px;padding:5px 8px;border:1px solid var(--rule);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit;text-align:right;font-variant-numeric:tabular-nums}
 #upPanel .up-date{width:142px;padding:4px 6px;border:1px solid var(--rule);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit;font-size:.9rem}
 #upPanel .up-date.set{border-color:var(--card);background:color-mix(in srgb,var(--card) 14%,var(--surface));font-weight:700}
-#upPanel > .tbl table{min-width:900px}#upPanel > .tbl th:first-child,#upPanel td.up-dcell{width:160px;min-width:160px}#upBody td{white-space:normal}#upPanel > .tbl th:nth-child(2){width:22%}#upPanel > .tbl th:nth-child(6){width:20%}#upBody td:nth-child(5) .tag{display:block;width:max-content;margin-bottom:2px}#upBody td:last-child .btn{white-space:nowrap}
+#upPanel > .tbl table{min-width:1020px}#upPanel > .tbl th:first-child,#upPanel td.up-dcell{width:160px;min-width:160px}#upBody td{white-space:normal}#upPanel > .tbl th:nth-child(2){width:22%}#upPanel > .tbl th:nth-child(7){width:18%}#upBody td:nth-child(6) .tag{display:block;width:max-content;margin-bottom:2px}#upBody td.up-bal{white-space:nowrap;font-variant-numeric:tabular-nums}#upBody td.up-bal .note{white-space:normal;font-size:.75rem}#upBody td:last-child .btn{white-space:nowrap}
 #upPanel .up-wd{display:block;font-size:.8rem;color:var(--muted);margin-bottom:2px}
 #upPanel .up-amt.set{border-color:var(--card);background:color-mix(in srgb,var(--card) 14%,var(--surface));font-weight:700}
 #upBody tr.upchg td,#upBody tr.upchg td:first-child{background:color-mix(in srgb,var(--card) 10%,var(--surface))}
@@ -329,7 +329,7 @@ tr.sd-tie td{background:color-mix(in srgb,var(--card) 10%,transparent)}
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 41</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 42</span>
   <div class="sp"></div>
   <div class="zoom" role="group" aria-label="Page size"><button id="zOut" type="button" aria-label="Make everything smaller" title="Make everything smaller">&minus;</button><button id="zVal" type="button" title="Back to normal size">100%</button><button id="zIn" type="button" aria-label="Make everything bigger" title="Make everything bigger">+</button></div>
   <button id="signOutBtn" type="button">Sign out</button>
@@ -416,7 +416,7 @@ tr.sd-tie td{background:color-mix(in srgb,var(--card) 10%,transparent)}
   <div class="panel" id="upPanel">
     <h2 style="margin-top:0">Coming up in the next 30 days: income and bills</h2>
     <p class="note" style="margin-top:-4px" id="upSum"></p>
-    <div class="tbl"><table><thead><tr><th>Expected</th><th>Item</th><th class="n">Typical</th><th class="n">Amount</th><th>Category</th><th>Source</th><th></th></tr></thead><tbody id="upBody"></tbody></table></div>
+    <div class="tbl"><table><thead><tr><th>Expected</th><th>Item</th><th class="n">Typical</th><th class="n">Amount</th><th class="n">PNC Shared balance</th><th>Category</th><th>Source</th><th></th></tr></thead><tbody id="upBody"></tbody></table></div>
     <p class="note" style="margin:8px 0 0">Recurring bills are found automatically. Income follows the known pay schedules (K every other Thursday; J on the 15th and the last day of each month; child support every other Monday or Tuesday), and any other regular income is found automatically. To change one payment, edit its date or type a different amount; the change applies to that payment only. Changed rows are highlighted, and “Undo changes” goes back to the expected date and amount.</p>
     <details class="more up-add"><summary>Add something that’s coming up</summary>
       <div class="row">
@@ -1631,11 +1631,11 @@ function upList(days, opt){
     const nx = new Date(b.next.getFullYear(), b.next.getMonth() + mo, Math.min(b.day, 28));
     const key = 'r|' + normDesc(b.desc) + '|' + b.cat + '|' + ym(upISO(nx)), o = UP.overrides[key], md = UP.dates[key], date = md ? upDay(md) : nx;
     if (date < (md ? grace : t0) || date > end) continue;
-    out.push({ key, date, orig:nx, moved:!!md, desc:b.desc, cat:b.cat, typical:b.amt, amt:o !== undefined ? +o : b.amt, changed:o !== undefined, source:'Recurring', last:b.last, inc:false, past:date < t0 }); }
+    out.push({ key, date, orig:nx, moved:!!md, desc:b.desc, cat:b.cat, account:b.acct || '', typical:b.amt, amt:o !== undefined ? +o : b.amt, changed:o !== undefined, source:'Recurring', last:b.last, inc:false, past:date < t0 }); }
   if (withIncome) for (const g of detectIncome()) for (const d of g.next){
     const key = 'i|' + normDesc(g.desc) + '|' + g.cat + '|' + upISO(d), o = UP.overrides[key], md = UP.dates[key], date = md ? upDay(md) : d;
     if (date < (md ? grace : new Date(t0.getTime() - (g.alt ? 864e5 : 0))) || date > end) continue;
-    out.push({ key, date, orig:d, moved:!!md, desc:g.desc, cat:g.cat, typical:g.amt, amt:o !== undefined ? +o : g.amt, changed:o !== undefined, source:'Recurring', last:g.last, inc:true, kind:g.kind, alt:g.alt && !md, rule:g.rule, past:date < t0 }); }
+    out.push({ key, date, orig:d, moved:!!md, desc:g.desc, cat:g.cat, account:g.acct || '', typical:g.amt, amt:o !== undefined ? +o : g.amt, changed:o !== undefined, source:'Recurring', last:g.last, inc:true, kind:g.kind, alt:g.alt && !md, rule:g.rule, past:date < t0 }); }
   for (const it of UP.items){
     if (it.repeat === 'weekly'){   // Version 41: an item added by hand that repeats every week on the weekday of its start date
       const inc = it.type === 'income'; if (inc && !withIncome) continue;
@@ -1689,7 +1689,7 @@ function detectIncome(){
     const tx = g.tx.sort((a, b) => a.date < b.date ? -1 : 1), dates = tx.map(t => upDay(t.date));
     const rule = INCOME_RULES[g.cat];
     if (rule){ const last = dates[dates.length - 1], recent = tx.filter(t => upDay(t.date) >= new Date(t0.getTime() - 60 * 864e5)).map(t => t.amount);
-      out.push({ desc:g.desc, cat:g.cat, kind:rule.kind, rule:rule.label, alt:!!rule.alt, amt:median(recent.length >= 2 ? recent.slice(-3) : tx.slice(-3).map(t => t.amount)), last:tx[tx.length - 1].date, next:ruleDates(rule, dates, t0, last).sort((a, b) => a - b) });
+      out.push({ desc:g.desc, cat:g.cat, acct:tx[tx.length - 1].account, kind:rule.kind, rule:rule.label, alt:!!rule.alt, amt:median(recent.length >= 2 ? recent.slice(-3) : tx.slice(-3).map(t => t.amount)), last:tx[tx.length - 1].date, next:ruleDates(rule, dates, t0, last).sort((a, b) => a - b) });
       continue; }
     if (dates.length < 3) continue;
     const last = dates[dates.length - 1]; if (t0 - last > 45 * 864e5) continue;            // stopped, for example a school-year paycheck in summer
@@ -1714,19 +1714,36 @@ function detectIncome(){
       const days = kind === 'monthly' ? [Math.round(median(doms))] : cl.map(Math.round);
       for (let m = 0; m < 3; m++) for (const dd of days){ const y = t0.getFullYear(), mo = t0.getMonth() + m, dim = new Date(y, mo + 1, 0).getDate(), d = new Date(y, mo, Math.min(dd >= 30 ? dim : dd, dim)); if (d >= floor) next.push(d); }
     }
-    out.push({ desc:g.desc, cat:g.cat, kind, amt, last:tx[tx.length - 1].date, next:next.sort((a, b) => a - b) });
+    out.push({ desc:g.desc, cat:g.cat, acct:tx[tx.length - 1].account, kind, amt, last:tx[tx.length - 1].date, next:next.sort((a, b) => a - b) });
   }
   return out;
 }
 const upFmt = d => d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+/* Version 42: the running balance of Checking - PNC Shared down the Coming up list. It starts from that account's balance through today (pending entries included,
+   as on Home) and moves only on rows paid from or deposited to that account. Rows for other accounts, and items with no account chosen, leave it unchanged, and no
+   transfer between accounts is assumed (Karl, October 17, 2026). */
+const UP_SHARED = 'Checking - PNC Shared';
+function upSharedStart(){
+  const a = acctInfo(UP_SHARED); if (!a) return null;
+  const today = todayISO(); let b = +a.openBal || 0;
+  for (const t of S.tx){ if (t.date > today || (a.openDate && t.date <= a.openDate)) continue;
+    const ty = typeOf(catUsed(t));
+    if (t.account === UP_SHARED) b += ty === 'Adjustment' ? t.amount : (ty === 'Income' ? t.amount : -t.amount);
+    if (ty === 'Transfer' && toUsed(t) === UP_SHARED) b += t.amount; }
+  return Math.round(b * 100) / 100;
+}
 function renderUpcoming(){
-  const rows = upList(UP_DAYS), bills = rows.filter(r => !r.inc), incs = rows.filter(r => r.inc), total = bills.reduce((s, r) => s + r.amt, 0), itot = incs.reduce((s, r) => s + r.amt, 0), nChanged = rows.filter(r => r.changed).length, nMoved = rows.filter(r => r.moved).length, nAdded = rows.filter(r => r.source !== 'Recurring').length;
-  $('upSum').innerHTML = rows.length ? `<b class="pos">${money(itot, true)}</b> of income expected (${incs.length} deposit${incs.length === 1 ? '' : 's'}) and <b>${money(total, true)}</b> of bills (${bills.length} payment${bills.length === 1 ? '' : 's'}), for a net of <b class="${itot - total >= 0 ? 'pos' : 'neg'}">${itot - total >= 0 ? '+' : '−'}${money(Math.abs(itot - total), true)}</b>${nAdded ? `; ${nAdded} added by you` : ''}${nChanged ? `; ${nChanged} with an amount you changed` : ''}${nMoved ? `; ${nMoved} with a date you changed` : ''}.` : `Nothing expected in the next ${UP_DAYS} days.`;
-  $('upBody').innerHTML = rows.length ? rows.map(r => `<tr class="${r.inc ? 'upinc' : ''}${r.changed || r.moved ? ' upchg' : ''}${r.source !== 'Recurring' ? ' upadd' : ''}${r.past ? ' uppast' : ''}"><td class="up-dcell"><span class="up-wd">${r.date.toLocaleDateString('en-US', { weekday:'short' })}${r.alt ? ' or ' + new Date(r.date.getTime() + 864e5).toLocaleDateString('en-US', { weekday:'short' }) : ''}</span><input class="up-date${r.moved ? ' set' : ''}" type="date" data-upd="${esc(r.key)}" value="${upISO(r.date)}" aria-label="Date for ${esc(r.desc)}">${r.moved ? `<br><span class="note">Moved from ${upFmt(r.orig)}</span>` : ''}${r.past ? '<br><span class="tag bad">Date passed</span>' : ''}</td><td class="wrap">${esc(r.desc)}${r.account ? `<br><span class="note">${esc(r.account)}</span>` : ''}</td><td class="n">${r.typical !== null ? (r.inc ? '+' : '') + money(r.typical, true) : ''}</td><td class="n"><input class="up-amt${r.changed ? ' set' : ''}" type="number" step="0.01" inputmode="decimal" data-upk="${esc(r.key)}" value="${r.changed || r.source !== 'Recurring' ? (+r.amt).toFixed(2) : ''}" placeholder="${(+r.amt).toFixed(2)}" aria-label="Amount for ${esc(r.desc)}"></td><td>${r.inc ? '<span class="tag ok">Income</span> ' : ''}${esc(r.cat)}</td><td>${r.source === 'Recurring' ? (r.inc ? (r.rule ? esc(r.rule) + '<br>' : '') + 'Last received ' : 'Last paid ') + fmtDate(r.last) : '<span class="tag">Added by you</span>' + (r.repeat ? `<br><span class="note">Every ${r.orig.toLocaleDateString('en-US', { weekday:'long' })}</span>` : '')}</td><td>${r.repeat && (r.changed || r.moved) ? `<button class="btn sec small" type="button" data-upreset="${esc(r.key)}">Undo changes</button> ` : ''}${r.id ? `<button class="btn sec small" type="button" data-updel="${r.id}"${r.repeat ? ' data-upweekly="1"' : ''}>${r.repeat ? 'Stop repeating' : 'Remove'}</button>` : (r.changed || r.moved ? `<button class="btn sec small" type="button" data-upreset="${esc(r.key)}">Undo changes</button>` : '')}</td></tr>`).join('')
-    + `<tr class="tot"><td></td><td>Income expected</td><td></td><td class="n pos">+${money(itot, true)}</td><td></td><td></td><td></td></tr>`
-    + `<tr class="tot"><td></td><td>Bills expected</td><td></td><td class="n">${money(total, true)}</td><td></td><td></td><td></td></tr>`
-    + `<tr class="tot"><td></td><td>Net for the ${UP_DAYS} days</td><td></td><td class="n ${itot - total >= 0 ? 'pos' : 'neg'}">${itot - total >= 0 ? '+' : '−'}${money(Math.abs(itot - total), true)}</td><td></td><td></td><td></td></tr>`
-    : `<tr><td colspan="7" class="muted">Nothing expected in the next ${UP_DAYS} days.</td></tr>`;
+  const rows = upList(UP_DAYS), start = upSharedStart(); let run = start, low = null;
+  const bal = rows.map(r => { const counts = start !== null && r.account === UP_SHARED; if (counts){ run = Math.round((run + (r.inc ? r.amt : -r.amt)) * 100) / 100; if (low === null || run < low.v) low = { v:run, d:r.date }; } return { v:run, counts }; });
+  const shSent = start === null ? '' : ` ${UP_SHARED} has <b>${money(start, true)}</b> today and is projected at <b class="${run < 0 ? 'neg' : ''}">${money(run, true)}</b> after ${UP_DAYS} days${low && low.v < Math.min(start, run) ? `, lowest <b class="${low.v < 0 ? 'neg' : ''}">${money(low.v, true)}</b> on ${upFmt(low.d)}` : ''}, counting only its own payments and deposits.`;
+  const bills = rows.filter(r => !r.inc), incs = rows.filter(r => r.inc), total = bills.reduce((s, r) => s + r.amt, 0), itot = incs.reduce((s, r) => s + r.amt, 0), nChanged = rows.filter(r => r.changed).length, nMoved = rows.filter(r => r.moved).length, nAdded = rows.filter(r => r.source !== 'Recurring').length;
+  $('upSum').innerHTML = rows.length ? `<b class="pos">${money(itot, true)}</b> of income expected (${incs.length} deposit${incs.length === 1 ? '' : 's'}) and <b>${money(total, true)}</b> of bills (${bills.length} payment${bills.length === 1 ? '' : 's'}), for a net of <b class="${itot - total >= 0 ? 'pos' : 'neg'}">${itot - total >= 0 ? '+' : '−'}${money(Math.abs(itot - total), true)}</b>${nAdded ? `; ${nAdded} added by you` : ''}${nChanged ? `; ${nChanged} with an amount you changed` : ''}${nMoved ? `; ${nMoved} with a date you changed` : ''}.` + shSent : `Nothing expected in the next ${UP_DAYS} days.` + shSent;
+  $('upBody').innerHTML = rows.length ? (start === null ? '' : `<tr class="tot"><td></td><td>${UP_SHARED} today</td><td></td><td></td><td class="n">${money(start, true)}</td><td></td><td></td><td></td></tr>`) + rows.map((r, ri) => `<tr class="${r.inc ? 'upinc' : ''}${r.changed || r.moved ? ' upchg' : ''}${r.source !== 'Recurring' ? ' upadd' : ''}${r.past ? ' uppast' : ''}"><td class="up-dcell"><span class="up-wd">${r.date.toLocaleDateString('en-US', { weekday:'short' })}${r.alt ? ' or ' + new Date(r.date.getTime() + 864e5).toLocaleDateString('en-US', { weekday:'short' }) : ''}</span><input class="up-date${r.moved ? ' set' : ''}" type="date" data-upd="${esc(r.key)}" value="${upISO(r.date)}" aria-label="Date for ${esc(r.desc)}">${r.moved ? `<br><span class="note">Moved from ${upFmt(r.orig)}</span>` : ''}${r.past ? '<br><span class="tag bad">Date passed</span>' : ''}</td><td class="wrap">${esc(r.desc)}${r.account ? `<br><span class="note">${esc(r.account)}</span>` : ''}</td><td class="n">${r.typical !== null ? (r.inc ? '+' : '') + money(r.typical, true) : ''}</td><td class="n"><input class="up-amt${r.changed ? ' set' : ''}" type="number" step="0.01" inputmode="decimal" data-upk="${esc(r.key)}" value="${r.changed || r.source !== 'Recurring' ? (+r.amt).toFixed(2) : ''}" placeholder="${(+r.amt).toFixed(2)}" aria-label="Amount for ${esc(r.desc)}"></td><td class="n up-bal">${start === null ? '' : bal[ri].counts ? `<b class="${bal[ri].v < 0 ? 'neg' : ''}">${money(bal[ri].v, true)}</b>` : `<span class="muted">${money(bal[ri].v, true)}</span><br><span class="note">${r.account ? 'Other account, not counted' : 'No account chosen, not counted'}</span>`}</td><td>${r.inc ? '<span class="tag ok">Income</span> ' : ''}${esc(r.cat)}</td><td>${r.source === 'Recurring' ? (r.inc ? (r.rule ? esc(r.rule) + '<br>' : '') + 'Last received ' : 'Last paid ') + fmtDate(r.last) : '<span class="tag">Added by you</span>' + (r.repeat ? `<br><span class="note">Every ${r.orig.toLocaleDateString('en-US', { weekday:'long' })}</span>` : '')}</td><td>${r.repeat && (r.changed || r.moved) ? `<button class="btn sec small" type="button" data-upreset="${esc(r.key)}">Undo changes</button> ` : ''}${r.id ? `<button class="btn sec small" type="button" data-updel="${r.id}"${r.repeat ? ' data-upweekly="1"' : ''}>${r.repeat ? 'Stop repeating' : 'Remove'}</button>` : (r.changed || r.moved ? `<button class="btn sec small" type="button" data-upreset="${esc(r.key)}">Undo changes</button>` : '')}</td></tr>`).join('')
+    + `<tr class="tot"><td></td><td>Income expected</td><td></td><td class="n pos">+${money(itot, true)}</td><td></td><td></td><td></td><td></td></tr>`
+    + `<tr class="tot"><td></td><td>Bills expected</td><td></td><td class="n">${money(total, true)}</td><td></td><td></td><td></td><td></td></tr>`
+    + `<tr class="tot"><td></td><td>Net for the ${UP_DAYS} days</td><td></td><td class="n ${itot - total >= 0 ? 'pos' : 'neg'}">${itot - total >= 0 ? '+' : '−'}${money(Math.abs(itot - total), true)}</td><td></td><td></td><td></td><td></td></tr>`
+    + (start === null ? '' : `<tr class="tot"><td></td><td>${UP_SHARED} after ${UP_DAYS} days</td><td></td><td></td><td class="n ${run < 0 ? 'neg' : ''}">${money(run, true)}</td><td></td><td></td><td></td></tr>`)
+    : `<tr><td colspan="8" class="muted">Nothing expected in the next ${UP_DAYS} days.</td></tr>`;
   const later = UP.items.filter(it => it.repeat !== 'weekly' && upDay(it.date) > new Date(Date.now() + UP_DAYS * 864e5)).sort((a, b) => a.date < b.date ? -1 : 1);
   const movedOut = upList(75).filter(r => r.moved && r.date > new Date(Date.now() + UP_DAYS * 864e5));
   $('upLater').innerHTML = (movedOut.length ? `<h4>Moved past the next ${UP_DAYS} days</h4>` + '<div class="tbl"><table><tbody>' + movedOut.map(r => `<tr><td>${fmtDate(upISO(r.date))}<br><span class="note">from ${upFmt(r.orig)}</span></td><td class="wrap">${esc(r.desc)}</td><td class="n">${r.inc ? '+' : ''}${money(r.amt, true)}</td><td>${esc(r.cat)}</td><td><button class="btn sec small" type="button" data-upreset="${esc(r.key)}">Undo changes</button></td></tr>`).join('') + '</tbody></table></div>' : '') + (later.length ? `<h4>Added for later: each moves into the list above once it is ${UP_DAYS} days away</h4>` + '<div class="tbl"><table><tbody>' + later.map(it => `<tr><td>${fmtDate(it.date)}</td><td class="wrap">${esc(it.desc)}${it.type === 'income' ? ' <span class="tag ok">Income</span>' : ''}</td><td class="n">${it.type === 'income' ? '+' : ''}${money(+it.amount, true)}</td><td>${esc(it.cat || '')}</td><td><button class="btn sec small" type="button" data-updel="${it.id}">Remove</button></td></tr>`).join('') + '</tbody></table></div>' : '');
@@ -2046,8 +2063,8 @@ function detectBills(){
   const now = new Date(), cur = ymKey(now.getFullYear(), now.getMonth()+1), win = [1,2,3,4,5,6].map(i => addMonths(cur, -i));
   const groups = {};
   for (const t of S.tx){ const c = catUsed(t), g = groupOf(c); if (!(g === 'Fixed' || g === 'Variable bill' || g === 'Savings' || c === 'Card Payment')) continue;
-    const key = normDesc(t.desc) + '|' + c; const k = ym(t.date); const o = (groups[key] ||= { desc:t.desc, cat:c, months:{}, days:[], last:'' });
-    o.months[k] = (o.months[k] || 0) + t.amount; if (win.includes(k) || k === cur) o.days.push(+t.date.slice(8,10)); if (t.date > o.last){ o.last = t.date; o.desc = t.desc; } }
+    const key = normDesc(t.desc) + '|' + c; const k = ym(t.date); const o = (groups[key] ||= { desc:t.desc, cat:c, months:{}, days:[], last:'', acct:'' });
+    o.months[k] = (o.months[k] || 0) + t.amount; if (win.includes(k) || k === cur) o.days.push(+t.date.slice(8,10)); if (t.date > o.last){ o.last = t.date; o.desc = t.desc; o.acct = t.account; } }
   const bills = [];
   for (const o of Object.values(groups)){
     const seen = win.filter(k => o.months[k]); if (seen.length < 3) continue;
@@ -2056,7 +2073,7 @@ function detectBills(){
     const day = Math.round(median(o.days));
     const paidThis = !!o.months[cur];
     let next = new Date(now.getFullYear(), now.getMonth() + (paidThis ? 1 : 0), Math.min(day, 28));
-    bills.push({ desc:o.desc, cat:o.cat, day, amt:median(amts), min:Math.min(...winAmts), max:Math.max(...winAmts), seen:seen.length, last:o.last, next, prev:Object.keys(o.months).sort().slice(-4, -1).map(k => o.months[k]), lastAmt:o.months[Object.keys(o.months).sort().pop()] });
+    bills.push({ desc:o.desc, cat:o.cat, acct:o.acct, day, amt:median(amts), min:Math.min(...winAmts), max:Math.max(...winAmts), seen:seen.length, last:o.last, next, prev:Object.keys(o.months).sort().slice(-4, -1).map(k => o.months[k]), lastAmt:o.months[Object.keys(o.months).sort().pop()] });
   }
   return bills.sort((a,b) => a.day - b.day);
 }
