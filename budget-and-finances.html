@@ -302,6 +302,8 @@ body.show-desc .desc{display:block;max-width:75ch;margin:6px 0 12px;padding:8px 
 body.show-desc .desc h4{margin:6px 0 3px}
 body.show-desc .desc p{margin:0 0 6px;line-height:1.5}
 body.show-desc .desc-page{margin-bottom:16px}
+.up-missed{margin:0 0 10px;padding:8px 12px;border-left:3px solid var(--out);border-radius:0 6px 6px 0;background:color-mix(in srgb, var(--out) 8%, transparent)}
+.up-miss-row{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;justify-content:space-between;margin-top:6px}
 </style>
 </head>
 <body>
@@ -338,7 +340,7 @@ body.show-desc .desc-page{margin-bottom:16px}
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 49</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 51</span>
   <div class="sp"></div>
   <div class="zoom" role="group" aria-label="Page size"><button id="zOut" type="button" aria-label="Make everything smaller" title="Make everything smaller">&minus;</button><button id="zVal" type="button" title="Back to normal size">100%</button><button id="zIn" type="button" aria-label="Make everything bigger" title="Make everything bigger">+</button></div>
   <button id="signOutBtn" type="button">Sign out</button>
@@ -474,6 +476,7 @@ body.show-desc .desc-page{margin-bottom:16px}
   <button data-tab="stmt" aria-selected="false">Statements</button>
   <button data-tab="accounts" aria-selected="false">Accounts</button>
   <button data-tab="budget" aria-selected="false">Budget</button>
+  <button data-tab="cats" aria-selected="false">Categories</button>
   <button data-tab="data" aria-selected="false">Data and Settings</button>
 </nav>
 
@@ -777,6 +780,18 @@ body.show-desc .desc-page{margin-bottom:16px}
   </div><p class="note" style="margin:10px 0 0">Enter each amount in the month it is paid. Income rows are money expected in. Copying a year forward applies the pay raises set in Data and Settings.</p></div>
   <div class="tbl"><table><thead id="bHead"></thead><tbody id="bBody"></tbody></table></div>
 </section>
+<section id="tab-cats" class="hidden">
+  <h2>Categories</h2>
+  <p class="note" style="margin-top:-6px">The master list. Add, rename, regroup, or remove any category here. A rename or a move reaches everywhere the name is used: every transaction, the budget, the rules, Coming up, and the pay raises. Removing a category that has been used asks where its transactions, budget, and rules should go.</p>
+  <div class="panel">
+    <h3 style="margin-top:0">Add a category</h3>
+    <div class="row"><div><label class="f" for="ctNew">Name</label><input class="t" id="ctNew" maxlength="60" placeholder="For example: Christmas Gifts"></div><div><label class="f" for="ctNewType">Type</label><select class="t" id="ctNewType"></select></div><div><label class="f" for="ctNewGrp">Budget group</label><select class="t" id="ctNewGrp"></select></div></div>
+    <div style="margin-top:8px"><button class="btn" id="ctAdd" type="button">Add category</button></div>
+    <div class="err" id="ctErr" role="alert"></div>
+  </div>
+  <div class="row" style="margin:6px 0"><div><label class="f" for="ctFind">Find</label><input class="t" id="ctFind" placeholder="Type part of a name"></div><div><label class="f" for="ctYear">Year for the totals</label><select class="t" id="ctYear"></select></div><div></div></div>
+  <div class="tbl"><table><thead><tr><th>Category</th><th>Type</th><th>Budget group</th><th class="n">Transactions</th><th class="n">Actual this year</th><th class="n">Budget this year</th><th class="n">Rules</th><th></th></tr></thead><tbody id="ctBody"></tbody></table></div>
+</section>
 
 <section id="tab-data" class="hidden">
   <h2>Data and Settings</h2>
@@ -821,8 +836,8 @@ body.show-desc .desc-page{margin-bottom:16px}
   </div>
   <div class="panel">
     <h3 style="margin-top:0">Categories</h3>
-    <div class="tbl"><table><thead><tr><th>Category</th><th>Type</th><th>Group</th><th></th></tr></thead><tbody id="sCat"></tbody></table></div>
-    <div style="margin-top:10px"><button class="btn sec small" id="addCat" type="button">Add category</button></div>
+    <p class="note">Categories now have their own tab, the master list, where you can add, rename, regroup, merge, and remove them.</p>
+    <button class="btn sec small" id="goCats" type="button">Open Categories</button>
   </div>
   <div class="panel">
     <h3 style="margin-top:0">Rules</h3>
@@ -1654,13 +1669,13 @@ $('rxSave').addEventListener('click', async () => {
 /* ================= Coming up in the next 30 days (Version 23; 14 days until Version 31) ================= */
 const UP_DAYS = 30;
 /* Stored in households/main/meta/upcoming: items (things added by hand) and overrides (amount for one specific payment). */
-const UP = { items:[], overrides:{}, dates:{}, ignore:[] };   // ignore (Version 45): patterns Karl marked Not recurring   // dates: a moved date for one specific payment (Version 25)
-async function upLoad(){ try { const d = await getDoc(ref('meta','upcoming')); if (d.exists()){ const v = d.data(); UP.items = v.items || []; UP.dates = v.dates || {}; UP.overrides = v.overrides || {}; UP.ignore = v.ignore || []; } } catch (e) {} }
+const UP = { items:[], overrides:{}, dates:{}, ignore:[], dismissed:[] };   // dismissed (Version 50): missed reminders marked Not needed   // ignore (Version 45): patterns Karl marked Not recurring   // dates: a moved date for one specific payment (Version 25)
+async function upLoad(){ try { const d = await getDoc(ref('meta','upcoming')); if (d.exists()){ const v = d.data(); UP.items = v.items || []; UP.dates = v.dates || {}; UP.overrides = v.overrides || {}; UP.ignore = v.ignore || []; UP.dismissed = v.dismissed || []; } } catch (e) {} }
 async function upSave(){
   const keep = addMonths(ymKey(new Date().getFullYear(), new Date().getMonth() + 1), -2);
   for (const k of Object.keys(UP.overrides)){ const m = /(\d{4}-\d{2})(-\d{2})?$/.exec(k); if (m && m[1] < keep) delete UP.overrides[k]; }
   for (const k of Object.keys(UP.dates)){ if (UP.dates[k] < keep + '-01') delete UP.dates[k]; }   // old one-time amounts expire
-  try { await setDoc(ref('meta','upcoming'), JSON.parse(JSON.stringify({ items:UP.items, overrides:UP.overrides, dates:UP.dates, ignore:UP.ignore, updated:Date.now() }))); } catch (err) { toast('Could not save: ' + (err.code || err.message)); }
+  try { await setDoc(ref('meta','upcoming'), JSON.parse(JSON.stringify({ items:UP.items, overrides:UP.overrides, dates:UP.dates, ignore:UP.ignore, dismissed:(UP.dismissed || []).slice(-200), updated:Date.now() }))); } catch (err) { toast('Could not save: ' + (err.code || err.message)); }
 }
 const upISO = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 const upDay = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); };
@@ -1675,11 +1690,11 @@ function upList(days, opt){
   for (const b of detectBills()) if (!repKeys.has(normDesc(b.desc)) && !ign.has('r|' + normDesc(b.desc) + '|' + b.cat)) for (let mo = 0; mo < 3; mo++){   // Version 31: every monthly occurrence inside the window, now that it can reach into the next month
     const nx = new Date(b.next.getFullYear(), b.next.getMonth() + mo, Math.min(b.day, 28));
     const key = 'r|' + normDesc(b.desc) + '|' + b.cat + '|' + ym(upISO(nx)), o = UP.overrides[key], md = UP.dates[key], date = md ? upDay(md) : nx;
-    if (date < (md ? grace : t0) || date > end) continue;
+    if (date < grace || date > end) continue;
     out.push({ key, date, orig:nx, moved:!!md, desc:b.desc, cat:b.cat, account:b.acct || '', typical:b.amt, amt:o !== undefined ? +o : b.amt, changed:o !== undefined, source:'Recurring', last:b.last, inc:false, past:date < t0 }); }
-  for (const r of reps) for (const d of r.next){   // Version 45: weekly, every two weeks, steady monthly, every three months, once a year
+  for (const r of reps) for (const d of [...(r.recent || []), ...r.next]){   // Version 45: weekly, every two weeks, steady monthly, every three months, once a year
     const key = 'k|' + r.kind + '|' + r.key + '|' + upISO(d), o = UP.overrides[key], md = UP.dates[key], date = md ? upDay(md) : d;
-    if (date < (md ? grace : t0) || date > end) continue;
+    if (date < grace || date > end) continue;
     out.push({ key, date, orig:d, moved:!!md, desc:r.desc, cat:r.cat, account:r.acct || '', typical:r.amt, amt:o !== undefined ? +o : r.amt, changed:o !== undefined, source:'Recurring', last:r.last, inc:false, past:date < t0, pattern:r.pattern, kind:r.kind }); }
   if (withIncome) for (const g of detectIncome()) for (const d of g.next){
     const key = 'i|' + normDesc(g.desc) + '|' + g.cat + '|' + upISO(d), o = UP.overrides[key], md = UP.dates[key], date = md ? upDay(md) : d;
@@ -1690,20 +1705,33 @@ function upList(days, opt){
       const inc = it.type === 'income'; if (inc && !withIncome) continue;
       for (const d of upRepDates(it, t0, end)){
         const key = 'w|' + it.id + '|' + upISO(d), o = UP.overrides[key], md = UP.dates[key], date = md ? upDay(md) : d;
-        if (date < (md ? grace : t0) || date > end) continue;
+        if (date < (inc && !md ? t0 : grace) || date > end) continue;
         out.push({ key, id:it.id, repeat:it.repeat, date, orig:d, moved:!!md, desc:it.desc, cat:it.cat || '', typical:+it.amount, amt:o !== undefined ? +o : +it.amount, changed:o !== undefined, source:'Added by you', last:'', account:it.account || '', past:date < t0, inc });
       }
       continue;
     }
     const d = upDay(it.date), inc = it.type === 'income'; if (d < grace || d > end || (inc && !withIncome)) continue;
     out.push({ key:'m|' + it.id, id:it.id, date:d, desc:it.desc, cat:it.cat || '', typical:null, amt:+it.amount, changed:false, source:'Added by you', last:'', account:it.account || '', past:d < t0, inc }); }
-  return out.sort((a, b) => a.date - b.date || a.desc.localeCompare(b.desc));
+  /* Version 50 (Karl, October 20, 2026): past dates leave the list. A bill drops as soon as its payment is recorded, early or late: a transaction within
+     3 days of the expected or moved date with the same description, or the same category and account and an amount within 5 percent. A bill from the
+     last 7 days with nothing recorded moves to UP_MISSED, shown as a reminder above the list, unless Karl marked it Not needed. */
+  const dn = d => Math.round(d.getTime() / 864e5), recent = S.tx.filter(t => t.amount > 0 && t.date >= upISO(new Date(grace.getTime() - 3 * 864e5)));
+  const paid = r => recent.some(t => { const td = dn(upDay(t.date)); if (Math.abs(td - dn(r.date)) > 3 && !(r.orig && Math.abs(td - dn(r.orig)) <= 3)) return false;
+    return normDesc(t.desc) === normDesc(r.desc) || (r.cat && catUsed(t) === r.cat && t.account === r.account && rpNear(t.amount, r.amt, 0.05)); });
+  const dis = new Set(UP.dismissed || []), keep = [], missed = [];
+  for (const r of out){
+    if (!r.inc && paid(r)) continue;
+    if (r.date >= t0 || (r.inc && r.alt)) keep.push(r); else if (!r.inc && !dis.has(r.key)) missed.push(r);
+  }
+  UP_MISSED = missed.sort((a, b) => a.date - b.date);
+  return keep.sort((a, b) => a.date - b.date || a.desc.localeCompare(b.desc));
 }
+let UP_MISSED = [];
 /* Version 45: the dates of a repeating item added by hand, from its start date through the end of the window. */
 function upRepDates(it, t0, end){
   const start = upDay(it.date), out = [];
   if (it.repeat === 'weekly' || it.repeat === 'biweekly'){ const step = it.repeat === 'weekly' ? 7 : 14; let d = new Date(start);
-    if (d < t0){ const gap = Math.ceil((t0 - d) / (step * 864e5)); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + gap * step); }
+    const from = new Date(t0.getTime() - 7 * 864e5); if (d < from){ const gap = Math.ceil((from - d) / (step * 864e5)); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + gap * step); }
     for (; d <= end; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + step)) out.push(d);
     return out; }
   const mStep = { monthly:1, quarterly:3, yearly:12 }[it.repeat] || 1, day = start.getDate();
@@ -1802,7 +1830,7 @@ const RP_NAMES = { weekly:'Weekly', biweekly:'Every two weeks', monthly:'Monthly
 function detectRepeats(){
   const now = new Date(), t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()), today = upISO(t0), dayN = d => Math.round(d.getTime() / 864e5);
   const local = n => { const u = new Date(n * 864e5); return new Date(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate()); };
-  const since = upISO(new Date(t0.getTime() - 400 * 864e5)), horizon = new Date(t0.getTime() + 130 * 864e5), out = [], used = new Set();
+  const back = new Date(t0.getTime() - 7 * 864e5), since = upISO(new Date(t0.getTime() - 400 * 864e5)), horizon = new Date(t0.getTime() + 130 * 864e5), out = [], used = new Set();
   const near = (tx, d, w) => tx.some(t => Math.abs(dayN(upDay(t.date)) - dayN(d)) <= w);
   const recent = S.tx.filter(t => t.date >= since && t.date <= today && t.amount > 0 && rpCat(t)).sort((a, b) => a.date < b.date ? -1 : 1);
   const info = (tx, extra) => { const lastT = tx[tx.length - 1], { amt, stable } = rpAmount(tx.map(t => t.amount)); return Object.assign({ desc:lastT.desc, cat:catUsed(lastT), acct:lastT.account, amt, stable, last:lastT.date, n:tx.length, keys:[...new Set(tx.map(t => normDesc(t.desc)))] }, extra); };
@@ -1821,7 +1849,7 @@ function detectRepeats(){
       const longest = prior.length ? Math.max(span(cur), ...prior.map(span)) : 0, cap = prior.length ? local(dayN(cur[0]) + longest + 3) : null;
       let best = 0, bestN = -1;                                              // the usual weekday, so one early or late charge does not shift the pattern
       for (let r = 0; r < step; r++){ let n = 0; for (const d of days.slice(-8)){ const x = ((dayN(d) - r) % step + step) % step, off = Math.min(x, step - x); n += off === 0 ? 10 : (off <= 1 ? 2 : 0); } if (n > bestN){ best = r; bestN = n; } }
-      const next = []; let d = dayN(t0); while (((d - best) % step + step) % step) d++;
+      const next = []; let d = dayN(t0) - 7; while (((d - best) % step + step) % step) d++;   // from a week back (Version 50), so a missed one can be flagged
       for (; d <= dayN(horizon); d += step){ const dt = local(d); if (cap && dt > cap) break; if (!near(tx, dt, kind === 'weekly' ? 3 : 5)) next.push(dt); }
       const wd = local(best).toLocaleDateString('en-US', { weekday:'long' });
       out.push(Object.assign(base, { kind, next, seasonal:!!prior.length, pattern:(kind === 'weekly' ? 'Every ' + wd : 'Every other ' + wd) + (prior.length ? `, in season (seasons have run up to ${Math.round(longest / 7) + 1} weeks)` : '') }));
@@ -1836,7 +1864,7 @@ function detectRepeats(){
     const months = new Set(days.filter(d => dayN(t0) - dayN(d) <= 200).map(d => ym(upISO(d)))), gm = median(gaps), fit = gaps.filter(g => g >= 24 && g <= 38).length / gaps.length;
     if (months.size < 3 || gm < 26 || gm > 35 || fit < 0.7 || base.stable < 0.7 || dayN(t0) - dayN(last) > 45) continue;
     const dom = Math.round(median(days.slice(-6).map(d => d.getDate()))), next = [];
-    for (let m = 0; m < 5; m++){ const y = t0.getFullYear(), mo = t0.getMonth() + m, dim = new Date(y, mo + 1, 0).getDate(), dt = new Date(y, mo, Math.min(dom, dim)); if (dt >= t0 && dt <= horizon && !near(tx, dt, 10)) next.push(dt); }
+    for (let m = 0; m < 5; m++){ const y = t0.getFullYear(), mo = t0.getMonth() + m, dim = new Date(y, mo + 1, 0).getDate(), dt = new Date(y, mo, Math.min(dom, dim)); if (dt >= back && dt <= horizon && !near(tx, dt, 10)) next.push(dt); }
     out.push(Object.assign(base, { kind:'monthly', next, pattern:'Monthly, around day ' + dom })); used.add(k);
   }
   /* Merchant groups within a category: descriptions that share a distinctive word belong together. */
@@ -1854,7 +1882,7 @@ function detectRepeats(){
     const ph = {}; for (const c of cl) ph[c[0].getMonth() % 3] = (ph[c[0].getMonth() % 3] || 0) + 1;
     const phase = +Object.entries(ph).sort((a, b) => b[1] - a[1])[0][0], dom = Math.round(median(cl.map(c => c[0].getDate()))), next = [];
     for (let m = -1; m < 6; m++){ const y = t0.getFullYear(), mo = t0.getMonth() + m; if (((mo % 3) + 3) % 3 !== phase) continue;
-      const dim = new Date(y, mo + 1, 0).getDate(), dt = new Date(y, mo, Math.min(dom, dim)); if (dt >= t0 && dt <= horizon && !near(tx, dt, 25)) next.push(dt); }
+      const dim = new Date(y, mo + 1, 0).getDate(), dt = new Date(y, mo, Math.min(dom, dim)); if (dt >= back && dt <= horizon && !near(tx, dt, 25)) next.push(dt); }
     out.push(Object.assign(base, { kind:'quarterly', amt:RP_BILL(base.cat) ? median(tx.slice(-3).map(t => t.amount)) : base.amt, next, pattern:'Every three months' }));
     base.keys.forEach(x => used.add(x));
   }
@@ -1872,9 +1900,10 @@ function detectRepeats(){
     if (!gap && /\b(yearly|annual|annually|once a year)\b/i.test(x.desc)) gap = 365;
     if (!gap) continue;
     const dt = local(xd + gap);
-    out.push(Object.assign(info([x], { key:k }), { amt:x.amount, kind:'yearly', next:dt >= t0 && dt <= horizon ? [dt] : [], pattern:'Once a year' }));
+    out.push(Object.assign(info([x], { key:k }), { amt:x.amount, kind:'yearly', next:dt >= back && dt <= horizon && !all.some(t => same(t) && Math.abs(dayN(upDay(t.date)) - dayN(dt)) <= 20) ? [dt] : [], pattern:'Once a year' }));
     used.add(k);
   }
+  for (const r of out){ r.recent = r.next.filter(d => d < t0); r.next = r.next.filter(d => d >= t0); }   // Version 50: recent = expected in the last 7 days
   return out;
 }
 const upSeries = key => key.split('|').slice(0, 3).join('|');   // one id per pattern, used by Not recurring
@@ -1898,6 +1927,8 @@ function renderUpcoming(){
   const shSent = start === null ? '' : ` ${UP_SHARED} has <b>${money(start, true)}</b> today and is projected at <b class="${run < 0 ? 'neg' : ''}">${money(run, true)}</b> after ${UP_DAYS} days${low && low.v < Math.min(start, run) ? `, lowest <b class="${low.v < 0 ? 'neg' : ''}">${money(low.v, true)}</b> on ${upFmt(low.d)}` : ''}, counting only its own payments and deposits.`;
   const bills = rows.filter(r => !r.inc), incs = rows.filter(r => r.inc), total = bills.reduce((s, r) => s + r.amt, 0), itot = incs.reduce((s, r) => s + r.amt, 0), nChanged = rows.filter(r => r.changed).length, nMoved = rows.filter(r => r.moved).length, nAdded = rows.filter(r => r.source !== 'Recurring').length;
   $('upSum').innerHTML = rows.length ? `<b class="pos">${money(itot, true)}</b> of income expected (${incs.length} deposit${incs.length === 1 ? '' : 's'}) and <b>${money(total, true)}</b> of bills (${bills.length} payment${bills.length === 1 ? '' : 's'}), for a net of <b class="${itot - total >= 0 ? 'pos' : 'neg'}">${itot - total >= 0 ? '+' : '−'}${money(Math.abs(itot - total), true)}</b>${nAdded ? `; ${nAdded} added by you` : ''}${nChanged ? `; ${nChanged} with an amount you changed` : ''}${nMoved ? `; ${nMoved} with a date you changed` : ''}.` + shSent : `Nothing expected in the next ${UP_DAYS} days.` + shSent;
+  let ms = $('upMissed'); if (!ms){ ms = document.createElement('div'); ms.id = 'upMissed'; $('upInsert').parentElement.insertAdjacentElement('afterend', ms); }
+  ms.innerHTML = UP_MISSED.length ? `<div class="up-missed"><b>Expected in the last week but not recorded yet.</b> Record it if it was paid, or mark it Not needed.` + UP_MISSED.map(r => `<div class="up-miss-row"><span>${upFmt(r.date)} · ${esc(r.desc)} · ${money(r.amt, true)}${r.account ? ' · ' + esc(r.account) : ''}</span> <span><button class="btn small" type="button" data-uprec="${esc(r.key)}">Record it</button> <button class="btn sec small" type="button" data-updis="${esc(r.key)}">Not needed</button></span></div>`).join('') + `</div>` : '';
   $('upBody').innerHTML = rows.length ? (start === null ? '' : `<tr class="tot"><td></td><td>${UP_SHARED} today</td><td></td><td></td><td class="n">${money(start, true)}</td><td></td><td></td><td></td></tr>`) + rows.map((r, ri) => `<tr class="${r.inc ? 'upinc' : ''}${r.changed || r.moved ? ' upchg' : ''}${r.source !== 'Recurring' ? ' upadd' : ''}${r.past ? ' uppast' : ''}"><td class="up-dcell"><span class="up-wd">${r.date.toLocaleDateString('en-US', { weekday:'short' })}${r.alt ? ' or ' + new Date(r.date.getTime() + 864e5).toLocaleDateString('en-US', { weekday:'short' }) : ''}</span><input class="up-date${r.moved ? ' set' : ''}" type="date" data-upd="${esc(r.key)}" value="${upISO(r.date)}" aria-label="Date for ${esc(r.desc)}">${r.moved ? `<br><span class="note">Moved from ${upFmt(r.orig)}</span>` : ''}${r.past ? '<br><span class="tag bad">Date passed</span>' : ''}</td><td class="wrap">${esc(r.desc)}${r.account ? `<br><span class="note">${esc(r.account)}</span>` : ''}</td><td class="n">${r.typical !== null ? (r.inc ? '+' : '') + money(r.typical, true) : ''}</td><td class="n"><input class="up-amt${r.changed ? ' set' : ''}" type="number" step="0.01" inputmode="decimal" data-upk="${esc(r.key)}" value="${r.changed || r.source !== 'Recurring' ? (+r.amt).toFixed(2) : ''}" placeholder="${(+r.amt).toFixed(2)}" aria-label="Amount for ${esc(r.desc)}"></td><td class="n up-bal">${start === null ? '' : bal[ri].counts ? `<b class="${bal[ri].v < 0 ? 'neg' : ''}">${money(bal[ri].v, true)}</b>` : `<span class="muted">${money(bal[ri].v, true)}</span><br><span class="note">${r.account ? 'Other account, not counted' : 'No account chosen, not counted'}</span>`}</td><td>${r.inc ? '<span class="tag ok">Income</span> ' : ''}${esc(r.cat)}</td><td>${r.source === 'Recurring' ? (r.inc ? (r.rule ? esc(r.rule) + '<br>' : '') + 'Last received ' : (r.pattern ? esc(r.pattern) + '<br>' : '') + 'Last paid ') + fmtDate(r.last) : '<span class="tag">Added by you</span>' + (r.repeat ? `<br><span class="note">${upRepLabel(r)}</span>` : '')}</td><td>${r.repeat && (r.changed || r.moved) ? `<button class="btn sec small" type="button" data-upreset="${esc(r.key)}">Undo changes</button> ` : ''}${r.id ? `<button class="btn sec small" type="button" data-updel="${r.id}"${r.repeat ? ' data-upweekly="1"' : ''}>${r.repeat ? 'Stop repeating' : 'Remove'}</button>` : (r.changed || r.moved ? `<button class="btn sec small" type="button" data-upreset="${esc(r.key)}">Undo changes</button> ` : '') + (!r.inc && r.source === 'Recurring' ? `<button class="btn sec small" type="button" data-upnot="${esc(upSeries(r.key))}" data-updesc="${esc(r.desc)}">Not recurring</button>` : '')}</td></tr>`).join('')
     + `<tr class="tot"><td></td><td>Income expected</td><td></td><td class="n pos">+${money(itot, true)}</td><td></td><td></td><td></td><td></td></tr>`
     + `<tr class="tot"><td></td><td>Bills expected</td><td></td><td class="n">${money(total, true)}</td><td></td><td></td><td></td><td></td></tr>`
@@ -1934,6 +1965,12 @@ document.addEventListener('click', e => {
   const del = e.target.closest('[data-updel]'), rs = e.target.closest('[data-upreset]');
   if (del){ if (!confirm(del.dataset.upweekly ? 'Stop this repeating item? Every future date of it leaves the list.' : 'Remove this item?')) return; UP.items = UP.items.filter(x => x.id !== del.dataset.updel); upSave(); renderUpcoming(); }
   if (rs){ delete UP.overrides[rs.dataset.upreset]; delete UP.dates[rs.dataset.upreset]; upSave(); renderUpcoming(); }
+  const rc = e.target.closest('[data-uprec]'), ds = e.target.closest('[data-updis]');
+  if (ds){ UP.dismissed = [...new Set([...(UP.dismissed || []), ds.dataset.updis])]; upSave(); renderUpcoming(); toast('Removed from the reminder'); }
+  if (rc){ const r = UP_MISSED.find(x => x.key === rc.dataset.uprec); if (r){   // fill the Add a transaction form on Home with what was expected
+    $('fDate').value = upISO(r.date); $('fDesc').value = r.desc; $('fAmt').value = (+r.amt).toFixed(2); if (r.account && [...$('fAcct').options].some(o => o.value === r.account)) $('fAcct').value = r.account;
+    $('fDesc').dispatchEvent(new Event('input', { bubbles:true })); if (r.cat && [...$('fCat').options].some(o => o.value === r.cat)) $('fCat').value = r.cat;
+    $('txForm').scrollIntoView({ behavior:'smooth', block:'start' }); setTimeout(() => $('fAmt').focus(), 300); toast('Check the amount and date, then Save'); } }
   const nr = e.target.closest('[data-upnot]'), bk = e.target.closest('[data-upback]');
   if (nr){ if (!confirm(`Stop expecting "${nr.dataset.updesc}"? Every future date of it leaves the list. You can bring it back under Add something that’s coming up.`)) return; UP.ignore = [...(UP.ignore || []).filter(x => x.id !== nr.dataset.upnot), { id:nr.dataset.upnot, desc:nr.dataset.updesc }]; upSave(); renderUpcoming(); if (!$('tab-bills').classList.contains('hidden')) render.bills(); toast('Marked not recurring'); }
   if (bk){ UP.ignore = (UP.ignore || []).filter(x => x.id !== bk.dataset.upback); upSave(); renderUpcoming(); if (!$('tab-bills').classList.contains('hidden')) render.bills(); toast('Back in the list'); }
@@ -2633,6 +2670,7 @@ async function migrations(){
   try { await accordLog(); } catch (e) { console.error('Accord log', e); }
   /* Version 41, one time: rename Home Decorations (part5l). */
   try { await decorRename(); } catch (e) { console.error('Category rename', e); }
+  try { await christmasRename(); } catch (e) { console.error('Christmas rename', e); }   // Version 51
   /* Version 41, one time: the weekly Friday Walmart trip in Coming up (part5l). */
   try { await walmartWeekly(); } catch (e) { console.error('Walmart weekly', e); }
   setTimeout(showNotices, 900);
@@ -4615,6 +4653,116 @@ function descSet(on){ document.body.classList.toggle('show-desc', on); document.
 document.addEventListener('change', e => { if (e.target.classList && e.target.classList.contains('descChk')) descSet(e.target.checked); });
 descInstall();
 window.__desc = { GUIDE, descSet };
+
+/* ================= Version 51: the Categories tab, one master list (Karl, October 20, 2026) =================
+   Add, rename, change type or group, and remove categories in one place. catMove(from, to) renames or merges everywhere a category name is stored: the
+   category list, rules, every transaction, the budget (rows for the same year are added together when merging), Coming up items and the keys that hold
+   changed amounts, moved dates, Not recurring and Not needed marks, and pay raises. A few names are built into the app's calculations and cannot be
+   renamed or removed: transfers, card payments, adjustments, the paychecks, child support, mortgage, loan payment, investment, and insurance. */
+const CT_LOCK = new Set(['Transfer', 'Card Payment', 'Balance Adjustment']);
+const CT_CORE = new Set([...CT_LOCK, 'Paycheck K', 'Paycheck J', 'Child Support', 'Mortgage', 'Loan Payment', 'Investment', 'Insurance']);
+const CT_TYPES = ['Income', 'Expense', 'Savings', 'Transfer', 'Adjustment'];
+function ctGroups(){ return [...new Set([...(typeof GRPS !== 'undefined' ? GRPS : []), ...S.config.categories.map(c => c.group)].filter(Boolean))]; }
+async function catMove(from, to){
+  const merge = S.config.categories.some(c => c.name === to);
+  await applyRenames({}, { [from]:to });
+  /* after a merge the list holds the name twice and the budget may hold two rows for one year */
+  const seen = new Set(); S.config.categories = S.config.categories.filter(c => seen.has(c.name) ? false : seen.add(c.name));
+  const rows = []; for (const r of S.budget.rows){ const x = rows.find(q => q.cat === r.cat && +q.year === +r.year); if (x) x.m = x.m.map((v, i) => Math.round(((+v || 0) + (+r.m[i] || 0)) * 100) / 100); else rows.push({ cat:r.cat, year:r.year, m:r.m.slice() }); }
+  S.budget.rows = rows;
+  (S.config.raises || []).forEach(r => { if (r.cat === from) r.cat = to; });
+  const fix = k => k.split('|').map(p => p === from ? to : p).join('|');
+  (UP.items || []).forEach(it => { if (it.cat === from) it.cat = to; });
+  for (const box of ['overrides', 'dates']){ const o = UP[box] || {}, next = {}; for (const [k, v] of Object.entries(o)) next[fix(k)] = v; UP[box] = next; }
+  UP.ignore = (UP.ignore || []).map(x => Object.assign({}, x, { id:fix(x.id) })); UP.dismissed = (UP.dismissed || []).map(fix);
+  await setDoc(ref('meta','config'), S.config); await setDoc(ref('meta','budget'), { rows:S.budget.rows }); await upSave();
+  rebuildTx(); return merge;
+}
+function ctUse(name, year){
+  const y = String(year); let n = 0, act = 0;
+  for (const t of S.tx){ if (catUsed(t) !== name) continue; n++; if (t.date.startsWith(y)) act += t.amount; }
+  const b = S.budget.rows.filter(r => r.cat === name && +r.year === +year).reduce((s, r) => s + r.m.reduce((a, v) => a + (+v || 0), 0), 0);
+  const rules = S.config.rules.filter(r => r.cat === name).length, up = (UP.items || []).filter(it => it.cat === name).length;
+  const anyBudget = S.budget.rows.some(r => r.cat === name && r.m.some(v => +v));
+  return { n, act, b, rules, up, anyBudget, used:n || rules || up || anyBudget };
+}
+const ctSel = (list, v, attrs) => `<select ${attrs || 'class="t"'}>${list.map(x => `<option${x === v ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select>`;
+render.cats = () => {
+  const years = [...new Set([...S.tx.map(t => +t.date.slice(0, 4)), ...S.budget.rows.map(r => +r.year), new Date().getFullYear()])].sort((a, b) => b - a);
+  const ys = $('ctYear'), keepY = +ys.value || new Date().getFullYear(); ys.innerHTML = years.map(y => `<option${y === keepY ? ' selected' : ''}>${y}</option>`).join('');
+  const year = +ys.value, groups = ctGroups(), q = $('ctFind').value.trim().toLowerCase();
+  if (!$('ctNewType').options.length){ $('ctNewType').innerHTML = CT_TYPES.map(t => `<option${t === 'Expense' ? ' selected' : ''}>${t}</option>`).join(''); }
+  $('ctNewGrp').innerHTML = groups.map(g => `<option${g === ($('ctNewGrp').value || 'Everyday') ? ' selected' : ''}>${esc(g)}</option>`).join('');
+  const list = S.config.categories.filter(c => !q || c.name.toLowerCase().includes(q)).slice().sort((a, b) => CT_TYPES.indexOf(a.type) - CT_TYPES.indexOf(b.type) || a.group.localeCompare(b.group) || a.name.localeCompare(b.name));
+  let lastT = ''; const out = [];
+  for (const c of list){
+    if (c.type !== lastT){ lastT = c.type; out.push(`<tr class="tot"><td colspan="8">${esc(c.type)}</td></tr>`); }
+    const u = ctUse(c.name, year), core = CT_CORE.has(c.name), lock = CT_LOCK.has(c.name);
+    out.push(`<tr data-ct="${esc(c.name)}"><td class="wrap"><input class="t ct-name" value="${esc(c.name)}" maxlength="60" aria-label="Name"${core ? ' disabled title="Built into the app’s calculations"' : ''}></td>`
+      + `<td>${ctSel(CT_TYPES, c.type, `class="t ct-type" aria-label="Type"${lock ? ' disabled' : ''}`)}</td><td>${ctSel(groups, c.group, `class="t ct-grp" aria-label="Budget group"${lock ? ' disabled' : ''}`)}</td>`
+      + `<td class="n">${u.n}</td><td class="n">${u.act ? money(u.act, true) : ''}</td><td class="n">${u.b ? money(u.b, true) : ''}</td><td class="n">${u.rules || ''}</td>`
+      + `<td><button class="btn small" type="button" data-ctsave hidden>Save</button> ${core ? '<span class="note">Built in</span>' : `<button class="btn sec small" type="button" data-ctdel>Remove</button>`}</td></tr>`);
+  }
+  $('ctBody').innerHTML = out.join('') || '<tr><td colspan="8" class="muted">No category matches.</td></tr>';
+};
+$('ctFind').addEventListener('input', () => render.cats());
+$('ctYear').addEventListener('change', () => render.cats());
+$('goCats') && $('goCats').addEventListener('click', () => document.querySelector('nav.subtabs button[data-tab=cats]').click());
+$('ctAdd').addEventListener('click', async () => {
+  const name = $('ctNew').value.trim().replace(/\s+/g, ' '); $('ctErr').textContent = '';
+  if (!name){ $('ctErr').textContent = 'Type a name.'; return; }
+  if (S.config.categories.some(c => c.name.toLowerCase() === name.toLowerCase())){ $('ctErr').textContent = `There is already a category named ${name}.`; return; }
+  S.config.categories.push({ name, type:$('ctNewType').value, group:$('ctNewGrp').value });
+  try { await setDoc(ref('meta','config'), S.config); } catch (e) { $('ctErr').textContent = 'Could not save: ' + (e.code || e.message); return; }
+  $('ctNew').value = ''; renderAll(); render.cats(); toast(`Added ${name}`);
+});
+$('ctBody').addEventListener('input', e => { const tr = e.target.closest('tr[data-ct]'); if (tr) tr.querySelector('[data-ctsave]').hidden = false; });
+$('ctBody').addEventListener('change', e => { const tr = e.target.closest('tr[data-ct]'); if (tr) tr.querySelector('[data-ctsave]').hidden = false; });
+$('ctBody').addEventListener('click', async e => {
+  const tr = e.target.closest('tr[data-ct]'); if (!tr) { const mv = e.target.closest('[data-ctmove]'), cn = e.target.closest('[data-ctcancel]'); if (cn){ cn.closest('tr').remove(); return; }
+    if (mv){ const from = mv.dataset.ctmove, to = mv.closest('tr').querySelector('select').value; if (!to) return;
+      try { await catMove(from, to); S.config.categories = S.config.categories.filter(c => c.name !== from); await setDoc(ref('meta','config'), S.config); } catch (err) { toast('Could not save: ' + (err.code || err.message)); return; }
+      renderAll(); render.cats(); toast(`${from} moved into ${to} and removed`); }
+    return; }
+  const name = tr.dataset.ct, c = S.config.categories.find(x => x.name === name); if (!c) return;
+  if (e.target.closest('[data-ctsave]')){
+    const nn = tr.querySelector('.ct-name').value.trim().replace(/\s+/g, ' '), nt = tr.querySelector('.ct-type').value, ng = tr.querySelector('.ct-grp').value;
+    if (!nn){ toast('A category needs a name'); return; }
+    const clash = S.config.categories.find(x => x.name.toLowerCase() === nn.toLowerCase() && x.name !== name);
+    if (clash && !confirm(`${clash.name} already exists. Merge ${name} into ${clash.name}? Every transaction, budget amount, and rule of ${name} moves there, and ${name} is removed.`)) return;
+    try {
+      c.type = nt; c.group = ng;
+      if (nn !== name){ await catMove(name, clash ? clash.name : nn); } else await setDoc(ref('meta','config'), S.config);
+    } catch (err) { toast('Could not save: ' + (err.code || err.message)); return; }
+    renderAll(); render.cats(); toast(nn !== name ? (clash ? `Merged into ${clash.name}` : `Renamed to ${nn} everywhere`) : 'Saved'); return;
+  }
+  if (e.target.closest('[data-ctdel]')){
+    const u = ctUse(name, new Date().getFullYear());
+    if (!u.used){ if (!confirm(`Remove ${name}? It has no transactions, budget, or rules.`)) return;
+      S.config.categories = S.config.categories.filter(x => x.name !== name); S.budget.rows = S.budget.rows.filter(r => r.cat !== name);
+      try { await setDoc(ref('meta','config'), S.config); await setDoc(ref('meta','budget'), { rows:S.budget.rows }); } catch (err) { toast('Could not save: ' + (err.code || err.message)); return; }
+      renderAll(); render.cats(); toast(`Removed ${name}`); return; }
+    if (tr.nextElementSibling && tr.nextElementSibling.classList.contains('ct-move')) return;
+    const rank = x => (x.group === c.group ? 0 : x.type === c.type ? 1 : 2), opts = S.config.categories.filter(x => x.name !== name).sort((x, y) => rank(x) - rank(y) || x.name.localeCompare(y.name)).map(x => x.name);   // same group first, then same type
+    tr.insertAdjacentHTML('afterend', `<tr class="ct-move"><td colspan="8"><div class="up-missed">${esc(name)} has ${u.n} transaction${u.n === 1 ? '' : 's'}${u.anyBudget ? ', budget amounts' : ''}${u.rules ? `, ${u.rules} rule${u.rules === 1 ? '' : 's'}` : ''}${u.up ? `, and ${u.up} Coming up item${u.up === 1 ? '' : 's'}` : ''}. Move all of it to <select class="t" style="display:inline-block;width:auto;max-width:100%">${opts.map(o => `<option>${esc(o)}</option>`).join('')}</select> and remove ${esc(name)}? <span style="white-space:nowrap"><button class="btn small" type="button" data-ctmove="${esc(name)}">Move and remove</button> <button class="btn sec small" type="button" data-ctcancel>Cancel</button></span></div></td></tr>`);
+  }
+});
+
+/* ================= Version 51: Christmas becomes Christmas Gifts (one time, at sign-in; flag christmasGifts) ================= */
+async function christmasRename(){
+  const F = S.config.flags = S.config.flags || {};
+  if (F.christmasGifts || !S.config.categories || !S.tx.length) return;
+  const NEW = 'Christmas Gifts';
+  if (S.config.categories.some(c => c.name === NEW)){ F.christmasGifts = { on:todayISO(), already:true }; try { await setDoc(ref('meta','config'), S.config); } catch (e) {} return; }
+  const old = S.config.categories.find(c => /^christmas$/i.test(String(c.name).trim()));
+  if (!old){ S.config.categories.push({ name:NEW, type:'Expense', group:'Everyday' }); F.christmasGifts = { on:todayISO(), created:true }; try { await setDoc(ref('meta','config'), S.config); } catch (e) { return; }
+    NOTICES.push(`<b>Added the category ${NEW}.</b> No Christmas category was found to rename, so the new one was created under everyday spending, separate from Gifts.`); return; }
+  const from = old.name, n = S.tx.filter(t => catUsed(t) === from).length;
+  await catMove(from, NEW);
+  F.christmasGifts = { on:todayISO(), from, transactions:n }; try { await setDoc(ref('meta','config'), S.config); } catch (e) {}
+  NOTICES.push(`<b>${esc(from)} is now ${NEW}.</b> ${n ? `Its ${n} transaction${n === 1 ? '' : 's'}, ` : ''}its budget and any rule that fills it in moved with it. Gifts stays separate for gifts the rest of the year. Categories now have their own tab under Details and analysis.`);
+}
+window.__ct = { catMove, ctUse, christmasRename };
 /* ---------- Data: import ---------- */
 function serialToISO(v){
   if (v == null || v === '') return '';
@@ -4712,7 +4860,7 @@ const delBtn = '<button class="btn sec small" data-del type="button">Remove</but
 function renderSettings(){
   const accts = S.config.accounts.map(a => a.name), cats = S.config.categories.map(c => c.name).sort((x,y) => x.localeCompare(y));
   $('sAcct').innerHTML = S.config.accounts.map(a => `<tr data-orig="${esc(a.name)}"><td>${inp(a.name,'wide')}</td><td>${sel(KIND,a.kind)}</td><td>${inp(a.owner)}</td><td class="n">${inp(a.openBal,'','number')}</td><td>${inp(a.openDate,'wide','date')}</td><td><input type="color" value="${acctColor(a.name)}" aria-label="Color for ${esc(a.name)}"></td><td>${delBtn}</td></tr>`).join('');
-  $('sCat').innerHTML = S.config.categories.map(c => `<tr data-orig="${esc(c.name)}"><td>${inp(c.name,'wide')}</td><td>${sel(TYPES,c.type)}</td><td>${sel(GRPS,c.group)}</td><td>${delBtn}</td></tr>`).join('');
+  if ($('sCat')) $('sCat').innerHTML = S.config.categories.map(c => `<tr data-orig="${esc(c.name)}"><td>${inp(c.name,'wide')}</td><td>${sel(TYPES,c.type)}</td><td>${sel(GRPS,c.group)}</td><td>${delBtn}</td></tr>`).join('');
   const cardAccts = S.config.accounts.filter(a => a.kind === 'Card').map(a => a.name);
   $('sDebt').innerHTML = (S.config.debts || []).map(d => `<tr><td>${inp(d.name,'wide')}</td><td>${sel(['Card','Loan'],d.kind)}</td><td>${sel(['',...cardAccts],d.account,'wide')}</td><td class="n">${inp(d.balance,'','number')}</td><td>${inp(d.asOf,'wide','date')}</td><td class="n">${inp(d.apr,'','number')}</td><td class="n">${inp(d.payment,'','number')}</td><td>${delBtn}</td></tr>`).join('');
   $('sGoal').innerHTML = (S.config.goals || []).map(g => `<tr><td>${inp(g.name,'wide')}</td><td class="n">${inp(g.target,'','number')}</td><td>${inp(g.date,'wide','date')}</td><td>${sel(['',...accts],g.account,'wide')}</td><td class="n">${inp(g.saved,'','number')}</td><td>${delBtn}</td></tr>`).join('');
@@ -4731,12 +4879,12 @@ $('addAcct').addEventListener('click', () => $('sAcct').insertAdjacentHTML('befo
 $('addRaise').addEventListener('click', () => { const incCats = S.config.categories.filter(c => c.type === 'Income').map(c => c.name); $('sRaise').insertAdjacentHTML('beforeend', `<tr><td>${sel(incCats, incCats[0], 'wide')}</td><td class="n">${inp(2.5,'','number')}</td><td>${sel(MONTHS,'May')}</td><td>${inp('','wide')}</td><td>${delBtn}</td></tr>`); });
 $('addDebt').addEventListener('click', () => { const cardAccts = S.config.accounts.filter(a => a.kind === 'Card').map(a => a.name); $('sDebt').insertAdjacentHTML('beforeend', `<tr><td>${inp('','wide')}</td><td>${sel(['Card','Loan'],'Loan')}</td><td>${sel(['',...cardAccts],'','wide')}</td><td class="n">${inp(0,'','number')}</td><td>${inp(todayISO(),'wide','date')}</td><td class="n">${inp(0,'','number')}</td><td class="n">${inp(0,'','number')}</td><td>${delBtn}</td></tr>`); });
 $('addGoal').addEventListener('click', () => { const accts = S.config.accounts.map(a => a.name); $('sGoal').insertAdjacentHTML('beforeend', `<tr><td>${inp('','wide')}</td><td class="n">${inp(0,'','number')}</td><td>${inp('','wide','date')}</td><td>${sel(['',...accts],'','wide')}</td><td class="n">${inp(0,'','number')}</td><td>${delBtn}</td></tr>`); });
-$('addCat').addEventListener('click', () => $('sCat').insertAdjacentHTML('beforeend', `<tr><td>${inp('','wide')}</td><td>${sel(TYPES,'Expense')}</td><td>${sel(GRPS,'Everyday')}</td><td>${delBtn}</td></tr>`));
+if ($('addCat')) $('addCat').addEventListener('click', () => $('sCat').insertAdjacentHTML('beforeend', `<tr><td>${inp('','wide')}</td><td>${sel(TYPES,'Expense')}</td><td>${sel(GRPS,'Everyday')}</td><td>${delBtn}</td></tr>`));
 $('addRule').addEventListener('click', () => { const cats = S.config.categories.map(c => c.name).sort((x,y) => x.localeCompare(y)), accts = S.config.accounts.map(a => a.name); $('sRule').insertAdjacentHTML('beforeend', `<tr><td>${inp('','wide')}</td><td>${sel(cats,'','wide')}</td><td>${sel(['',...accts],'','wide')}</td><td>${delBtn}</td></tr>`); });
 $('saveSettings').addEventListener('click', async () => {
   const val = el => el.value.trim();
   const accounts = [...$('sAcct').rows].map(r => { const f = r.querySelectorAll('input,select'); return { name:val(f[0]), kind:f[1].value, owner:val(f[2]), openBal:+f[3].value || 0, openDate:f[4].value, color:f[5] ? f[5].value : '' }; }).filter(a => a.name);
-  const categories = [...$('sCat').rows].map(r => { const f = r.querySelectorAll('input,select'); return { name:val(f[0]), type:f[1].value, group:f[2].value }; }).filter(c => c.name);
+  const categories = S.config.categories.slice();   // Version 51: categories are edited on the Categories tab
   const rules = [...$('sRule').rows].map(r => { const f = r.querySelectorAll('input,select'); return { key:f[0].value, cat:f[1].value, to:f[2].value }; }).filter(r => r.key.trim() && r.cat);
   const debts = [...$('sDebt').rows].map(r => { const f = r.querySelectorAll('input,select'); return { name:val(f[0]), kind:f[1].value, account:f[2].value, balance:+f[3].value || 0, asOf:f[4].value, apr:+f[5].value || 0, payment:+f[6].value || 0 }; }).filter(d => d.name);
   const goals = [...$('sGoal').rows].map(r => { const f = r.querySelectorAll('input,select'); return { name:val(f[0]), target:+f[1].value || 0, date:f[2].value, account:f[3].value, saved:+f[4].value || 0 }; }).filter(g => g.name);
@@ -4746,7 +4894,7 @@ $('saveSettings').addEventListener('click', async () => {
   if (da || dc){ $('setMsg').textContent = 'Each name must be unique: ' + (da || dc); return; }
   const acctMap = {}, catMap = {};
   [...$('sAcct').rows].forEach(r => { const o = r.dataset.orig, n = r.querySelector('input').value.trim(); if (o && n && o !== n) acctMap[o] = n; });
-  [...$('sCat').rows].forEach(r => { const o = r.dataset.orig, n = r.querySelector('input').value.trim(); if (o && n && o !== n) catMap[o] = n; });
+
   try { const cfg = Object.assign({}, S.config, { accounts, categories, rules, debts, goals, raises }); S.config = cfg; await applyRenames(acctMap, catMap); $('setMsg').textContent = ''; toast(Object.keys(acctMap).length + Object.keys(catMap).length ? 'Settings saved and renames applied everywhere' : 'Settings saved'); renderAll(); renderSettings(); }
   catch (err){ $('setMsg').textContent = 'Could not save: ' + (err.code || err.message); }
 });
