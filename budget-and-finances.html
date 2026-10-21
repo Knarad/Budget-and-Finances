@@ -264,9 +264,9 @@ details.rcpt[open]>summary h2::before{transform:rotate(90deg)}
 #rxCats tr.tot td{font-weight:700}
 @media (max-width:760px){.rslide input{width:140px}.g3,.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g2{grid-template-columns:1fr}header.top .stat{display:none}nav.tabs{top:48px}main{padding:14px 10px 90px}}
 /* Vehicles (Version 29) */
-nav.vtabs,nav.mtabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 18px;align-items:center}
-nav.vtabs button,nav.mtabs button{border:1px solid var(--rule);background:var(--surface);border-radius:20px;padding:7px 14px;cursor:pointer;color:var(--muted);font-weight:600;font-size:.9rem}
-nav.vtabs button[aria-selected="true"],nav.mtabs button[aria-selected="true"]{background:var(--btnbg);border-color:var(--btnbg);color:var(--btnfg)}
+nav.vtabs,nav.mtabs,nav.xtabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 18px;align-items:center}
+nav.vtabs button,nav.mtabs button,nav.xtabs button{border:1px solid var(--rule);background:var(--surface);border-radius:20px;padding:7px 14px;cursor:pointer;color:var(--muted);font-weight:600;font-size:.9rem}
+nav.vtabs button[aria-selected="true"],nav.mtabs button[aria-selected="true"],nav.xtabs button[aria-selected="true"]{background:var(--btnbg);border-color:var(--btnbg);color:var(--btnfg)}
 .vcard h3{margin:0 0 4px;font-size:1.05rem}
 .vcard .vmiles{margin:8px 0 10px;font-variant-numeric:tabular-nums}
 .vh-in{width:150px;padding:6px 8px;border:1px solid var(--rule);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit;box-sizing:border-box}
@@ -304,6 +304,12 @@ body.show-desc .desc p{margin:0 0 6px;line-height:1.5}
 body.show-desc .desc-page{margin-bottom:16px}
 .up-missed{margin:0 0 10px;padding:8px 12px;border-left:3px solid var(--out);border-radius:0 6px 6px 0;background:color-mix(in srgb, var(--out) 8%, transparent)}
 .up-miss-row{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;justify-content:space-between;margin-top:6px}
+.xm-list .tbl input.t,.xm-list .tbl select.t{min-width:0;padding:5px 7px}
+.xm-list .xm-item{min-width:150px}.xm-list .xm-where{min-width:100px}.xm-list .xm-cost{width:90px}.xm-list .xm-qty{width:56px}
+.xm-head{display:flex;flex-wrap:wrap;gap:4px 16px;align-items:baseline;justify-content:space-between;margin-bottom:6px}
+.xm-head h3{margin:0}.xm-tot{font-weight:700}
+#upBody tr.uppaid td{background:color-mix(in srgb, var(--in) 12%, transparent)}
+#upBody tr.uppaid td:first-child{border-left:3px solid var(--in)}
 </style>
 </head>
 <body>
@@ -340,7 +346,7 @@ body.show-desc .desc-page{margin-bottom:16px}
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 51</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 53</span>
   <div class="sp"></div>
   <div class="zoom" role="group" aria-label="Page size"><button id="zOut" type="button" aria-label="Make everything smaller" title="Make everything smaller">&minus;</button><button id="zVal" type="button" title="Back to normal size">100%</button><button id="zIn" type="button" aria-label="Make everything bigger" title="Make everything bigger">+</button></div>
   <button id="signOutBtn" type="button">Sign out</button>
@@ -350,6 +356,7 @@ body.show-desc .desc-page{margin-bottom:16px}
   <button role="tab" data-view="details" aria-selected="false">Details and analysis</button>
   <button role="tab" data-view="retire" aria-selected="false">Retirement</button>
   <button role="tab" data-view="cars" aria-selected="false">Vehicles</button>
+  <button role="tab" data-view="xmas" aria-selected="false">Christmas</button>
   <button role="tab" data-view="mkt" aria-selected="false">Markets</button>
 </nav>
 <main>
@@ -436,7 +443,7 @@ body.show-desc .desc-page{margin-bottom:16px}
         <div><label class="f" for="upType">Type</label><select class="t" id="upType"><option value="bill">Bill or payment</option><option value="income">Income</option></select></div>
         <div><label class="f" for="upDate">Date</label><input class="t" id="upDate" type="date"></div>
         <div class="grow"><label class="f" for="upDesc">What it is</label><input class="t" id="upDesc" placeholder="For example: Chase card payment, or a bonus"></div>
-        <div><label class="f" for="upRepeat">Repeats</label><select class="t" id="upRepeat"><option value="">Once</option><option value="weekly">Every week on that day</option><option value="biweekly">Every two weeks on that day</option><option value="monthly">Every month on that date</option><option value="quarterly">Every three months on that date</option><option value="yearly">Every year on that date</option></select></div>
+        <div><label class="f" for="upRepeat">Repeats</label><select class="t" id="upRepeat"><option value="">Once</option><option value="weekly">Every week on that day</option><option value="biweekly">Every two weeks on that day</option><option value="monthly">Every month on that date</option><option value="quarterly">Every three months on that date</option><option value="yearly">Every year on that date</option><option value="days">Every few days</option></select></div><div id="upEveryBox" hidden><label class="f" for="upEvery">Days between</label><input class="t" id="upEvery" type="number" min="2" max="60" step="1" value="8"><div class="hint">Counted from your latest purchase in the chosen category, so an early or late one moves the next date.</div></div>
         <div><label class="f" for="upAmt">Amount</label><input class="t" id="upAmt" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
         <div><label class="f" for="upCat">Category</label><select class="t" id="upCat"></select></div>
         <div><label class="f" for="upAcct">Account</label><select class="t" id="upAcct"></select></div>
@@ -933,6 +940,34 @@ body.show-desc .desc-page{margin-bottom:16px}
     </div>
   </section>
 </section>
+<section id="view-xmas" class="hidden">
+  <nav class="xtabs" aria-label="Christmas sections">
+    <button data-xt="lists" aria-selected="true">Lists</button>
+    <button data-xt="over" aria-selected="false">Overview</button>
+    <button data-xt="people" aria-selected="false">People</button>
+    <label class="f" for="xmYear" style="margin:0 0 0 auto">Christmas</label><select class="t" id="xmYear" style="width:auto"></select>
+  </nav>
+  <section id="xt-lists">
+    <h2>Christmas lists</h2>
+    <p class="note" style="margin-top:-6px">Write out each gift, where it comes from, and what it costs. Each person’s list keeps a running total, and the total for everyone is compared with the Christmas Gifts budget. Mark a gift Bought or Wrapped as you go.</p>
+    <div class="kpis" id="xmKpis"></div>
+    <div id="xmLists"></div>
+  </section>
+  <section id="xt-over" class="hidden">
+    <h2>Christmas overview</h2>
+    <p class="note" style="margin-top:-6px">Totals by person for this Christmas, the budget and what has been recorded in Christmas Gifts, and every earlier year, to plan the next one.</p>
+    <div class="kpis" id="xoKpis"></div>
+    <div class="panel"><h3 style="margin-top:0">By person this Christmas</h3><div class="chart"><canvas id="xoChart"></canvas></div><div class="tbl"><table><thead><tr><th>Person</th><th class="n">Age</th><th class="n">Gifts</th><th class="n">List total</th><th class="n">Bought</th><th class="n">Still to buy</th><th class="n">Target</th></tr></thead><tbody id="xoBody"></tbody></table></div></div>
+    <div class="panel"><h3 style="margin-top:0">Year by year</h3><p class="note" style="margin-top:-4px">List totals come from the lists on this tab. Recorded is every transaction in the Christmas Gifts category that year.</p><div class="tbl"><table><thead id="xoHistHead"></thead><tbody id="xoHist"></tbody></table></div></div>
+  </section>
+  <section id="xt-people" class="hidden">
+    <h2>People</h2>
+    <p class="note" style="margin-top:-6px">Who gets a list. Age this Christmas comes from the birth year. Add anyone else you shop for; turn a person off to hide their list without losing it.</p>
+    <div class="panel"><div class="tbl"><table><thead><tr><th>Name</th><th class="n">Birth year</th><th class="n">Age this Christmas</th><th>Show a list</th><th></th></tr></thead><tbody id="xpBody"></tbody></table></div>
+      <div class="row" style="margin-top:10px"><div><label class="f" for="xpName">Name</label><input class="t" id="xpName" maxlength="40"></div><div><label class="f" for="xpBorn">Birth year (optional)</label><input class="t" id="xpBorn" type="number" min="1900" max="2100"></div><div style="align-self:end"><button class="btn" id="xpAdd" type="button">Add person</button></div></div>
+    </div>
+  </section>
+</section>
 
 <section id="view-mkt" class="hidden">
   <nav class="mtabs" aria-label="Market sections">
@@ -1295,7 +1330,7 @@ async function loadAll(){
   await retLoad();
   await upLoad(); await cuLoadLog();   // cuLoadLog: Version 47
   await vehLoad();
-  await mkLoad();
+  await mkLoad(); await xmLoad();   // xmLoad: Version 52
 }
 function rebuildTx(){
   S.tx = [];
@@ -1525,8 +1560,8 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('modal'
 const render = {};
 document.querySelectorAll('nav.views button').forEach(b => b.addEventListener('click', () => {
   document.querySelectorAll('nav.views button').forEach(x => x.setAttribute('aria-selected', x === b ? 'true' : 'false'));
-  show('view-home', b.dataset.view === 'home'); show('view-details', b.dataset.view === 'details'); show('view-retire', b.dataset.view === 'retire'); show('view-cars', b.dataset.view === 'cars'); show('view-mkt', b.dataset.view === 'mkt');
-  if (b.dataset.view === 'home') renderHome(); else if (b.dataset.view === 'retire') renderRetire(); else if (b.dataset.view === 'cars') renderVeh(); else if (b.dataset.view === 'mkt') renderMk(); else render[currentSub()]();
+  show('view-home', b.dataset.view === 'home'); show('view-details', b.dataset.view === 'details'); show('view-retire', b.dataset.view === 'retire'); show('view-cars', b.dataset.view === 'cars'); show('view-mkt', b.dataset.view === 'mkt'); show('view-xmas', b.dataset.view === 'xmas');
+  if (b.dataset.view === 'home') renderHome(); else if (b.dataset.view === 'retire') renderRetire(); else if (b.dataset.view === 'cars') renderVeh(); else if (b.dataset.view === 'mkt') renderMk(); else if (b.dataset.view === 'xmas') renderXmas(); else render[currentSub()]();
   window.scrollTo(0, 0);
 }));
 document.querySelectorAll('nav.subtabs button').forEach(b => b.addEventListener('click', () => {
@@ -1681,7 +1716,7 @@ const upISO = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2,'
 const upDay = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); };
 /* Every payment expected in the window: detected recurring bills plus items added by hand, with any one-time amount applied. */
 function upList(days, opt){
-  const withIncome = !opt || opt.income !== false;
+  const withIncome = !opt || opt.income !== false, withPaid = !!(opt && opt.paid);   // withPaid (Version 53): include bills already paid, for Coming up on Home
   const now = new Date(), t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()), end = new Date(t0.getTime() + days * 864e5), grace = new Date(t0.getTime() - 7 * 864e5);
   const out = [], ign = new Set((UP.ignore || []).map(x => x.id));
   const handWeekly = new Set(UP.items.filter(it => it.repeat).flatMap(it => [it.cat, normDesc(it.desc)].filter(Boolean)));
@@ -1692,6 +1727,14 @@ function upList(days, opt){
     const key = 'r|' + normDesc(b.desc) + '|' + b.cat + '|' + ym(upISO(nx)), o = UP.overrides[key], md = UP.dates[key], date = md ? upDay(md) : nx;
     if (date < grace || date > end) continue;
     out.push({ key, date, orig:nx, moved:!!md, desc:b.desc, cat:b.cat, account:b.acct || '', typical:b.amt, amt:o !== undefined ? +o : b.amt, changed:o !== undefined, source:'Recurring', last:b.last, inc:false, past:date < t0 }); }
+  /* Version 53: a monthly bill already paid this month, whose usual day is still ahead, shows as paid until that day */
+  if (withPaid) for (const b of detectBills()) if (!repKeys.has(normDesc(b.desc)) && !ign.has('r|' + normDesc(b.desc) + '|' + b.cat) && (b.next.getMonth() !== t0.getMonth() || b.next.getFullYear() !== t0.getFullYear())){
+    const d = new Date(t0.getFullYear(), t0.getMonth(), Math.min(b.day, 28)), key = 'r|' + normDesc(b.desc) + '|' + b.cat + '|' + ym(upISO(d)), md = UP.dates[key], date = md ? upDay(md) : d;
+    if (date < t0 || date > end) continue;
+    const pt = S.tx.filter(t => ym(t.date) === ym(upISO(d)) && normDesc(t.desc) === normDesc(b.desc) && catUsed(t) === b.cat).sort((a, c) => a.date < c.date ? 1 : -1)[0];
+    if (pt) out.push({ key, date, orig:d, moved:!!md, desc:b.desc, cat:b.cat, account:b.acct || '', typical:b.amt, amt:pt.amount, changed:false, source:'Recurring', last:b.last, inc:false, past:false, paidTx:pt }); }
+  if (withPaid) for (const r of reps) for (const p of r.paid || []){ if (p.d > end) continue; const key = 'k|' + r.kind + '|' + r.key + '|' + upISO(p.d);
+    out.push({ key, date:p.d, orig:p.d, moved:false, desc:r.desc, cat:r.cat, account:r.acct || '', typical:r.amt, amt:p.t ? p.t.amount : r.amt, changed:false, source:'Recurring', last:r.last, inc:false, past:false, pattern:r.pattern, kind:r.kind, paidTx:p.t || { date:'' } }); }
   for (const r of reps) for (const d of [...(r.recent || []), ...r.next]){   // Version 45: weekly, every two weeks, steady monthly, every three months, once a year
     const key = 'k|' + r.kind + '|' + r.key + '|' + upISO(d), o = UP.overrides[key], md = UP.dates[key], date = md ? upDay(md) : d;
     if (date < grace || date > end) continue;
@@ -1706,7 +1749,7 @@ function upList(days, opt){
       for (const d of upRepDates(it, t0, end)){
         const key = 'w|' + it.id + '|' + upISO(d), o = UP.overrides[key], md = UP.dates[key], date = md ? upDay(md) : d;
         if (date < (inc && !md ? t0 : grace) || date > end) continue;
-        out.push({ key, id:it.id, repeat:it.repeat, date, orig:d, moved:!!md, desc:it.desc, cat:it.cat || '', typical:+it.amount, amt:o !== undefined ? +o : +it.amount, changed:o !== undefined, source:'Added by you', last:'', account:it.account || '', past:date < t0, inc });
+        out.push({ key, id:it.id, repeat:it.repeat, every:it.every, date, orig:d, moved:!!md, desc:it.desc, cat:it.cat || '', typical:+it.amount, amt:o !== undefined ? +o : +it.amount, changed:o !== undefined, source:'Added by you', last:'', account:it.account || '', past:date < t0, inc });
       }
       continue;
     }
@@ -1715,12 +1758,21 @@ function upList(days, opt){
   /* Version 50 (Karl, October 20, 2026): past dates leave the list. A bill drops as soon as its payment is recorded, early or late: a transaction within
      3 days of the expected or moved date with the same description, or the same category and account and an amount within 5 percent. A bill from the
      last 7 days with nothing recorded moves to UP_MISSED, shown as a reminder above the list, unless Karl marked it Not needed. */
-  const dn = d => Math.round(d.getTime() / 864e5), recent = S.tx.filter(t => t.amount > 0 && t.date >= upISO(new Date(grace.getTime() - 3 * 864e5)));
-  const paid = r => recent.some(t => { const td = dn(upDay(t.date)); if (Math.abs(td - dn(r.date)) > 3 && !(r.orig && Math.abs(td - dn(r.orig)) <= 3)) return false;
-    return normDesc(t.desc) === normDesc(r.desc) || (r.cat && catUsed(t) === r.cat && t.account === r.account && rpNear(t.amount, r.amt, 0.05)); });
+  /* Version 53: a payment recorded up to 3 days late or, ahead of time, up to 7 days early for a monthly or longer bill (half the gap, at most 3 days, for weekly,
+     every-two-weeks, and every-few-days items) covers the row. From today on, a covered bill stays in the list as paid when asked for (withPaid) and never counts. */
+  const dn = d => Math.round(d.getTime() / 864e5), recent = S.tx.filter(t => t.amount > 0 && t.date >= upISO(new Date(grace.getTime() - 7 * 864e5)));
+  const stepOf = r => ({ weekly:7, biweekly:14 }[r.kind || r.repeat] || (r.repeat === 'days' ? (+r.every || 8) : 30));
+  const paid = r => { const st = stepOf(r), early = st >= 28 ? 7 : Math.min(3, Math.floor(st / 2)), late = Math.min(3, Math.floor(st / 2));
+    const ok = (td, d) => td >= dn(d) - early && td <= dn(d) + late;
+    return recent.filter(t => { const td = dn(upDay(t.date)); if (!ok(td, r.date) && !(r.orig && ok(td, r.orig))) return false;
+      return normDesc(t.desc) === normDesc(r.desc) || (r.cat && catUsed(t) === r.cat && t.account === r.account && rpNear(t.amount, r.amt, 0.05))
+        || (r.repeat && r.source === 'Added by you' && r.cat && catUsed(t) === r.cat); })   // Version 52: a repeating item you added is done by any purchase in its category near the date
+      .sort((a, b) => Math.abs(dn(upDay(a.date)) - dn(r.date)) - Math.abs(dn(upDay(b.date)) - dn(r.date)))[0]; };
   const dis = new Set(UP.dismissed || []), keep = [], missed = [];
   for (const r of out){
-    if (!r.inc && paid(r)) continue;
+    if (r.paidTx){ if (r.date >= t0) keep.push(r); continue; }
+    const pt = !r.inc && paid(r);
+    if (pt){ if (withPaid && r.date >= t0) keep.push(Object.assign(r, { paidTx:pt, amt:pt.amount })); continue; }
     if (r.date >= t0 || (r.inc && r.alt)) keep.push(r); else if (!r.inc && !dis.has(r.key)) missed.push(r);
   }
   UP_MISSED = missed.sort((a, b) => a.date - b.date);
@@ -1730,6 +1782,14 @@ let UP_MISSED = [];
 /* Version 45: the dates of a repeating item added by hand, from its start date through the end of the window. */
 function upRepDates(it, t0, end){
   const start = upDay(it.date), out = [];
+  if (it.repeat === 'days'){   // Version 52: every N days, counted from the latest purchase in its category (one up to N days before the start date counts), otherwise from the start date
+    const n = Math.max(2, Math.round(+it.every || 8)), today = upISO(t0), from = new Date(t0.getTime() - 7 * 864e5);
+    const last = it.cat ? S.tx.filter(t => catUsed(t) === it.cat && t.amount > 0 && t.date >= upISO(new Date(start.getTime() - n * 864e5)) && t.date <= today).map(t => t.date).sort().pop() : '';
+    const step = d => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+    let d = last ? step(upDay(last)) : start;
+    while (d < from) d = step(d);
+    for (; d <= end; d = step(d)) out.push(d);
+    return out; }
   if (it.repeat === 'weekly' || it.repeat === 'biweekly'){ const step = it.repeat === 'weekly' ? 7 : 14; let d = new Date(start);
     const from = new Date(t0.getTime() - 7 * 864e5); if (d < from){ const gap = Math.ceil((from - d) / (step * 864e5)); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + gap * step); }
     for (; d <= end; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + step)) out.push(d);
@@ -1740,7 +1800,7 @@ function upRepDates(it, t0, end){
   return out;
 }
 const upRepLabel = r => { const wd = r.orig.toLocaleDateString('en-US', { weekday:'long' }), dd = r.orig.getDate(), md = r.orig.toLocaleDateString('en-US', { month:'long', day:'numeric' });
-  return { weekly:'Every ' + wd, biweekly:'Every other ' + wd, monthly:'Every month on day ' + dd, quarterly:'Every three months on day ' + dd, yearly:'Every year on ' + md }[r.repeat] || ''; };
+  return { weekly:'Every ' + wd, biweekly:'Every other ' + wd, monthly:'Every month on day ' + dd, quarterly:'Every three months on day ' + dd, yearly:'Every year on ' + md, days:`Every ${r.every || 8} days${r.cat ? ', counted from the last ' + r.cat + ' purchase' : ''}` }[r.repeat] || ''; };
 /* Expected income (Version 24): any income category paid on a steady schedule in the last 120 days.
    Weekly, every two weeks, twice a month, or monthly; the next dates follow that schedule, and the amount is the median of the last three. */
 /* Known pay schedules (Version 24), used instead of guessing for these categories. */
@@ -1832,6 +1892,8 @@ function detectRepeats(){
   const local = n => { const u = new Date(n * 864e5); return new Date(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate()); };
   const back = new Date(t0.getTime() - 7 * 864e5), since = upISO(new Date(t0.getTime() - 400 * 864e5)), horizon = new Date(t0.getTime() + 130 * 864e5), out = [], used = new Set();
   const near = (tx, d, w) => tx.some(t => Math.abs(dayN(upDay(t.date)) - dayN(d)) <= w);
+  const nearT = (tx, d, w) => tx.filter(t => Math.abs(dayN(upDay(t.date)) - dayN(d)) <= w).sort((a, b) => Math.abs(dayN(upDay(a.date)) - dayN(d)) - Math.abs(dayN(upDay(b.date)) - dayN(d)))[0];
+  const paidAt = [];   // Version 53: [pattern, expected date, transaction] for dates from today on already covered by a recorded payment
   const recent = S.tx.filter(t => t.date >= since && t.date <= today && t.amount > 0 && rpCat(t)).sort((a, b) => a.date < b.date ? -1 : 1);
   const info = (tx, extra) => { const lastT = tx[tx.length - 1], { amt, stable } = rpAmount(tx.map(t => t.amount)); return Object.assign({ desc:lastT.desc, cat:catUsed(lastT), acct:lastT.account, amt, stable, last:lastT.date, n:tx.length, keys:[...new Set(tx.map(t => normDesc(t.desc)))] }, extra); };
   /* 1. weekly or every two weeks, by description (across categories, so a charge filed two ways still counts) */
@@ -1850,7 +1912,7 @@ function detectRepeats(){
       let best = 0, bestN = -1;                                              // the usual weekday, so one early or late charge does not shift the pattern
       for (let r = 0; r < step; r++){ let n = 0; for (const d of days.slice(-8)){ const x = ((dayN(d) - r) % step + step) % step, off = Math.min(x, step - x); n += off === 0 ? 10 : (off <= 1 ? 2 : 0); } if (n > bestN){ best = r; bestN = n; } }
       const next = []; let d = dayN(t0) - 7; while (((d - best) % step + step) % step) d++;   // from a week back (Version 50), so a missed one can be flagged
-      for (; d <= dayN(horizon); d += step){ const dt = local(d); if (cap && dt > cap) break; if (!near(tx, dt, kind === 'weekly' ? 3 : 5)) next.push(dt); }
+      for (; d <= dayN(horizon); d += step){ const dt = local(d); if (cap && dt > cap) break; const w = kind === 'weekly' ? 3 : 5; if (!near(tx, dt, w)) next.push(dt); else if (dt >= t0) paidAt.push([k, dt, nearT(tx, dt, w)]); }
       const wd = local(best).toLocaleDateString('en-US', { weekday:'long' });
       out.push(Object.assign(base, { kind, next, seasonal:!!prior.length, pattern:(kind === 'weekly' ? 'Every ' + wd : 'Every other ' + wd) + (prior.length ? `, in season (seasons have run up to ${Math.round(longest / 7) + 1} weeks)` : '') }));
       base.keys.forEach(x => used.add(x)); break;
@@ -1864,7 +1926,7 @@ function detectRepeats(){
     const months = new Set(days.filter(d => dayN(t0) - dayN(d) <= 200).map(d => ym(upISO(d)))), gm = median(gaps), fit = gaps.filter(g => g >= 24 && g <= 38).length / gaps.length;
     if (months.size < 3 || gm < 26 || gm > 35 || fit < 0.7 || base.stable < 0.7 || dayN(t0) - dayN(last) > 45) continue;
     const dom = Math.round(median(days.slice(-6).map(d => d.getDate()))), next = [];
-    for (let m = 0; m < 5; m++){ const y = t0.getFullYear(), mo = t0.getMonth() + m, dim = new Date(y, mo + 1, 0).getDate(), dt = new Date(y, mo, Math.min(dom, dim)); if (dt >= back && dt <= horizon && !near(tx, dt, 10)) next.push(dt); }
+    for (let m = 0; m < 5; m++){ const y = t0.getFullYear(), mo = t0.getMonth() + m, dim = new Date(y, mo + 1, 0).getDate(), dt = new Date(y, mo, Math.min(dom, dim)); if (dt >= back && dt <= horizon && !near(tx, dt, 10)) next.push(dt); else if (dt >= t0 && dt <= horizon) paidAt.push([k, dt, nearT(tx, dt, 10)]); }
     out.push(Object.assign(base, { kind:'monthly', next, pattern:'Monthly, around day ' + dom })); used.add(k);
   }
   /* Merchant groups within a category: descriptions that share a distinctive word belong together. */
@@ -1882,7 +1944,7 @@ function detectRepeats(){
     const ph = {}; for (const c of cl) ph[c[0].getMonth() % 3] = (ph[c[0].getMonth() % 3] || 0) + 1;
     const phase = +Object.entries(ph).sort((a, b) => b[1] - a[1])[0][0], dom = Math.round(median(cl.map(c => c[0].getDate()))), next = [];
     for (let m = -1; m < 6; m++){ const y = t0.getFullYear(), mo = t0.getMonth() + m; if (((mo % 3) + 3) % 3 !== phase) continue;
-      const dim = new Date(y, mo + 1, 0).getDate(), dt = new Date(y, mo, Math.min(dom, dim)); if (dt >= back && dt <= horizon && !near(tx, dt, 25)) next.push(dt); }
+      const dim = new Date(y, mo + 1, 0).getDate(), dt = new Date(y, mo, Math.min(dom, dim)); if (dt >= back && dt <= horizon && !near(tx, dt, 25)) next.push(dt); else if (dt >= t0 && dt <= horizon) paidAt.push([k, dt, nearT(tx, dt, 25)]); }
     out.push(Object.assign(base, { kind:'quarterly', amt:RP_BILL(base.cat) ? median(tx.slice(-3).map(t => t.amount)) : base.amt, next, pattern:'Every three months' }));
     base.keys.forEach(x => used.add(x));
   }
@@ -1903,7 +1965,7 @@ function detectRepeats(){
     out.push(Object.assign(info([x], { key:k }), { amt:x.amount, kind:'yearly', next:dt >= back && dt <= horizon && !all.some(t => same(t) && Math.abs(dayN(upDay(t.date)) - dayN(dt)) <= 20) ? [dt] : [], pattern:'Once a year' }));
     used.add(k);
   }
-  for (const r of out){ r.recent = r.next.filter(d => d < t0); r.next = r.next.filter(d => d >= t0); }   // Version 50: recent = expected in the last 7 days
+  for (const r of out){ r.recent = r.next.filter(d => d < t0); r.next = r.next.filter(d => d >= t0); r.paid = paidAt.filter(p => p[0] === r.key).map(p => ({ d:p[1], t:p[2] })); }   // Version 50: recent = expected in the last 7 days
   return out;
 }
 const upSeries = key => key.split('|').slice(0, 3).join('|');   // one id per pattern, used by Not recurring
@@ -1921,15 +1983,19 @@ function upSharedStart(){
     if (ty === 'Transfer' && toUsed(t) === UP_SHARED) b += t.amount; }
   return Math.round(b * 100) / 100;
 }
+/* Version 53: a bill already recorded, shown in green until its date; it is not in the totals or the running balance */
+const upPaidRow = r => `<tr class="uppaid"><td class="up-dcell"><span class="up-wd">${r.date.toLocaleDateString('en-US', { weekday:'short' })}</span>${fmtDate(upISO(r.date))}</td><td class="wrap">${esc(r.desc)}${r.account ? `<br><span class="note">${esc(r.account)}</span>` : ''}</td>`
+  + `<td class="n">${r.typical !== null && r.typical !== undefined ? money(r.typical, true) : ''}</td><td class="n"><b>${money(r.amt, true)}</b></td><td class="n up-bal"><span class="note">Paid, not counted</span></td><td>${esc(r.cat)}</td>`
+  + `<td><span class="tag ok">Paid${r.paidTx && r.paidTx.date ? ' ' + fmtDate(r.paidTx.date) : ''}</span>${r.pattern ? `<br><span class="note">${esc(r.pattern)}</span>` : ''}</td><td></td></tr>`;
 function renderUpcoming(){
-  const rows = upList(UP_DAYS), start = upSharedStart(); let run = start, low = null;
-  const bal = rows.map(r => { const counts = start !== null && r.account === UP_SHARED; if (counts){ run = Math.round((run + (r.inc ? r.amt : -r.amt)) * 100) / 100; if (low === null || run < low.v) low = { v:run, d:r.date }; } return { v:run, counts }; });
+  const all = upList(UP_DAYS, { paid:true }), rows = all, start = upSharedStart(); let run = start, low = null;   // paid rows (Version 53) show but never count
+  const bal = rows.map(r => { const counts = start !== null && r.account === UP_SHARED && !r.paidTx; if (counts){ run = Math.round((run + (r.inc ? r.amt : -r.amt)) * 100) / 100; if (low === null || run < low.v) low = { v:run, d:r.date }; } return { v:run, counts }; });
   const shSent = start === null ? '' : ` ${UP_SHARED} has <b>${money(start, true)}</b> today and is projected at <b class="${run < 0 ? 'neg' : ''}">${money(run, true)}</b> after ${UP_DAYS} days${low && low.v < Math.min(start, run) ? `, lowest <b class="${low.v < 0 ? 'neg' : ''}">${money(low.v, true)}</b> on ${upFmt(low.d)}` : ''}, counting only its own payments and deposits.`;
-  const bills = rows.filter(r => !r.inc), incs = rows.filter(r => r.inc), total = bills.reduce((s, r) => s + r.amt, 0), itot = incs.reduce((s, r) => s + r.amt, 0), nChanged = rows.filter(r => r.changed).length, nMoved = rows.filter(r => r.moved).length, nAdded = rows.filter(r => r.source !== 'Recurring').length;
-  $('upSum').innerHTML = rows.length ? `<b class="pos">${money(itot, true)}</b> of income expected (${incs.length} deposit${incs.length === 1 ? '' : 's'}) and <b>${money(total, true)}</b> of bills (${bills.length} payment${bills.length === 1 ? '' : 's'}), for a net of <b class="${itot - total >= 0 ? 'pos' : 'neg'}">${itot - total >= 0 ? '+' : '−'}${money(Math.abs(itot - total), true)}</b>${nAdded ? `; ${nAdded} added by you` : ''}${nChanged ? `; ${nChanged} with an amount you changed` : ''}${nMoved ? `; ${nMoved} with a date you changed` : ''}.` + shSent : `Nothing expected in the next ${UP_DAYS} days.` + shSent;
+  const nPaid = rows.filter(r => r.paidTx).length, bills = rows.filter(r => !r.inc && !r.paidTx), incs = rows.filter(r => r.inc), total = bills.reduce((s, r) => s + r.amt, 0), itot = incs.reduce((s, r) => s + r.amt, 0), nChanged = rows.filter(r => r.changed).length, nMoved = rows.filter(r => r.moved).length, nAdded = rows.filter(r => r.source !== 'Recurring').length;
+  $('upSum').innerHTML = rows.length ? `<b class="pos">${money(itot, true)}</b> of income expected (${incs.length} deposit${incs.length === 1 ? '' : 's'}) and <b>${money(total, true)}</b> of bills (${bills.length} payment${bills.length === 1 ? '' : 's'}), for a net of <b class="${itot - total >= 0 ? 'pos' : 'neg'}">${itot - total >= 0 ? '+' : '−'}${money(Math.abs(itot - total), true)}</b>${nAdded ? `; ${nAdded} added by you` : ''}${nChanged ? `; ${nChanged} with an amount you changed` : ''}${nMoved ? `; ${nMoved} with a date you changed` : ''}${nPaid ? `; ${nPaid} already paid, shown in green and not counted` : ''}.` + shSent : `Nothing expected in the next ${UP_DAYS} days.` + shSent;
   let ms = $('upMissed'); if (!ms){ ms = document.createElement('div'); ms.id = 'upMissed'; $('upInsert').parentElement.insertAdjacentElement('afterend', ms); }
   ms.innerHTML = UP_MISSED.length ? `<div class="up-missed"><b>Expected in the last week but not recorded yet.</b> Record it if it was paid, or mark it Not needed.` + UP_MISSED.map(r => `<div class="up-miss-row"><span>${upFmt(r.date)} · ${esc(r.desc)} · ${money(r.amt, true)}${r.account ? ' · ' + esc(r.account) : ''}</span> <span><button class="btn small" type="button" data-uprec="${esc(r.key)}">Record it</button> <button class="btn sec small" type="button" data-updis="${esc(r.key)}">Not needed</button></span></div>`).join('') + `</div>` : '';
-  $('upBody').innerHTML = rows.length ? (start === null ? '' : `<tr class="tot"><td></td><td>${UP_SHARED} today</td><td></td><td></td><td class="n">${money(start, true)}</td><td></td><td></td><td></td></tr>`) + rows.map((r, ri) => `<tr class="${r.inc ? 'upinc' : ''}${r.changed || r.moved ? ' upchg' : ''}${r.source !== 'Recurring' ? ' upadd' : ''}${r.past ? ' uppast' : ''}"><td class="up-dcell"><span class="up-wd">${r.date.toLocaleDateString('en-US', { weekday:'short' })}${r.alt ? ' or ' + new Date(r.date.getTime() + 864e5).toLocaleDateString('en-US', { weekday:'short' }) : ''}</span><input class="up-date${r.moved ? ' set' : ''}" type="date" data-upd="${esc(r.key)}" value="${upISO(r.date)}" aria-label="Date for ${esc(r.desc)}">${r.moved ? `<br><span class="note">Moved from ${upFmt(r.orig)}</span>` : ''}${r.past ? '<br><span class="tag bad">Date passed</span>' : ''}</td><td class="wrap">${esc(r.desc)}${r.account ? `<br><span class="note">${esc(r.account)}</span>` : ''}</td><td class="n">${r.typical !== null ? (r.inc ? '+' : '') + money(r.typical, true) : ''}</td><td class="n"><input class="up-amt${r.changed ? ' set' : ''}" type="number" step="0.01" inputmode="decimal" data-upk="${esc(r.key)}" value="${r.changed || r.source !== 'Recurring' ? (+r.amt).toFixed(2) : ''}" placeholder="${(+r.amt).toFixed(2)}" aria-label="Amount for ${esc(r.desc)}"></td><td class="n up-bal">${start === null ? '' : bal[ri].counts ? `<b class="${bal[ri].v < 0 ? 'neg' : ''}">${money(bal[ri].v, true)}</b>` : `<span class="muted">${money(bal[ri].v, true)}</span><br><span class="note">${r.account ? 'Other account, not counted' : 'No account chosen, not counted'}</span>`}</td><td>${r.inc ? '<span class="tag ok">Income</span> ' : ''}${esc(r.cat)}</td><td>${r.source === 'Recurring' ? (r.inc ? (r.rule ? esc(r.rule) + '<br>' : '') + 'Last received ' : (r.pattern ? esc(r.pattern) + '<br>' : '') + 'Last paid ') + fmtDate(r.last) : '<span class="tag">Added by you</span>' + (r.repeat ? `<br><span class="note">${upRepLabel(r)}</span>` : '')}</td><td>${r.repeat && (r.changed || r.moved) ? `<button class="btn sec small" type="button" data-upreset="${esc(r.key)}">Undo changes</button> ` : ''}${r.id ? `<button class="btn sec small" type="button" data-updel="${r.id}"${r.repeat ? ' data-upweekly="1"' : ''}>${r.repeat ? 'Stop repeating' : 'Remove'}</button>` : (r.changed || r.moved ? `<button class="btn sec small" type="button" data-upreset="${esc(r.key)}">Undo changes</button> ` : '') + (!r.inc && r.source === 'Recurring' ? `<button class="btn sec small" type="button" data-upnot="${esc(upSeries(r.key))}" data-updesc="${esc(r.desc)}">Not recurring</button>` : '')}</td></tr>`).join('')
+  $('upBody').innerHTML = rows.length ? (start === null ? '' : `<tr class="tot"><td></td><td>${UP_SHARED} today</td><td></td><td></td><td class="n">${money(start, true)}</td><td></td><td></td><td></td></tr>`) + rows.map((r, ri) => r.paidTx ? upPaidRow(r) : `<tr class="${r.inc ? 'upinc' : ''}${r.changed || r.moved ? ' upchg' : ''}${r.source !== 'Recurring' ? ' upadd' : ''}${r.past ? ' uppast' : ''}"><td class="up-dcell"><span class="up-wd">${r.date.toLocaleDateString('en-US', { weekday:'short' })}${r.alt ? ' or ' + new Date(r.date.getTime() + 864e5).toLocaleDateString('en-US', { weekday:'short' }) : ''}</span><input class="up-date${r.moved ? ' set' : ''}" type="date" data-upd="${esc(r.key)}" value="${upISO(r.date)}" aria-label="Date for ${esc(r.desc)}">${r.moved ? `<br><span class="note">Moved from ${upFmt(r.orig)}</span>` : ''}${r.past ? '<br><span class="tag bad">Date passed</span>' : ''}</td><td class="wrap">${esc(r.desc)}${r.account ? `<br><span class="note">${esc(r.account)}</span>` : ''}</td><td class="n">${r.typical !== null ? (r.inc ? '+' : '') + money(r.typical, true) : ''}</td><td class="n"><input class="up-amt${r.changed ? ' set' : ''}" type="number" step="0.01" inputmode="decimal" data-upk="${esc(r.key)}" value="${r.changed || r.source !== 'Recurring' ? (+r.amt).toFixed(2) : ''}" placeholder="${(+r.amt).toFixed(2)}" aria-label="Amount for ${esc(r.desc)}"></td><td class="n up-bal">${start === null ? '' : bal[ri].counts ? `<b class="${bal[ri].v < 0 ? 'neg' : ''}">${money(bal[ri].v, true)}</b>` : `<span class="muted">${money(bal[ri].v, true)}</span><br><span class="note">${r.account ? 'Other account, not counted' : 'No account chosen, not counted'}</span>`}</td><td>${r.inc ? '<span class="tag ok">Income</span> ' : ''}${esc(r.cat)}</td><td>${r.source === 'Recurring' ? (r.inc ? (r.rule ? esc(r.rule) + '<br>' : '') + 'Last received ' : (r.pattern ? esc(r.pattern) + '<br>' : '') + 'Last paid ') + fmtDate(r.last) : '<span class="tag">Added by you</span>' + (r.repeat ? `<br><span class="note">${upRepLabel(r)}</span>` : '')}</td><td>${r.repeat && (r.changed || r.moved) ? `<button class="btn sec small" type="button" data-upreset="${esc(r.key)}">Undo changes</button> ` : ''}${r.id ? `<button class="btn sec small" type="button" data-updel="${r.id}"${r.repeat ? ' data-upweekly="1"' : ''}>${r.repeat ? 'Stop repeating' : 'Remove'}</button>` : (r.changed || r.moved ? `<button class="btn sec small" type="button" data-upreset="${esc(r.key)}">Undo changes</button> ` : '') + (!r.inc && r.source === 'Recurring' ? `<button class="btn sec small" type="button" data-upnot="${esc(upSeries(r.key))}" data-updesc="${esc(r.desc)}">Not recurring</button>` : '')}</td></tr>`).join('')
     + `<tr class="tot"><td></td><td>Income expected</td><td></td><td class="n pos">+${money(itot, true)}</td><td></td><td></td><td></td><td></td></tr>`
     + `<tr class="tot"><td></td><td>Bills expected</td><td></td><td class="n">${money(total, true)}</td><td></td><td></td><td></td><td></td></tr>`
     + `<tr class="tot"><td></td><td>Net for the ${UP_DAYS} days</td><td></td><td class="n ${itot - total >= 0 ? 'pos' : 'neg'}">${itot - total >= 0 ? '+' : '−'}${money(Math.abs(itot - total), true)}</td><td></td><td></td><td></td><td></td></tr>`
@@ -1980,16 +2046,19 @@ window.__up = { upList, detectIncome, detectRepeats, incomeTx:() => S.tx.filter(
 $('upAdd').addEventListener('click', () => {
   const date = $('upDate').value, desc = $('upDesc').value.trim(), amt = parseFloat($('upAmt').value);
   if (!date || !desc || !(amt > 0)){ $('upErr').textContent = 'Enter a date, what it is, and an amount.'; return; }
-  const rep = $('upRepeat').value;
-  UP.items.push(Object.assign({ id:uid(), type:$('upType').value, date, desc, amount:Math.round(amt * 100) / 100, cat:$('upCat').value, account:$('upAcct').value, created:Date.now() }, rep ? { repeat:rep } : {}));
-  $('upDesc').value = ''; $('upAmt').value = ''; $('upRepeat').value = ''; $('upErr').textContent = ''; upSave(); renderUpcoming();
-  toast(rep ? `Added; it repeats ${{ weekly:'every week', biweekly:'every two weeks', monthly:'every month', quarterly:'every three months', yearly:'every year' }[rep]}` : upDay(date) > new Date(Date.now() + UP_DAYS * 864e5) ? `Added; it will appear ${UP_DAYS} days ahead` : 'Added');
+  const rep = $('upRepeat').value, every = Math.round(+$('upEvery').value || 0);
+  if (rep === 'days' && !(every >= 2 && every <= 60)){ $('upErr').textContent = 'Days between must be 2 to 60.'; return; }
+  UP.items.push(Object.assign({ id:uid(), type:$('upType').value, date, desc, amount:Math.round(amt * 100) / 100, cat:$('upCat').value, account:$('upAcct').value, created:Date.now() }, rep ? Object.assign({ repeat:rep }, rep === 'days' ? { every } : {}) : {}));
+  $('upDesc').value = ''; $('upAmt').value = ''; $('upRepeat').value = ''; $('upEveryBox').hidden = true; $('upErr').textContent = ''; upSave(); renderUpcoming();
+  toast(rep ? `Added; it repeats ${{ weekly:'every week', biweekly:'every two weeks', monthly:'every month', quarterly:'every three months', yearly:'every year', days:`every ${every} days` }[rep]}` : upDay(date) > new Date(Date.now() + UP_DAYS * 864e5) ? `Added; it will appear ${UP_DAYS} days ahead` : 'Added');
 });
 
 $('upInsert').addEventListener('click', () => {   // Version 45: insert a row without hunting for the form
   const d = $('upPanel').querySelector('details.up-add'); d.open = true; if (!$('upDate').value) $('upDate').value = upISO(new Date(Date.now() + 864e5));
   d.scrollIntoView({ behavior:'smooth', block:'start' }); setTimeout(() => $('upDesc').focus(), 300);
 });
+
+$('upRepeat').addEventListener('change', () => { $('upEveryBox').hidden = $('upRepeat').value !== 'days'; });   // Version 52
 /* ---------- Dashboard ---------- */
 let charts = {};
 function css(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
@@ -2671,6 +2740,7 @@ async function migrations(){
   /* Version 41, one time: rename Home Decorations (part5l). */
   try { await decorRename(); } catch (e) { console.error('Category rename', e); }
   try { await christmasRename(); } catch (e) { console.error('Christmas rename', e); }   // Version 51
+  try { await fuelEvery8(); } catch (e) { console.error('Fuel every 8 days', e); }   // Version 52
   /* Version 41, one time: the weekly Friday Walmart trip in Coming up (part5l). */
   try { await walmartWeekly(); } catch (e) { console.error('Walmart weekly', e); }
   setTimeout(showNotices, 900);
@@ -4299,13 +4369,17 @@ function axExport(period){
     if (UP.items.length) L.push(`Added by hand (all dates): ${UP.items.map(it => `${cell(it.desc)}, ${it.type === 'income' ? '+' : ''}${m2(+it.amount)}, ${it.repeat ? upRepLabel({ repeat:it.repeat, orig:upDay(it.date) }).replace(/^Every/, 'every') + ' from' : 'on'} ${fmtDate(it.date)}`).join('; ')}.`, ``);
     const reps = detectRepeats(); if (reps.length) L.push(`Repeating patterns learned: ${reps.map(r => `${cell(r.desc)} (${r.pattern}, ${m2(r.amt)}${r.next.length ? ', next ' + fmtDate(upISO(r.next[0])) : ''})`).join('; ')}.`, ``);
   });
+  sect('Christmas', () => {   // Version 52
+    if (typeof XM === 'undefined' || !XM.people) return; const y = xmYearNow(), T = xmTotals(y); if (!T.all.n && !T.budget) return;
+    L.push(`## Christmas ${y} lists`, ``, `${XM.people.filter(p => p.on !== false).map(p => { const b = T.by[p.id] || { n:0, total:0, bought:0 }; return `${cell(p.name)}${p.born ? ' (' + (y - p.born) + ')' : ''}: ${b.n} gifts, ${m2(b.total)}, ${m2(b.bought)} bought`; }).join('; ')}. All lists ${m2(T.all.total)} against a ${XM_CAT} budget of ${m2(T.budget)}; recorded so far ${m2(T.recorded)}.`, ``);
+  });
   sect('Names', () => {   // Version 47: exact names, so an update file uses them
     L.push(`## Names in the app`, ``, `Categories: ${S.config.categories.map(c => `${c.name} (${c.type}, ${c.group})`).join('; ')}.`, ``, `Accounts: ${S.config.accounts.map(a => a.name).join('; ')}.`, ``,
       `Rules (text in the description, then category; the last match wins): ${S.config.rules.map(r => `“${cell(r.key)}” ${cell(r.cat)}${r.to ? ' to ' + cell(r.to) : ''}`).join('; ')}.`, ``);
     const ap = (CU.log.updates || []).filter(x => !x.undone).slice(0, 5); if (ap.length) L.push(`Claude updates applied: ${ap.map(x => `${cell(x.id)} on ${new Date(x.applied).toLocaleDateString('en-US')}`).join('; ')}.`, ``);
   });
   L.push(`## Request`, ``, `Read this for new trends: new or changed recurring charges that Coming up should include, categories running above or below the usual, new merchants that need a category rule, entries that look miscategorized or duplicated, and anything that should change in the app.`, ``,
-    `Then give Karl a Claude update file he loads under Data and Settings, Load an update from Claude: a JSON file with { "kind":"claude-update", "format":1, "id":"a new unique id", "made":"YYYY-MM-DD", "basedOn":"this export", "summary":"one line", "changes":[...] }. Each change has "op" and "why". The ops are: rule (key, cat, optional to); recat (id from the ID column, cat); note (id, text); upcoming (date, desc, amount, cat, account, repeat: "" or weekly, biweekly, monthly, quarterly, yearly; type: bill or income); notRecurring and bringBack (pattern from the Pattern ID column, desc); budget (cat, year, month 1 to 12, amount); learned (text, for anything worth remembering in later exports); forget (text of a learned note). Use the exact names above. Anything that needs new app behavior goes in the reply as a request for a new version, not in the file.`);
+    `Then give Karl a Claude update file he loads under Data and Settings, Load an update from Claude: a JSON file with { "kind":"claude-update", "format":1, "id":"a new unique id", "made":"YYYY-MM-DD", "basedOn":"this export", "summary":"one line", "changes":[...] }. Each change has "op" and "why". The ops are: rule (key, cat, optional to); recat (id from the ID column, cat); note (id, text); upcoming (date, desc, amount, cat, account, repeat: "" or weekly, biweekly, monthly, quarterly, yearly, or days with every: 2 to 60; type: bill or income); notRecurring and bringBack (pattern from the Pattern ID column, desc); budget (cat, year, month 1 to 12, amount); learned (text, for anything worth remembering in later exports); forget (text of a learned note). Use the exact names above. Anything that needs new app behavior goes in the reply as a request for a new version, not in the file.`);
   return { text:L.join('\n'), days, rows:rows.length };
 }
 async function axMark(){ const ts = Date.now(); try { await setDoc(ref('meta','config'), Object.assign({}, S.config, { lastActivity:ts })); S.config.lastActivity = ts; } catch (e) {} }
@@ -4524,7 +4598,7 @@ function cuParse(text){
   return u;
 }
 const cuCat = n => S.config.categories.find(c => c.name === n), cuAcct = n => S.config.accounts.find(a => a.name === n);
-const cuReps = ['', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly'];
+const cuReps = ['', 'weekly', 'biweekly', 'monthly', 'quarterly', 'yearly', 'days'];
 /* What a change would do, in words, and whether it can be applied as the app stands now. */
 function cuCheck(c){
   const m2 = v => money(+v, true), bad = why => ({ ok:false, text:'', why });
@@ -4538,7 +4612,8 @@ function cuCheck(c){
       return { ok:true, text:`Add a note to ${fmtDate(t.date)} ${t.desc} ${m2(t.amount)}: “${c.text}”` }; }
     case 'upcoming': { if (!/^\d{4}-\d{2}-\d{2}$/.test(c.date || '') || !c.desc || !(+c.amount > 0)) return bad('Needs a date, a description, and an amount');
       if (c.cat && !cuCat(c.cat)) return bad(`No category named "${c.cat}"`); if (c.account && !cuAcct(c.account)) return bad(`No account named "${c.account}"`); if (!cuReps.includes(c.repeat || '')) return bad(`Unknown repeat "${c.repeat}"`);
-      const rl = { '':'once', weekly:'every week', biweekly:'every two weeks', monthly:'every month', quarterly:'every three months', yearly:'every year' }[c.repeat || ''];
+      if (c.repeat === 'days' && !(+c.every >= 2 && +c.every <= 60)) return bad('Every few days needs "every" from 2 to 60');
+      const rl = { '':'once', weekly:'every week', biweekly:'every two weeks', monthly:'every month', quarterly:'every three months', yearly:'every year', days:`every ${c.every} days` }[c.repeat || ''];
       return { ok:true, text:`Add to Coming up: ${c.desc}, ${c.type === 'income' ? '+' : ''}${m2(c.amount)}, ${c.repeat ? rl + ' from' : 'on'} ${fmtDate(c.date)}${c.cat ? ', ' + c.cat : ''}${c.account ? ', ' + c.account : ''}` }; }
     case 'notRecurring': case 'bringBack': { if (!c.pattern) return bad('No pattern given'); const on = (UP.ignore || []).some(x => x.id === c.pattern);
       if (c.op === 'notRecurring' && on) return bad('Already marked not recurring'); if (c.op === 'bringBack' && !on) return bad('Not marked not recurring');
@@ -4568,7 +4643,7 @@ async function cuApply(){
       else if (c.op === 'recat' || c.op === 'note'){ const t = S.tx.find(x => x.id === c.id), nr = Object.assign({}, t);
         if (c.op === 'recat') nr.cat = c.cat; else nr.notes = (t.notes ? t.notes + ' ' : '') + c.text;
         undo.push({ op:'tx', id:t.id, cat:t.cat || '', notes:t.notes || '' }); await updateTx(t, nr); txChanged.push(t.id); }
-      else if (c.op === 'upcoming'){ const id = uid(); UP.items.push(Object.assign({ id, type:c.type === 'income' ? 'income' : 'bill', date:c.date, desc:c.desc, amount:Math.round(+c.amount * 100) / 100, cat:c.cat || '', account:c.account || '', created:Date.now(), from:'Claude' }, c.repeat ? { repeat:c.repeat } : {}));
+      else if (c.op === 'upcoming'){ const id = uid(); UP.items.push(Object.assign({ id, type:c.type === 'income' ? 'income' : 'bill', date:c.date, desc:c.desc, amount:Math.round(+c.amount * 100) / 100, cat:c.cat || '', account:c.account || '', created:Date.now(), from:'Claude' }, c.repeat ? { repeat:c.repeat } : {}, c.repeat === 'days' ? { every:Math.round(+c.every) } : {}));
         undo.push({ op:'upcoming', id }); up = true; }
       else if (c.op === 'notRecurring'){ UP.ignore = [...(UP.ignore || []), { id:c.pattern, desc:c.desc || c.pattern }]; undo.push({ op:'bringBack', pattern:c.pattern }); up = true; }
       else if (c.op === 'bringBack'){ const was = (UP.ignore || []).find(x => x.id === c.pattern); UP.ignore = UP.ignore.filter(x => x.id !== c.pattern); undo.push({ op:'notRecurring', pattern:c.pattern, desc:was ? was.desc : '' }); up = true; }
@@ -4763,6 +4838,119 @@ async function christmasRename(){
   NOTICES.push(`<b>${esc(from)} is now ${NEW}.</b> ${n ? `Its ${n} transaction${n === 1 ? '' : 's'}, ` : ''}its budget and any rule that fills it in moved with it. Gifts stays separate for gifts the rest of the year. Categories now have their own tab under Details and analysis.`);
 }
 window.__ct = { catMove, ctUse, christmasRename };
+
+/* ================= Version 52: fuel every 8 days in Coming up (Karl, October 20, 2026; one time, at sign-in; flag fuelEvery8) ================= */
+async function fuelEvery8(){
+  const F = S.config.flags = S.config.flags || {};
+  if (F.fuelEvery8 || !S.tx.length) return;
+  const cat = S.config.categories.some(c => c.name === 'Fuel') ? 'Fuel' : '', since = upISO(new Date(Date.now() - 90 * 864e5)), cnt = {};
+  for (const t of S.tx) if (catUsed(t) === 'Fuel' && t.date >= since) cnt[t.account] = (cnt[t.account] || 0) + 1;
+  const account = Object.entries(cnt).sort((a, b) => b[1] - a[1]).map(x => x[0])[0] || UP_SHARED;
+  if (!UP.items.some(it => it.repeat === 'days' && it.cat === cat && /fuel/i.test(it.desc))){
+    UP.items.push({ id:uid(), type:'bill', date:todayISO(), desc:'Fuel', amount:55, cat, account, repeat:'days', every:8, created:Date.now(), from:'Version 52' });
+    try { await upSave(); } catch (e) { return; }
+  }
+  F.fuelEvery8 = { on:todayISO(), account }; try { await setDoc(ref('meta','config'), S.config); } catch (e) {}
+  NOTICES.push(`<b>Fuel, $55 about every 8 days, is now in Coming up</b>, from ${esc(account)}. The next date counts from your latest Fuel purchase, and any Fuel purchase near the date counts as done whatever it cost. Change the amount for one date on Home, or stop it with Stop repeating.`);
+}
+
+/* ================= Version 52: Christmas lists (Karl, October 20, 2026) =================
+   A tab like Vehicles: a list for each person (W, S, and J2 to start, born 2012, 2010, and 2006, so 14, 16, and 20 at Christmas 2026), each gift with where it
+   comes from, a link, the cost and quantity, and whether it is an idea, bought, or wrapped, with a running total for each person and for everyone. Overview compares
+   the lists with the Christmas Gifts budget and what has been recorded in that category, and keeps every year for planning. Stored in meta/christmas. */
+const XM = { people:[], years:{}, sub:'lists', year:0 };
+const XM_STATUS = ['Idea', 'Bought', 'Wrapped'], XM_CAT = 'Christmas Gifts';
+const xkk = (v, l) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`;
+async function xmLoad(){
+  try { const d = await getDoc(ref('meta','christmas')); if (d.exists()) Object.assign(XM, d.data()); } catch (e) {}
+  if (!XM.people || !XM.people.length) XM.people = [{ id:'w', name:'W', born:2012, on:true }, { id:'s', name:'S', born:2010, on:true }, { id:'j2', name:'J2', born:2006, on:true }];
+  XM.years = XM.years || {}; XM.sub = XM.sub || 'lists';
+}
+let xmT = null;
+function xmSave(){ clearTimeout(xmT); xmT = setTimeout(async () => { try { await setDoc(ref('meta','christmas'), JSON.parse(JSON.stringify({ people:XM.people, years:XM.years, sub:XM.sub, updated:Date.now() }))); } catch (e) { toast('Could not save: ' + (e.code || e.message)); } }, 300); }
+const xmYearNow = () => { const d = new Date(); return d.getMonth() === 0 && d.getDate() < 10 ? d.getFullYear() - 1 : d.getFullYear(); };
+const xmY = y => (XM.years[y] ||= { items:[], targets:{} });
+const xmAge = (p, y) => p.born ? y - p.born : '';
+const xmLine = it => Math.round((+it.cost || 0) * (+it.qty || 1) * 100) / 100;
+function xmTotals(y){
+  const Y = xmY(y), by = {};
+  for (const p of XM.people) by[p.id] = { n:0, total:0, bought:0 };
+  for (const it of Y.items){ const b = by[it.pid] ||= { n:0, total:0, bought:0 }; b.n++; b.total += xmLine(it); if (it.status !== 'Idea') b.bought += xmLine(it); }
+  const all = Object.values(by).reduce((s, b) => ({ n:s.n + b.n, total:s.total + b.total, bought:s.bought + b.bought }), { n:0, total:0, bought:0 });
+  const budget = S.budget.rows.filter(r => r.cat === XM_CAT && +r.year === +y).reduce((s, r) => s + r.m.reduce((a, v) => a + (+v || 0), 0), 0);
+  const recorded = S.tx.filter(t => catUsed(t) === XM_CAT && t.date.startsWith(String(y))).reduce((s, t) => s + t.amount, 0);
+  return { by, all, budget, recorded };
+}
+function renderXmas(){
+  document.querySelectorAll('nav.xtabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.xt === XM.sub ? 'true' : 'false'));
+  document.querySelectorAll('#view-xmas > section').forEach(s => s.classList.toggle('hidden', s.id !== 'xt-' + XM.sub));
+  const now = xmYearNow(), ys = [...new Set([now, now + 1, ...Object.keys(XM.years).map(Number)])].sort((a, b) => b - a);
+  if (!XM.year) XM.year = now;
+  $('xmYear').innerHTML = ys.map(y => `<option${y === XM.year ? ' selected' : ''}>${y}</option>`).join('');
+  ({ lists:xmLists, over:xmOver, people:xmPeople })[XM.sub]();
+}
+function xmLists(){
+  const y = XM.year, Y = xmY(y), T = xmTotals(y), m2 = v => money(v, true), left = T.budget - T.all.total;
+  $('xmKpis').innerHTML = xkk(m2(T.all.total), `All lists, ${T.all.n} gift${T.all.n === 1 ? '' : 's'}`) + xkk(m2(T.all.bought), 'Bought so far') + xkk(m2(T.all.total - T.all.bought), 'Still to buy')
+    + (T.budget ? xkk(`<span class="${left < 0 ? 'neg' : 'pos'}">${m2(left)}</span>`, `${left < 0 ? 'Over' : 'Left in'} the ${y} ${XM_CAT} budget of ${m2(T.budget)}`) : '') + xkk(m2(T.recorded), `Recorded in ${XM_CAT} in ${y}`);
+  $('xmLists').innerHTML = XM.people.filter(p => p.on !== false).map(p => {
+    const b = T.by[p.id] || { n:0, total:0, bought:0 }, tg = +(Y.targets || {})[p.id] || 0, items = Y.items.filter(it => it.pid === p.id), age = xmAge(p, y);
+    return `<div class="panel xm-list" data-pid="${esc(p.id)}"><div class="xm-head"><h3>${esc(p.name)}${age !== '' ? `, ${age} this Christmas` : ''}</h3><span class="xm-tot">${m2(b.total)}${tg ? ` of ${m2(tg)} target` : ''}</span></div>`
+      + `<p class="note" style="margin:0 0 6px">${b.n} gift${b.n === 1 ? '' : 's'} · ${m2(b.bought)} bought · ${m2(b.total - b.bought)} still to buy${tg && b.total > tg ? ` · <b class="neg">${m2(b.total - tg)} over target</b>` : ''} · Target <input class="t xm-target" type="number" min="0" step="1" value="${tg || ''}" placeholder="none" style="display:inline-block;width:90px" aria-label="Target for ${esc(p.name)}"></p>`
+      + `<div class="tbl"><table><thead><tr><th>Gift</th><th>Where</th><th>Link</th><th class="n">Cost</th><th class="n">Qty</th><th class="n">Line</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>`
+      + items.map(it => `<tr data-xi="${esc(it.id)}"><td><input class="t xm-item" data-f="item" value="${esc(it.item || '')}" aria-label="Gift"></td><td><input class="t xm-where" data-f="where" value="${esc(it.where || '')}" aria-label="Where"></td>`
+        + `<td><input class="t xm-where" data-f="link" value="${esc(it.link || '')}" placeholder="https://" aria-label="Link">${/^https?:\/\//i.test(it.link || '') ? ` <a href="${esc(it.link)}" target="_blank" rel="noopener">Open</a>` : ''}</td>`
+        + `<td class="n"><input class="t xm-cost" data-f="cost" type="number" min="0" step="0.01" value="${it.cost ?? ''}" aria-label="Cost"></td><td class="n"><input class="t xm-qty" data-f="qty" type="number" min="1" step="1" value="${it.qty || 1}" aria-label="Quantity"></td>`
+        + `<td class="n">${m2(xmLine(it))}</td><td><select class="t" data-f="status" aria-label="Status">${XM_STATUS.map(s => `<option${s === (it.status || 'Idea') ? ' selected' : ''}>${s}</option>`).join('')}</select></td>`
+        + `<td><input class="t xm-where" data-f="notes" value="${esc(it.notes || '')}" aria-label="Notes"></td><td><button class="btn sec small" type="button" data-xdel>Remove</button></td></tr>`).join('')
+      + `<tr class="xm-new"><td><input class="t xm-item" data-n="item" placeholder="Add a gift" aria-label="New gift"></td><td><input class="t xm-where" data-n="where" placeholder="Amazon" aria-label="Where"></td><td><input class="t xm-where" data-n="link" placeholder="https://" aria-label="Link"></td>`
+      + `<td class="n"><input class="t xm-cost" data-n="cost" type="number" min="0" step="0.01" aria-label="Cost"></td><td class="n"><input class="t xm-qty" data-n="qty" type="number" min="1" step="1" value="1" aria-label="Quantity"></td><td></td>`
+      + `<td><select class="t" data-n="status" aria-label="Status">${XM_STATUS.map(s => `<option>${s}</option>`).join('')}</select></td><td><input class="t xm-where" data-n="notes" aria-label="Notes"></td><td><button class="btn small" type="button" data-xadd>Add</button></td></tr>`
+      + `</tbody><tfoot><tr class="tot"><td colspan="5">${esc(p.name)} total</td><td class="n">${m2(b.total)}</td><td colspan="3"></td></tr></tfoot></table></div></div>`;
+  }).join('') || '<p class="muted">No one has a list. Add people on the People section.</p>';
+}
+function xmOver(){
+  const y = XM.year, T = xmTotals(y), Y = xmY(y), m2 = v => money(v, true), ppl = XM.people.filter(p => p.on !== false || (T.by[p.id] || {}).n);
+  $('xoKpis').innerHTML = xkk(m2(T.all.total), `List total, Christmas ${y}`) + xkk(T.budget ? m2(T.budget) : 'None', `${XM_CAT} budget for ${y}`) + xkk(m2(T.recorded), `Recorded in ${XM_CAT} in ${y}`)
+    + xkk(ppl.length ? m2(T.all.total / Math.max(1, XM.people.filter(p => p.on !== false).length)) : '', 'Average list per person');
+  $('xoBody').innerHTML = ppl.map(p => { const b = T.by[p.id] || { n:0, total:0, bought:0 }, tg = +(Y.targets || {})[p.id] || 0;
+    return `<tr><td>${esc(p.name)}</td><td class="n">${xmAge(p, y)}</td><td class="n">${b.n}</td><td class="n">${m2(b.total)}</td><td class="n">${m2(b.bought)}</td><td class="n">${m2(b.total - b.bought)}</td><td class="n">${tg ? m2(tg) : ''}</td></tr>`; }).join('')
+    + `<tr class="tot"><td>Everyone</td><td></td><td class="n">${T.all.n}</td><td class="n">${m2(T.all.total)}</td><td class="n">${m2(T.all.bought)}</td><td class="n">${m2(T.all.total - T.all.bought)}</td><td class="n">${m2(Object.values(Y.targets || {}).reduce((s, v) => s + (+v || 0), 0)) }</td></tr>`;
+  try { mkChart('xoChart', { type:'bar', data:{ labels:ppl.map(p => p.name), datasets:[{ label:'Bought', data:ppl.map(p => (T.by[p.id] || {}).bought || 0), backgroundColor:css('--in'), stack:'a' }, { label:'Still to buy', data:ppl.map(p => { const b = T.by[p.id] || { total:0, bought:0 }; return b.total - b.bought; }), backgroundColor:css('--ledger'), stack:'a' }] }, options:{ scales:{ x:{ stacked:true }, y:{ stacked:true, ticks:{ callback:v => money(v) } } } } }); } catch (e) {}
+  const years = [...new Set([...Object.keys(XM.years).map(Number), ...S.tx.filter(t => catUsed(t) === XM_CAT).map(t => +t.date.slice(0, 4))])].sort((a, b) => b - a);
+  $('xoHistHead').innerHTML = `<tr><th>Christmas</th>${XM.people.map(p => `<th class="n">${esc(p.name)}</th>`).join('')}<th class="n">All lists</th><th class="n">Budget</th><th class="n">Recorded</th></tr>`;
+  $('xoHist').innerHTML = years.map(yy => { const t = xmTotals(yy); return `<tr><td>${yy}</td>${XM.people.map(p => `<td class="n">${(t.by[p.id] || {}).total ? m2(t.by[p.id].total) + `<br><span class="note">age ${xmAge(p, yy)}</span>` : ''}</td>`).join('')}<td class="n">${m2(t.all.total)}</td><td class="n">${t.budget ? m2(t.budget) : ''}</td><td class="n">${m2(t.recorded)}</td></tr>`; }).join('') || '<tr><td class="muted" colspan="9">Nothing yet.</td></tr>';
+}
+function xmPeople(){
+  const y = XM.year;
+  $('xpBody').innerHTML = XM.people.map(p => `<tr data-xp="${esc(p.id)}"><td><input class="t" data-pf="name" value="${esc(p.name)}" maxlength="40" aria-label="Name"></td><td class="n"><input class="t" data-pf="born" type="number" min="1900" max="2100" value="${p.born || ''}" style="width:90px" aria-label="Birth year"></td><td class="n">${xmAge(p, y)}</td>`
+    + `<td><label class="check"><input type="checkbox" data-pf="on"${p.on !== false ? ' checked' : ''}> Show</label></td><td>${Object.values(XM.years).some(Y => Y.items.some(it => it.pid === p.id)) ? '<span class="note">Has gifts</span>' : '<button class="btn sec small" type="button" data-xpdel>Remove</button>'}</td></tr>`).join('');
+}
+document.querySelectorAll('nav.xtabs button').forEach(b => b.addEventListener('click', () => { XM.sub = b.dataset.xt; xmSave(); renderXmas(); }));
+$('xmYear').addEventListener('change', () => { XM.year = +$('xmYear').value; renderXmas(); });
+$('xmLists').addEventListener('change', e => {
+  const box = e.target.closest('.xm-list'); if (!box) return; const pid = box.dataset.pid, Y = xmY(XM.year);
+  if (e.target.classList.contains('xm-target')){ (Y.targets ||= {})[pid] = Math.max(0, +e.target.value || 0); xmSave(); xmLists(); return; }
+  const tr = e.target.closest('tr[data-xi]'); if (!tr || !e.target.dataset.f) return;
+  const it = Y.items.find(x => x.id === tr.dataset.xi); if (!it) return; const f = e.target.dataset.f;
+  it[f] = f === 'cost' ? Math.max(0, Math.round((+e.target.value || 0) * 100) / 100) : f === 'qty' ? Math.max(1, Math.round(+e.target.value || 1)) : e.target.value.trim();
+  if (f === 'status' && it.status !== 'Idea' && !it.boughtOn) it.boughtOn = todayISO();
+  xmSave(); xmLists();
+});
+$('xmLists').addEventListener('click', e => {
+  const box = e.target.closest('.xm-list'); if (!box) return; const pid = box.dataset.pid, Y = xmY(XM.year);
+  if (e.target.closest('[data-xadd]')){ const tr = e.target.closest('tr'), g = n => tr.querySelector(`[data-n="${n}"]`).value.trim();
+    if (!g('item')){ toast('Type the gift first'); tr.querySelector('[data-n="item"]').focus(); return; }
+    Y.items.push({ id:uid(), pid, item:g('item'), where:g('where'), link:g('link'), cost:Math.max(0, Math.round((+g('cost') || 0) * 100) / 100), qty:Math.max(1, Math.round(+g('qty') || 1)), status:g('status') || 'Idea', notes:g('notes'), added:todayISO() });
+    xmSave(); xmLists(); const nb = $('xmLists').querySelector(`.xm-list[data-pid="${CSS.escape(pid)}"] [data-n="item"]`); if (nb) nb.focus(); return; }
+  if (e.target.closest('[data-xdel]')){ const id = e.target.closest('tr').dataset.xi, it = Y.items.find(x => x.id === id); if (!confirm(`Remove ${it ? it.item : 'this gift'}?`)) return; Y.items = Y.items.filter(x => x.id !== id); xmSave(); xmLists(); }
+});
+$('xmLists').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.closest('tr.xm-new')){ e.preventDefault(); e.target.closest('tr').querySelector('[data-xadd]').click(); } });
+$('xpBody').addEventListener('change', e => { const tr = e.target.closest('tr[data-xp]'), p = tr && XM.people.find(x => x.id === tr.dataset.xp); if (!p) return; const f = e.target.dataset.pf;
+  if (f === 'name'){ const v = e.target.value.trim(); if (v) p.name = v; } else if (f === 'born') p.born = +e.target.value || ''; else if (f === 'on') p.on = e.target.checked; xmSave(); xmPeople(); });
+$('xpBody').addEventListener('click', e => { if (!e.target.closest('[data-xpdel]')) return; const id = e.target.closest('tr').dataset.xp; if (!confirm('Remove this person?')) return; XM.people = XM.people.filter(p => p.id !== id); xmSave(); xmPeople(); });
+$('xpAdd').addEventListener('click', () => { const n = $('xpName').value.trim(); if (!n){ toast('Type a name'); return; } XM.people.push({ id:uid(), name:n, born:+$('xpBorn').value || '', on:true }); $('xpName').value = ''; $('xpBorn').value = ''; xmSave(); xmPeople(); toast(`Added ${n}`); });
+window.__xm = { XM, xmTotals, renderXmas, fuelEvery8 };
 /* ---------- Data: import ---------- */
 function serialToISO(v){
   if (v == null || v === '') return '';
