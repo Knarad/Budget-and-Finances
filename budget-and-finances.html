@@ -346,7 +346,7 @@ body.show-desc .desc-page{margin-bottom:16px}
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 53</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 54</span>
   <div class="sp"></div>
   <div class="zoom" role="group" aria-label="Page size"><button id="zOut" type="button" aria-label="Make everything smaller" title="Make everything smaller">&minus;</button><button id="zVal" type="button" title="Back to normal size">100%</button><button id="zIn" type="button" aria-label="Make everything bigger" title="Make everything bigger">+</button></div>
   <button id="signOutBtn" type="button">Sign out</button>
@@ -371,7 +371,8 @@ body.show-desc .desc-page{margin-bottom:16px}
       <form id="txForm" autocomplete="off">
         <label class="f" for="fDate">Date</label><input class="t" id="fDate" type="date" required>
         <label class="f" for="fAcct">Account: paid from or deposited to</label><select class="t" id="fAcct" required></select>
-        <label class="f" for="fAmt">Amount</label><input class="t" id="fAmt" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" required>
+        <label class="f" for="fAmt">Amount</label><input class="t" id="fAmt" type="number" inputmode="decimal" step="0.01" placeholder="0.00" required>
+        <label class="check" style="margin-top:6px"><input type="checkbox" id="fRet"> This is a return or refund</label><div class="hint" id="retHint" hidden>Choose the category of the original purchase. The amount comes off that category, and the account is credited: a card owes less, and checking goes up.</div>
         <label class="f" for="fDesc">What was it?</label><input class="t" id="fDesc" list="descList" required placeholder="For example: Walmart - Groceries"><datalist id="descList"></datalist>
         <label class="f" for="fCat">Category</label><select class="t" id="fCat"></select><div class="hint" id="catHint"></div>
         <div id="toRow" class="hidden"><label class="f" for="fTo">Moved to which account?</label><select class="t" id="fTo"></select><div class="hint" id="toHint"></div></div>
@@ -1220,6 +1221,7 @@ body.show-desc .desc-page{margin-bottom:16px}
   </div>
   <label class="f" for="eNotes">Notes</label><input class="t" id="eNotes">
   <label class="check"><input type="checkbox" id="ePosted"> Posted at the bank</label>
+  <label class="check"><input type="checkbox" id="eRet"> Return or refund: the amount comes off the category and credits the account</label>
   <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
     <button class="btn" id="eSave" type="button">Save changes</button>
     <button class="btn danger" id="eDel" type="button">Delete</button>
@@ -1282,8 +1284,12 @@ function ruleMatch(desc, needTo){
 const catUsed = t => t.cat || ((ruleMatch(t.desc, false) || {}).cat || '');
 const toUsed = t => t.to || (typeOf(catUsed(t)) === 'Transfer' ? ((ruleMatch(t.desc, true) || {}).to || '') : '');
 const isHistory = t => { const a = acctInfo(t.account); return !!(a && a.openDate && t.date <= a.openDate); };
+/* Version 54: a return or refund is stored as a negative amount in the original spending or savings category, so every total subtracts it
+   and the balance math credits the account (a card owes less, checking goes up). */
+const isReturn = t => t.amount < 0 && ['Expense', 'Savings'].includes(typeOf(catUsed(t)));
 function status(t){
-  if (!t.date || !t.account || !(t.amount > 0 || (typeOf(catUsed(t)) === 'Adjustment' && t.amount))) return 'Missing date, account, or amount';
+  if (!t.date || !t.account || !t.amount || isNaN(t.amount)) return 'Missing date, account, or amount';
+  if (t.amount < 0 && typeOf(catUsed(t)) !== 'Adjustment' && !isReturn(t)) return catUsed(t) ? 'A return goes in the spending category of the original purchase. For other money coming in, use a positive amount and an income category.' : 'Pick a category';
   if (!acctInfo(t.account)) return 'Account is not on the list';
   const c = catUsed(t); if (!c) return 'Pick a category';
   if (!catInfo(c)) return 'Category is not on the list';
@@ -1440,7 +1446,7 @@ function suggest(){
 }
 function resetForm(keep){
   const d = $('fDate').value, a = $('fAcct').value;
-  $('txForm').reset(); catTouched = toTouched = false; $('fErr').textContent = '';
+  $('txForm').reset(); catTouched = toTouched = false; $('fErr').textContent = ''; $('retHint').hidden = true;
   $('fDate').value = keep ? d : todayISO(); if (keep) $('fAcct').value = a; suggest();
 }
 $('fDesc').addEventListener('input', suggest);
@@ -1478,11 +1484,12 @@ $('fTo').addEventListener('change', () => { toTouched = true; });
 $('clearBtn').addEventListener('click', () => resetForm(false));
 $('txForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const row = { id:uid(), date:$('fDate').value, account:$('fAcct').value, amount:+$('fAmt').value, desc:$('fDesc').value.trim(), cat:$('fCat').value === '__new' ? '' : $('fCat').value, to:$('fTo').disabled ? '' : $('fTo').value, notes:$('fNotes').value.trim(), created:Date.now(), seq:Date.now() };
+  const amt0 = +$('fAmt').value, ret = $('fRet').checked || amt0 < 0;   // Version 54: a return is saved as a negative amount
+  const row = { id:uid(), date:$('fDate').value, account:$('fAcct').value, amount:ret ? -Math.abs(amt0) : amt0, desc:$('fDesc').value.trim(), cat:$('fCat').value === '__new' ? '' : $('fCat').value, to:$('fTo').disabled ? '' : $('fTo').value, notes:$('fNotes').value.trim(), created:Date.now(), seq:Date.now() };
   const st = status(row);
   if (st !== 'OK' && st !== 'History'){ $('fErr').textContent = st; return; }
   $('saveBtn').disabled = true;
-  try { await addTx(row); toast('Saved'); resetForm(true); renderAll(); $('fAmt').focus(); }
+  try { await addTx(row); toast(ret ? 'Return saved: the category and the account are credited' : 'Saved'); resetForm(true); renderAll(); $('fAmt').focus(); }
   catch (err){ $('fErr').textContent = 'Could not save: ' + (err.code || err.message); }
   finally { $('saveBtn').disabled = false; }
 });
@@ -1537,16 +1544,17 @@ $('tuSave').addEventListener('click', async () => {
 let editing = null;
 function openEdit(id){
   const t = S.tx.find(x => x.id === id); if (!t) return; editing = t; $('mTitle').textContent = 'Edit transaction'; $('eDel').classList.remove('hidden');
-  $('eDate').value = t.date; $('eAcct').value = t.account; $('eAmt').value = t.amount; $('eDesc').value = t.desc; $('eCat').value = t.cat; $('eTo').value = t.to; $('eNotes').value = t.notes; $('ePosted').checked = isPosted(t); $('eErr').textContent = '';
+  $('eDate').value = t.date; $('eAcct').value = t.account; $('eAmt').value = isReturn(t) ? -t.amount : t.amount; $('eRet').checked = isReturn(t); $('eDesc').value = t.desc; $('eCat').value = t.cat; $('eTo').value = t.to; $('eNotes').value = t.notes; $('ePosted').checked = isPosted(t); $('eErr').textContent = '';
   show('modal'); $('eDesc').focus();
 }
 document.addEventListener('click', e => { if (e.target.closest('input.post')) return; const tr = e.target.closest('tr.click'); if (tr && tr.dataset.id) openEdit(tr.dataset.id); });
 $('eCancel').addEventListener('click', () => { show('modal', false); editing = null; });
 $('eSave').addEventListener('click', async () => {
-  if (!editing){ const row = { id:uid(), date:$('eDate').value, account:$('eAcct').value, amount:+$('eAmt').value, desc:$('eDesc').value.trim(), cat:$('eCat').value === '__new' ? '' : $('eCat').value, to:$('eTo').value, notes:$('eNotes').value.trim(), created:Date.now(), seq:Date.now(), posted:$('ePosted').checked };
+  const eSigned = () => { const v = +$('eAmt').value, c = $('eCat').value === '__new' ? (editing ? editing.cat : '') : $('eCat').value; return typeOf(c) === 'Adjustment' ? v : ($('eRet').checked || v < 0 ? -Math.abs(v) : v); };   // Version 54
+  if (!editing){ const row = { id:uid(), date:$('eDate').value, account:$('eAcct').value, amount:eSigned(), desc:$('eDesc').value.trim(), cat:$('eCat').value === '__new' ? '' : $('eCat').value, to:$('eTo').value, notes:$('eNotes').value.trim(), created:Date.now(), seq:Date.now(), posted:$('ePosted').checked };
     const st = status(row); if (st !== 'OK'){ $('eErr').textContent = st; return; }
     try { await addTx(row); show('modal', false); $('eDel').classList.remove('hidden'); $('mTitle').textContent = 'Edit transaction'; toast('Added'); renderAll(); } catch (err){ $('eErr').textContent = 'Could not save: ' + (err.code || err.message); } return; }
-  const n = Object.assign({}, editing, { date:$('eDate').value, account:$('eAcct').value, amount:+$('eAmt').value, desc:$('eDesc').value.trim(), cat:$('eCat').value === '__new' ? editing.cat : $('eCat').value, to:$('eTo').value, notes:$('eNotes').value.trim(), posted:$('ePosted').checked });
+  const n = Object.assign({}, editing, { date:$('eDate').value, account:$('eAcct').value, amount:eSigned(), desc:$('eDesc').value.trim(), cat:$('eCat').value === '__new' ? editing.cat : $('eCat').value, to:$('eTo').value, notes:$('eNotes').value.trim(), posted:$('ePosted').checked });
   const st = status(n); if (st !== 'OK' && st !== 'History'){ $('eErr').textContent = st; return; }
   try { await updateTx(editing, n); show('modal', false); toast('Updated'); renderAll(); } catch (err){ $('eErr').textContent = 'Could not save: ' + (err.code || err.message); }
 });
@@ -1576,7 +1584,7 @@ document.querySelectorAll('nav.subtabs button').forEach(b => b.addEventListener(
 const rcOrderKey = t => t.rcpt ? 'r' + t.rcpt : (/^Itemized receipt:/.test(t.notes || '') && t.created ? 'c' + t.created : '');
 function rcOrderTotals(){ const g = {}; for (const t of S.tx){ const k = rcOrderKey(t); if (!k) continue; const o = (g[k] ||= { total:0, n:0 }); o.total = Math.round((o.total + t.amount) * 100) / 100; o.n++; } return g; }
 const rcAmtCell = (t, g) => { const o = g[rcOrderKey(t)]; return money(t.amount, true) + (o ? `<br><span class="note itm-of">of ${money(o.total, true)} order</span>` : ''); };
-const rcDescCell = (t, g) => { const o = g[rcOrderKey(t)]; return esc(t.desc) + (o ? ` <span class="tag itm" title="Saved by Itemize a receipt; ${o.n} row${o.n === 1 ? '' : 's'} make up this ${money(o.total, true)} order">Itemized${o.n > 1 ? ` · ${o.n} rows` : ''}</span>` : ''); };
+const rcDescCell = (t, g) => { const o = g[rcOrderKey(t)]; return esc(t.desc) + (isReturn(t) ? ' <span class="tag ok">Return</span>' : '') + (o ? ` <span class="tag itm" title="Saved by Itemize a receipt; ${o.n} row${o.n === 1 ? '' : 's'} make up this ${money(o.total, true)} order">Itemized${o.n > 1 ? ` · ${o.n} rows` : ''}</span>` : ''); };
 render.list = () => {
   if (!$('lMonth').dataset.init){ const first = $('lMonth').options[1]; if (first) $('lMonth').value = first.value; $('lMonth').dataset.init = 1; }
   const m = $('lMonth').value, a = $('lAcct').value, c = $('lCat').value, q = $('lSearch').value.toLowerCase();
@@ -1588,6 +1596,20 @@ render.list = () => {
   $('listBody').innerHTML = shown.map(t => { const s = status(t); return `<tr class="click${s==='History'?' hist':''}${isPosted(t)?'':' pending'}" data-id="${t.id}"><td>${postBox(t)}</td><td>${fmtDate(t.date)}</td><td>${esc(t.account)}</td><td class="n">${rcAmtCell(t, rcG)}</td><td class="wrap">${rcDescCell(t, rcG)}</td><td>${esc(catUsed(t))}</td><td>${esc(toUsed(t))}</td><td>${statusTag(s)}</td></tr>`; }).join('') + (rows.length > 600 ? '<tr><td colspan="8" class="muted">Showing the latest 600. Narrow the filters to see more.</td></tr>' : '');
 };
 ['lMonth','lAcct','lCat'].forEach(id => $(id).addEventListener('change', render.list)); $('lSearch').addEventListener('input', render.list);
+
+/* Version 54: Return or refund on the Add a transaction form. Checking it shows a short hint and, when the category is an income or transfer one (a rule may
+   have filed "Amazon Return" as a refund), finds the category of the original purchase from the description without return, refund, or credit. */
+$('fRet').addEventListener('change', () => {
+  $('retHint').hidden = !$('fRet').checked; if (!$('fRet').checked) return;
+  const ty = typeOf($('fCat').value);
+  if (ty !== 'Expense' && ty !== 'Savings'){
+    const base = $('fDesc').value.replace(/\b(returns?|returned|refunds?|refunded|credits?|reversal)\b/gi, ' ').replace(/[\s-]+$/, '').trim(), r = base ? ruleMatch(base, false) : null;
+    const ok = r && ['Expense', 'Savings'].includes(typeOf(r.cat));
+    $('fCat').value = ok ? r.cat : ''; catTouched = true; suggest();
+    $('catHint').textContent = ok ? `Category of the original purchase, from the rule ${r.key}` : 'Pick the category of the original purchase';
+  }
+});
+$('fDesc').addEventListener('input', () => { if ($('fRet').checked && !['Expense', 'Savings'].includes(typeOf($('fCat').value))) $('fRet').dispatchEvent(new Event('change')); });
 
 /* ================= Itemize a receipt (Version 19) ================= */
 /* The draft lives in this browser (localStorage) until it is saved, so a half-entered receipt survives a refresh. */
@@ -4330,7 +4352,7 @@ function axExport(period){
   sect('Learned', () => { const ln = S.config.learned || []; L.push(`## What Claude has learned so far`, ``, ...(ln.length ? ln.map(x => `${fmtDate(x.on)}: ${cell(x.text)}`) : ['Nothing yet.']), ``); });   // Version 47
   sect('Transactions', () => {
     L.push(`## Transactions`, ``, `| Date | Account | Amount | Direction | Description | Category | Group | Pending | Entered | Notes | Receipt order | ID |`, `|---|---|---:|---|---|---|---|---|---|---|---|---|`);
-    for (const t of rows){ const c = catUsed(t), ty = typeOf(c), dir = ty === 'Income' ? 'In' : ty === 'Transfer' ? 'Transfer' + (toUsed(t) ? ' to ' + toUsed(t) : '') : ty === 'Adjustment' ? 'Adjustment' : 'Out';
+    for (const t of rows){ const c = catUsed(t), ty = typeOf(c), dir = isReturn(t) ? 'Return' : ty === 'Income' ? 'In' : ty === 'Transfer' ? 'Transfer' + (toUsed(t) ? ' to ' + toUsed(t) : '') : ty === 'Adjustment' ? 'Adjustment' : 'Out';
       L.push(`| ${fmtDate(t.date)} | ${cell(t.account)} | ${m2(t.amount)} | ${dir} | ${cell(t.desc)} | ${cell(c || 'Uncategorized')} | ${cell(groupOf(c))} | ${isPosted(t) ? '' : 'Pending'} | ${t.created ? fmtDate(upISO(new Date(t.created))) : ''} | ${cell((t.notes || '').slice(0, 160))} | ${cell(rcOrderKey(t))} | ${cell(t.id)} |`); }
     L.push(``);
   });
