@@ -310,6 +310,19 @@ body.show-desc .desc-page{margin-bottom:16px}
 .xm-head h3{margin:0}.xm-tot{font-weight:700}
 #upBody tr.uppaid td{background:color-mix(in srgb, var(--in) 12%, transparent)}
 #upBody tr.uppaid td:first-child{border-left:3px solid var(--in)}
+.collapsible{position:relative}
+.collapsible > .coll-head{cursor:pointer;padding-right:44px;user-select:none}
+.coll-btn{position:absolute;top:12px;right:12px;width:32px;height:32px;border:1px solid var(--rule, #d9dcd6);border-radius:8px;background:transparent;color:inherit;cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center}
+.hsec > .coll-btn{top:-4px;right:0}
+.coll-btn::before{content:"";width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform .15s}
+.collapsible.collapsed .coll-btn::before{transform:translateX(-2px) rotate(-45deg)}
+.collapsible.collapsed > :not(.coll-head):not(.coll-btn){display:none !important}
+.collapsible.collapsed > .coll-head{margin-bottom:0 !important;margin-top:0 !important;min-height:32px;display:flex;align-items:center}
+.panel.collapsible.collapsed{padding-top:12px;padding-bottom:12px}
+.collapsible.collapsed > .coll-btn{top:50%;transform:translateY(-50%)}
+.hsec.collapsible.collapsed{margin-bottom:12px}
+.collapsible.collapsed .coll-sum{display:inline}
+.coll-sum{display:none;font-size:.8em;font-weight:500;opacity:.75;margin-left:8px}
 </style>
 </head>
 <body>
@@ -346,7 +359,7 @@ body.show-desc .desc-page{margin-bottom:16px}
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 54</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 56</span>
   <div class="sp"></div>
   <div class="zoom" role="group" aria-label="Page size"><button id="zOut" type="button" aria-label="Make everything smaller" title="Make everything smaller">&minus;</button><button id="zVal" type="button" title="Back to normal size">100%</button><button id="zIn" type="button" aria-label="Make everything bigger" title="Make everything bigger">+</button></div>
   <button id="signOutBtn" type="button">Sign out</button>
@@ -366,7 +379,7 @@ body.show-desc .desc-page{margin-bottom:16px}
   <p class="greet" id="hGreet"></p>
   <div class="home">
    <div class="home-left">
-    <div class="panel entry">
+    <div class="panel entry" id="hcEntry">
       <h2 id="formTitle">Add a transaction</h2>
       <form id="txForm" autocomplete="off">
         <label class="f" for="fDate">Date</label><input class="t" id="fDate" type="date" required>
@@ -419,18 +432,18 @@ body.show-desc .desc-page{margin-bottom:16px}
     </details>
    </div>
     <div class="overview">
-      <div class="panel">
+      <div class="panel" id="hcMonth">
         <h2 id="hMonthTitle">This month</h2>
         <p class="lead" id="hSentence"></p>
         <div class="meter"><div class="mlab"><span>Bills paid</span><span id="hBillsTxt"></span></div><div class="bar big"><i id="hBillsBar"></i></div></div>
         <div class="meter"><div class="mlab"><span>Everyday spending</span><span id="hDayTxt"></span></div><div class="bar big"><i id="hDayBar"></i><em id="hPace" title="Where spending would be if it were spread evenly through the month"></em></div></div>
       </div>
       <div class="grid g4" id="hTiles"></div>
-      <div class="panel"><h3 style="margin-top:0">Account balances</h3>
+      <div class="panel" id="hcBal"><h3 style="margin-top:0">Account balances</h3>
         <div class="tbl"><table><thead><tr><th>Account</th><th class="n">Balance</th><th class="n">Posted at the bank</th><th></th></tr></thead><tbody id="hAcct"></tbody></table></div>
         <p class="note" style="margin:8px 0 0">Balance includes pending entries. Posted at the bank leaves pending entries out, so it should match the balance shown in the bank or card app. If it does not, use True up to enter the bank's balance; the difference is saved as a Balance Adjustment row on that account. On a card, a positive adjustment means more is owed.</p></div>
-      <div class="panel"><h3 style="margin-top:0">Where this month's money went</h3><div class="chart small"><canvas id="cHomeCats"></canvas></div></div>
-      <div class="panel"><h3 style="margin-top:0">Money in and out, last six months</h3><div class="chart small"><canvas id="cHomeTrend"></canvas></div></div>
+      <div class="panel" id="hcWhere"><h3 style="margin-top:0">Where this month's money went</h3><div class="chart small"><canvas id="cHomeCats"></canvas></div></div>
+      <div class="panel" id="hcInOut"><h3 style="margin-top:0">Money in and out, last six months</h3><div class="chart small"><canvas id="cHomeTrend"></canvas></div></div>
     </div>
   </div>
   <div class="panel" id="upPanel">
@@ -455,10 +468,10 @@ body.show-desc .desc-page{margin-bottom:16px}
       <div id="upLater"></div>
     </details>
   </div>
-  <h3>Last two weeks, plus anything still pending</h3>
+  <div class="hsec" id="hcRecent"><h3>Last two weeks, plus anything still pending</h3>
   <p class="note" id="recentSum" style="margin:-4px 0 10px"></p>
   <div class="tbl"><table><thead><tr><th>Posted</th><th>Date</th><th>Account</th><th class="n">Amount</th><th>Description</th><th>Category</th></tr></thead><tbody id="recentBody"></tbody></table></div>
-  <p class="note">Every transaction dated in the last 14 days. New entries start as pending; check the box once the transaction has posted at the bank. Select anywhere else on a row to fix or delete it.</p>
+  <p class="note">Every transaction dated in the last 14 days. New entries start as pending; check the box once the transaction has posted at the bank. Select anywhere else on a row to fix or delete it.</p></div>
 </section>
 
 <section id="view-details" class="hidden">
@@ -1726,13 +1739,13 @@ $('rxSave').addEventListener('click', async () => {
 /* ================= Coming up in the next 30 days (Version 23; 14 days until Version 31) ================= */
 const UP_DAYS = 30;
 /* Stored in households/main/meta/upcoming: items (things added by hand) and overrides (amount for one specific payment). */
-const UP = { items:[], overrides:{}, dates:{}, ignore:[], dismissed:[] };   // dismissed (Version 50): missed reminders marked Not needed   // ignore (Version 45): patterns Karl marked Not recurring   // dates: a moved date for one specific payment (Version 25)
-async function upLoad(){ try { const d = await getDoc(ref('meta','upcoming')); if (d.exists()){ const v = d.data(); UP.items = v.items || []; UP.dates = v.dates || {}; UP.overrides = v.overrides || {}; UP.ignore = v.ignore || []; UP.dismissed = v.dismissed || []; } } catch (e) {} }
+const UP = { items:[], overrides:{}, dates:{}, ignore:[], dismissed:[], pday:{} };   // pday (Version 55): the weekday Karl set for a learned weekly or two-week pattern   // dismissed (Version 50): missed reminders marked Not needed   // ignore (Version 45): patterns Karl marked Not recurring   // dates: a moved date for one specific payment (Version 25)
+async function upLoad(){ try { const d = await getDoc(ref('meta','upcoming')); if (d.exists()){ const v = d.data(); UP.items = v.items || []; UP.dates = v.dates || {}; UP.overrides = v.overrides || {}; UP.ignore = v.ignore || []; UP.dismissed = v.dismissed || []; UP.pday = v.pday || {}; } } catch (e) {} }
 async function upSave(){
   const keep = addMonths(ymKey(new Date().getFullYear(), new Date().getMonth() + 1), -2);
   for (const k of Object.keys(UP.overrides)){ const m = /(\d{4}-\d{2})(-\d{2})?$/.exec(k); if (m && m[1] < keep) delete UP.overrides[k]; }
   for (const k of Object.keys(UP.dates)){ if (UP.dates[k] < keep + '-01') delete UP.dates[k]; }   // old one-time amounts expire
-  try { await setDoc(ref('meta','upcoming'), JSON.parse(JSON.stringify({ items:UP.items, overrides:UP.overrides, dates:UP.dates, ignore:UP.ignore, dismissed:(UP.dismissed || []).slice(-200), updated:Date.now() }))); } catch (err) { toast('Could not save: ' + (err.code || err.message)); }
+  try { await setDoc(ref('meta','upcoming'), JSON.parse(JSON.stringify({ items:UP.items, overrides:UP.overrides, dates:UP.dates, ignore:UP.ignore, dismissed:(UP.dismissed || []).slice(-200), pday:UP.pday || {}, updated:Date.now() }))); } catch (err) { toast('Could not save: ' + (err.code || err.message)); }
 }
 const upISO = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 const upDay = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); };
@@ -1741,8 +1754,7 @@ function upList(days, opt){
   const withIncome = !opt || opt.income !== false, withPaid = !!(opt && opt.paid);   // withPaid (Version 53): include bills already paid, for Coming up on Home
   const now = new Date(), t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()), end = new Date(t0.getTime() + days * 864e5), grace = new Date(t0.getTime() - 7 * 864e5);
   const out = [], ign = new Set((UP.ignore || []).map(x => x.id));
-  const handWeekly = new Set(UP.items.filter(it => it.repeat).flatMap(it => [it.cat, normDesc(it.desc)].filter(Boolean)));
-  const reps = detectRepeats().filter(r => !ign.has('k|' + r.kind + '|' + r.key) && !((r.kind === 'weekly' || r.kind === 'biweekly') && (handWeekly.has(r.cat) || handWeekly.has(r.key))));
+  const reps = detectRepeats().filter(r => !ign.has('k|' + r.kind + '|' + r.key) && !upHandCovers(r));
   const repKeys = new Set(reps.filter(r => r.kind !== 'monthly' && r.kind !== 'yearly').flatMap(r => r.keys));   // a weekly, two-week, or three-month pattern replaces the monthly guess
   for (const b of detectBills()) if (!repKeys.has(normDesc(b.desc)) && !ign.has('r|' + normDesc(b.desc) + '|' + b.cat)) for (let mo = 0; mo < 3; mo++){   // Version 31: every monthly occurrence inside the window, now that it can reach into the next month
     const nx = new Date(b.next.getFullYear(), b.next.getMonth() + mo, Math.min(b.day, 28));
@@ -1788,7 +1800,7 @@ function upList(days, opt){
     const ok = (td, d) => td >= dn(d) - early && td <= dn(d) + late;
     return recent.filter(t => { const td = dn(upDay(t.date)); if (!ok(td, r.date) && !(r.orig && ok(td, r.orig))) return false;
       return normDesc(t.desc) === normDesc(r.desc) || (r.cat && catUsed(t) === r.cat && t.account === r.account && rpNear(t.amount, r.amt, 0.05))
-        || (r.repeat && r.source === 'Added by you' && r.cat && catUsed(t) === r.cat); })   // Version 52: a repeating item you added is done by any purchase in its category near the date
+        || (r.repeat && r.source === 'Added by you' && ((r.cat && catUsed(t) === r.cat) || upShare(t.desc, r.desc))); })   // Version 52: a repeating item you added is done by any purchase in its category near the date
       .sort((a, b) => Math.abs(dn(upDay(a.date)) - dn(r.date)) - Math.abs(dn(upDay(b.date)) - dn(r.date)))[0]; };
   const dis = new Set(UP.dismissed || []), keep = [], missed = [];
   for (const r of out){
@@ -1933,10 +1945,12 @@ function detectRepeats(){
       const longest = prior.length ? Math.max(span(cur), ...prior.map(span)) : 0, cap = prior.length ? local(dayN(cur[0]) + longest + 3) : null;
       let best = 0, bestN = -1;                                              // the usual weekday, so one early or late charge does not shift the pattern
       for (let r = 0; r < step; r++){ let n = 0; for (const d of days.slice(-8)){ const x = ((dayN(d) - r) % step + step) % step, off = Math.min(x, step - x); n += off === 0 ? 10 : (off <= 1 ? 2 : 0); } if (n > bestN){ best = r; bestN = n; } }
+      const setWd = (UP.pday || {})['k|' + kind + '|' + k];   // Version 55: a usual day Karl chose wins over the one learned from bank dates
+      if (setWd !== undefined && setWd !== null){ let pick = best, dist = 99; for (let r = 0; r < step; r++){ if (local(r).getDay() !== +setWd) continue; const dd = Math.min(((r - best) % step + step) % step, ((best - r) % step + step) % step); if (dd < dist){ dist = dd; pick = r; } } best = pick; }
       const next = []; let d = dayN(t0) - 7; while (((d - best) % step + step) % step) d++;   // from a week back (Version 50), so a missed one can be flagged
       for (; d <= dayN(horizon); d += step){ const dt = local(d); if (cap && dt > cap) break; const w = kind === 'weekly' ? 3 : 5; if (!near(tx, dt, w)) next.push(dt); else if (dt >= t0) paidAt.push([k, dt, nearT(tx, dt, w)]); }
       const wd = local(best).toLocaleDateString('en-US', { weekday:'long' });
-      out.push(Object.assign(base, { kind, next, seasonal:!!prior.length, pattern:(kind === 'weekly' ? 'Every ' + wd : 'Every other ' + wd) + (prior.length ? `, in season (seasons have run up to ${Math.round(longest / 7) + 1} weeks)` : '') }));
+      out.push(Object.assign(base, { kind, next, seasonal:!!prior.length, daySet:setWd !== undefined && setWd !== null, pattern:(kind === 'weekly' ? 'Every ' + wd : 'Every other ' + wd) + (setWd !== undefined && setWd !== null ? ' (day you set)' : '') + (prior.length ? `, in season (seasons have run up to ${Math.round(longest / 7) + 1} weeks)` : '') }));
       base.keys.forEach(x => used.add(x)); break;
     }
   }
@@ -1990,6 +2004,11 @@ function detectRepeats(){
   for (const r of out){ r.recent = r.next.filter(d => d < t0); r.next = r.next.filter(d => d >= t0); r.paid = paidAt.filter(p => p[0] === r.key).map(p => ({ d:p[1], t:p[2] })); }   // Version 50: recent = expected in the last 7 days
   return out;
 }
+/* Version 55 (Karl, October 26, 2026): Walmart trip, added by hand on Fridays, and the learned Monday Walmart - Groceries are the same thing. A repeating item
+   added by hand covers a learned weekly or two-week pattern with the same category, the same description, or a shared merchant word. */
+const upShare = (a, b) => { const x = new Set(rpTokens(a).filter(w => !w.startsWith('='))); return rpTokens(b).some(w => x.has(w)); };
+function upHandCovers(r){ if (r.kind !== 'weekly' && r.kind !== 'biweekly') return false;
+  return UP.items.some(it => it.repeat && ((it.cat && it.cat === r.cat) || normDesc(it.desc) === r.key || upShare(it.desc, r.desc))); }
 const upSeries = key => key.split('|').slice(0, 3).join('|');   // one id per pattern, used by Not recurring
 const upFmt = d => d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
 /* Version 42: the running balance of Checking - PNC Shared down the Coming up list. It starts from that account's balance through today (pending entries included,
@@ -2038,6 +2057,11 @@ document.addEventListener('change', e => {
   if (dt){ const key = dt.dataset.upd, v = dt.value;
     if (key.startsWith('m|')){ const it = UP.items.find(x => 'm|' + x.id === key); if (!it || !v){ renderUpcoming(); return; } it.date = v; }
     else { const r = upList(60).find(x => x.key === key) || upList(UP_DAYS).find(x => x.key === key);
+      const sid = upSeries(key), wk = /^k\|(weekly|biweekly)\|/.test(key);
+      if (wk && v && r && upDay(v).getDay() !== r.orig.getDay()){   // Version 55
+        const wdN = upDay(v).toLocaleDateString('en-US', { weekday:'long' });
+        if (confirm(`Expect ${r.desc} on ${wdN}s from now on? Choose Cancel to move only this one.`)){ UP.pday = Object.assign({}, UP.pday, { [sid]:upDay(v).getDay() }); delete UP.dates[key];
+          upSave(); renderUpcoming(); if (!$('tab-bills').classList.contains('hidden')) render.bills(); toast(`${r.desc} is now expected every ${wdN}`); return; } }
       if (!v || (r && upISO(r.orig) === v)) delete UP.dates[key]; else UP.dates[key] = v; }
     upSave(); renderUpcoming(); if (!$('tab-bills').classList.contains('hidden')) render.bills();
     const far = v && upDay(v) > new Date(Date.now() + UP_DAYS * 864e5); toast(far ? `Date saved; it leaves this list until it is ${UP_DAYS} days away` : 'Date saved'); return; }
@@ -2382,7 +2406,7 @@ render.bills = () => {
   const d = x => x.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
   $('blNext').innerHTML = soon.length ? soon.map(b => `<tr class="soon"><td>${d(b.date)}</td><td class="wrap">${esc(b.desc)}</td><td class="n">${money(b.amt,true)}${b.changed ? `<br><span class="note">typical ${money(b.typical,true)}</span>` : ''}</td><td>${esc(b.cat)}</td><td>${b.last ? fmtDate(b.last) : 'Added on Home'}</td></tr>`).join('') : '<tr><td colspan="5" class="muted">Nothing expected in the next 14 days.</td></tr>';
   $('blAll').innerHTML = bills.map(b => `<tr><td class="n">${b.day}</td><td class="wrap">${esc(b.desc)}</td><td class="n">${money(b.amt,true)}</td><td class="n">${Math.abs(b.max - b.min) < 1 ? '' : money(b.min) + ' to ' + money(b.max)}</td><td>${esc(b.cat)}</td><td>${b.seen} of the last 6 months</td><td>${fmtDate(b.last)}</td></tr>`).join('') + `<tr class="tot"><td></td><td>Typical monthly total</td><td class="n">${money(total,true)}</td><td></td><td></td><td></td><td></td></tr>`
-    + (() => { const ign = new Set((UP.ignore || []).map(x => x.id)), reps = detectRepeats().filter(r => !ign.has('k|' + r.kind + '|' + r.key)); if (!reps.length) return '';   // Version 45
+    + (() => { const ign = new Set((UP.ignore || []).map(x => x.id)), reps = detectRepeats().filter(r => !ign.has('k|' + r.kind + '|' + r.key) && !upHandCovers(r)); if (!reps.length) return '';   // Version 45
       return `<tr class="tot"><td></td><td colspan="6">Other repeating payments, not in the monthly total</td></tr>` + reps.map(r => `<tr><td class="wrap">${esc(r.pattern)}</td><td class="wrap">${esc(r.desc)}</td><td class="n">${money(r.amt,true)}</td><td></td><td>${esc(r.cat)}</td><td>${r.next.length ? 'Next ' + fmtDate(upISO(r.next[0])) : 'None expected soon'}</td><td>${fmtDate(r.last)}</td></tr>`).join(''); })();
 };
 
@@ -2763,6 +2787,7 @@ async function migrations(){
   try { await decorRename(); } catch (e) { console.error('Category rename', e); }
   try { await christmasRename(); } catch (e) { console.error('Christmas rename', e); }   // Version 51
   try { await fuelEvery8(); } catch (e) { console.error('Fuel every 8 days', e); }   // Version 52
+  try { await v55days(); } catch (e) { console.error('Version 55 days', e); }
   /* Version 41, one time: the weekly Friday Walmart trip in Coming up (part5l). */
   try { await walmartWeekly(); } catch (e) { console.error('Walmart weekly', e); }
   setTimeout(showNotices, 900);
@@ -4973,6 +4998,49 @@ $('xpBody').addEventListener('change', e => { const tr = e.target.closest('tr[da
 $('xpBody').addEventListener('click', e => { if (!e.target.closest('[data-xpdel]')) return; const id = e.target.closest('tr').dataset.xp; if (!confirm('Remove this person?')) return; XM.people = XM.people.filter(p => p.id !== id); xmSave(); xmPeople(); });
 $('xpAdd').addEventListener('click', () => { const n = $('xpName').value.trim(); if (!n){ toast('Type a name'); return; } XM.people.push({ id:uid(), name:n, born:+$('xpBorn').value || '', on:true }); $('xpName').value = ''; $('xpBorn').value = ''; xmSave(); xmPeople(); toast(`Added ${n}`); });
 window.__xm = { XM, xmTotals, renderXmas, fuelEvery8 };
+
+/* ================= Version 55, one time at sign-in (flag v55days; Karl, October 26, 2026) =================
+   Horse Lessons are expected on Mondays (the bank posts them Tuesday, which is what the pattern had learned), and the $200 Walmart trip on Fridays covers
+   Walmart - Groceries; if no repeating Walmart item exists, one is added for Fridays. */
+async function v55days(){
+  const F = S.config.flags = S.config.flags || {};
+  if (F.v55days || !S.tx.length) return;
+  const said = [];
+  for (const r of detectRepeats()) if ((r.kind === 'weekly' || r.kind === 'biweekly') && r.cat === 'Horse Lessons'){ UP.pday = Object.assign({}, UP.pday, { ['k|' + r.kind + '|' + r.key]:1 }); said.push(`${esc(r.desc)} is now expected on Mondays`); }
+  if (!UP.items.some(it => it.repeat && /walmart/i.test(it.desc))){
+    const d = new Date(); d.setDate(d.getDate() + ((5 - d.getDay() + 7) % 7));
+    UP.items.push({ id:uid(), type:'bill', date:upISO(d), desc:'Walmart trip', amount:200, cat:S.config.categories.some(c => c.name === 'Walmart') ? 'Walmart' : 'Groceries', account:UP_SHARED, repeat:'weekly', created:Date.now(), from:'Version 55' });
+    said.push('a $200 Walmart trip is now expected every Friday');
+  } else said.push('Walmart - Groceries now counts toward your $200 Friday Walmart trip instead of showing as its own Monday row');
+  try { await upSave(); } catch (e) { return; }
+  F.v55days = { on:todayISO() }; try { await setDoc(ref('meta','config'), S.config); } catch (e) {}
+  NOTICES.push(`<b>Coming up: ${said.join('; ')}.</b> To change the usual day of any weekly pattern, change one of its dates to the new day and choose OK.`);
+}
+
+/* ================= Version 56: collapsible Home sections (Karl, October 30, 2026) =================
+   Tap a section's title (or the arrow at its right) to fold it to just the title; tap again to open it. Each section's state is kept on this device
+   (localStorage homeCollapsed). The arrow button sits beside the title rather than inside it, because some titles are rewritten as the app runs. */
+const HC_IDS = ['hcEntry', 'hcMonth', 'hcBal', 'hcWhere', 'hcInOut', 'upPanel', 'hcRecent'];
+let HC_STATE = {}; try { HC_STATE = JSON.parse(localStorage.getItem('homeCollapsed') || '{}') || {}; } catch (e) { HC_STATE = {}; }
+function hcSet(id, closed){
+  const box = $(id); if (!box) return; box.classList.toggle('collapsed', closed);
+  const b = box.querySelector(':scope > .coll-btn'); if (b){ b.setAttribute('aria-expanded', closed ? 'false' : 'true'); b.setAttribute('aria-label', (closed ? 'Open ' : 'Collapse ') + (box.querySelector(':scope > .coll-head') || {}).textContent); }
+  HC_STATE[id] = closed; try { localStorage.setItem('homeCollapsed', JSON.stringify(HC_STATE)); } catch (e) {}
+  if (!closed) setTimeout(() => window.dispatchEvent(new Event('resize')), 30);   // charts redraw at their full size once shown again
+}
+function hcInstall(){
+  for (const id of HC_IDS){
+    const box = $(id); if (!box || box.classList.contains('collapsible')) continue;
+    const head = [...box.children].find(el => /^H[23]$/.test(el.tagName)); if (!head) continue;
+    box.classList.add('collapsible'); head.classList.add('coll-head');
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'coll-btn'; box.appendChild(b);
+    b.addEventListener('click', e => { e.stopPropagation(); hcSet(id, !box.classList.contains('collapsed')); });
+    head.addEventListener('click', e => { if (e.target.closest('a, button, input, select')) return; hcSet(id, !box.classList.contains('collapsed')); });
+    hcSet(id, !!HC_STATE[id]);
+  }
+}
+hcInstall();
+window.__hc = { hcSet, HC_IDS };
 /* ---------- Data: import ---------- */
 function serialToISO(v){
   if (v == null || v === '') return '';
