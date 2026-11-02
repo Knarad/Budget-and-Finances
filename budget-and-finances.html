@@ -359,7 +359,7 @@ body.show-desc .desc-page{margin-bottom:16px}
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 56</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 57</span>
   <div class="sp"></div>
   <div class="zoom" role="group" aria-label="Page size"><button id="zOut" type="button" aria-label="Make everything smaller" title="Make everything smaller">&minus;</button><button id="zVal" type="button" title="Back to normal size">100%</button><button id="zIn" type="button" aria-label="Make everything bigger" title="Make everything bigger">+</button></div>
   <button id="signOutBtn" type="button">Sign out</button>
@@ -432,6 +432,9 @@ body.show-desc .desc-page{margin-bottom:16px}
     </details>
    </div>
     <div class="overview">
+      <div class="panel" id="hcBal"><h3 style="margin-top:0">Account balances</h3>
+        <div class="tbl"><table><thead><tr><th>Account</th><th class="n">Balance</th><th class="n">Posted at the bank</th><th></th></tr></thead><tbody id="hAcct"></tbody></table></div>
+        <p class="note" style="margin:8px 0 0">Balance includes pending entries. Posted at the bank leaves pending entries out, so it should match the balance shown in the bank or card app. If it does not, use True up to enter the bank's balance; the difference is saved as a Balance Adjustment row on that account. On a card, a positive adjustment means more is owed.</p></div>
       <div class="panel" id="hcMonth">
         <h2 id="hMonthTitle">This month</h2>
         <p class="lead" id="hSentence"></p>
@@ -439,9 +442,6 @@ body.show-desc .desc-page{margin-bottom:16px}
         <div class="meter"><div class="mlab"><span>Everyday spending</span><span id="hDayTxt"></span></div><div class="bar big"><i id="hDayBar"></i><em id="hPace" title="Where spending would be if it were spread evenly through the month"></em></div></div>
       </div>
       <div class="grid g4" id="hTiles"></div>
-      <div class="panel" id="hcBal"><h3 style="margin-top:0">Account balances</h3>
-        <div class="tbl"><table><thead><tr><th>Account</th><th class="n">Balance</th><th class="n">Posted at the bank</th><th></th></tr></thead><tbody id="hAcct"></tbody></table></div>
-        <p class="note" style="margin:8px 0 0">Balance includes pending entries. Posted at the bank leaves pending entries out, so it should match the balance shown in the bank or card app. If it does not, use True up to enter the bank's balance; the difference is saved as a Balance Adjustment row on that account. On a card, a positive adjustment means more is owed.</p></div>
       <div class="panel" id="hcWhere"><h3 style="margin-top:0">Where this month's money went</h3><div class="chart small"><canvas id="cHomeCats"></canvas></div></div>
       <div class="panel" id="hcInOut"><h3 style="margin-top:0">Money in and out, last six months</h3><div class="chart small"><canvas id="cHomeTrend"></canvas></div></div>
     </div>
@@ -464,7 +464,7 @@ body.show-desc .desc-page{margin-bottom:16px}
         <div><button class="btn" type="button" id="upAdd">Add</button></div>
       </div>
       <div class="err" id="upErr" role="alert"></div>
-      <p class="note">It shows in the list above once it is 30 days away, and stays a week past its date until you remove it.</p>
+      <p class="note">It shows in the list above once it is 30 days away. When its payment is recorded it turns green as paid, and if its date passes with nothing recorded it moves to the reminder above the list.</p>
       <div id="upLater"></div>
     </details>
   </div>
