@@ -323,6 +323,9 @@ body.show-desc .desc-page{margin-bottom:16px}
 .hsec.collapsible.collapsed{margin-bottom:12px}
 .collapsible.collapsed .coll-sum{display:inline}
 .coll-sum{display:none;font-size:.8em;font-weight:500;opacity:.75;margin-left:8px}
+#upBody input.up-desc{min-width:150px;width:100%;padding:5px 7px;font:inherit}
+#upBody input.up-desc.set{border-color:var(--ledger);font-weight:600}
+#upBody tr.upinc input.up-desc{color:var(--in);font-weight:600}
 </style>
 </head>
 <body>
@@ -359,7 +362,7 @@ body.show-desc .desc-page{margin-bottom:16px}
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 57</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 59</span>
   <div class="sp"></div>
   <div class="zoom" role="group" aria-label="Page size"><button id="zOut" type="button" aria-label="Make everything smaller" title="Make everything smaller">&minus;</button><button id="zVal" type="button" title="Back to normal size">100%</button><button id="zIn" type="button" aria-label="Make everything bigger" title="Make everything bigger">+</button></div>
   <button id="signOutBtn" type="button">Sign out</button>
@@ -809,6 +812,16 @@ body.show-desc .desc-page{margin-bottom:16px}
     <div class="row"><div><label class="f" for="ctNew">Name</label><input class="t" id="ctNew" maxlength="60" placeholder="For example: Christmas Gifts"></div><div><label class="f" for="ctNewType">Type</label><select class="t" id="ctNewType"></select></div><div><label class="f" for="ctNewGrp">Budget group</label><select class="t" id="ctNewGrp"></select></div></div>
     <div style="margin-top:8px"><button class="btn" id="ctAdd" type="button">Add category</button></div>
     <div class="err" id="ctErr" role="alert"></div>
+  </div>
+  <div class="panel" id="ctMovePanel">
+    <h3 style="margin-top:0">Move transactions to another category</h3>
+    <p class="note" style="margin-top:-4px">Moves every transaction in one category to another, or only the ones whose description contains some text or that fall between two dates. Both categories stay; to remove one afterward, use Remove in the list below. Undo puts the last move back.</p>
+    <div class="row"><div><label class="f" for="mvFrom">From</label><select class="t" id="mvFrom"></select></div><div><label class="f" for="mvTo">To</label><select class="t" id="mvTo"></select></div></div>
+    <div class="row"><div class="grow"><label class="f" for="mvText">Description contains (optional)</label><input class="t" id="mvText" placeholder="For example: CVS"></div><div><label class="f" for="mvStart">From date (optional)</label><input class="t" id="mvStart" type="date"></div><div><label class="f" for="mvEnd">To date (optional)</label><input class="t" id="mvEnd" type="date"></div></div>
+    <label class="check" style="margin-top:6px"><input type="checkbox" id="mvRules"> Also point the rules that file into the From category at the To category</label>
+    <p class="note" id="mvPreview" style="margin:8px 0"></p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="mvGo" type="button">Move these transactions</button><button class="btn sec" id="mvUndo" type="button" hidden>Undo the last move</button></div>
+    <div class="err" id="mvErr" role="alert"></div>
   </div>
   <div class="row" style="margin:6px 0"><div><label class="f" for="ctFind">Find</label><input class="t" id="ctFind" placeholder="Type part of a name"></div><div><label class="f" for="ctYear">Year for the totals</label><select class="t" id="ctYear"></select></div><div></div></div>
   <div class="tbl"><table><thead><tr><th>Category</th><th>Type</th><th>Budget group</th><th class="n">Transactions</th><th class="n">Actual this year</th><th class="n">Budget this year</th><th class="n">Rules</th><th></th></tr></thead><tbody id="ctBody"></tbody></table></div>
@@ -1349,7 +1362,7 @@ async function loadAll(){
   await retLoad();
   await upLoad(); await cuLoadLog();   // cuLoadLog: Version 47
   await vehLoad();
-  await mkLoad(); await xmLoad();   // xmLoad: Version 52
+  await mkLoad(); await xmLoad(); await mvLoad();   // xmLoad: Version 52; mvLoad: Version 59
 }
 function rebuildTx(){
   S.tx = [];
@@ -1739,13 +1752,13 @@ $('rxSave').addEventListener('click', async () => {
 /* ================= Coming up in the next 30 days (Version 23; 14 days until Version 31) ================= */
 const UP_DAYS = 30;
 /* Stored in households/main/meta/upcoming: items (things added by hand) and overrides (amount for one specific payment). */
-const UP = { items:[], overrides:{}, dates:{}, ignore:[], dismissed:[], pday:{} };   // pday (Version 55): the weekday Karl set for a learned weekly or two-week pattern   // dismissed (Version 50): missed reminders marked Not needed   // ignore (Version 45): patterns Karl marked Not recurring   // dates: a moved date for one specific payment (Version 25)
-async function upLoad(){ try { const d = await getDoc(ref('meta','upcoming')); if (d.exists()){ const v = d.data(); UP.items = v.items || []; UP.dates = v.dates || {}; UP.overrides = v.overrides || {}; UP.ignore = v.ignore || []; UP.dismissed = v.dismissed || []; UP.pday = v.pday || {}; } } catch (e) {} }
+const UP = { items:[], overrides:{}, dates:{}, ignore:[], dismissed:[], pday:{}, names:{}, snames:{} };   // names and snames (Version 58): an item name changed for one date, or for every date of a pattern   // pday (Version 55): the weekday Karl set for a learned weekly or two-week pattern   // dismissed (Version 50): missed reminders marked Not needed   // ignore (Version 45): patterns Karl marked Not recurring   // dates: a moved date for one specific payment (Version 25)
+async function upLoad(){ try { const d = await getDoc(ref('meta','upcoming')); if (d.exists()){ const v = d.data(); UP.items = v.items || []; UP.dates = v.dates || {}; UP.overrides = v.overrides || {}; UP.ignore = v.ignore || []; UP.dismissed = v.dismissed || []; UP.pday = v.pday || {}; UP.names = v.names || {}; UP.snames = v.snames || {}; } } catch (e) {} }
 async function upSave(){
   const keep = addMonths(ymKey(new Date().getFullYear(), new Date().getMonth() + 1), -2);
   for (const k of Object.keys(UP.overrides)){ const m = /(\d{4}-\d{2})(-\d{2})?$/.exec(k); if (m && m[1] < keep) delete UP.overrides[k]; }
   for (const k of Object.keys(UP.dates)){ if (UP.dates[k] < keep + '-01') delete UP.dates[k]; }   // old one-time amounts expire
-  try { await setDoc(ref('meta','upcoming'), JSON.parse(JSON.stringify({ items:UP.items, overrides:UP.overrides, dates:UP.dates, ignore:UP.ignore, dismissed:(UP.dismissed || []).slice(-200), pday:UP.pday || {}, updated:Date.now() }))); } catch (err) { toast('Could not save: ' + (err.code || err.message)); }
+  try { await setDoc(ref('meta','upcoming'), JSON.parse(JSON.stringify({ items:UP.items, overrides:UP.overrides, dates:UP.dates, ignore:UP.ignore, dismissed:(UP.dismissed || []).slice(-200), pday:UP.pday || {}, names:UP.names || {}, snames:UP.snames || {}, updated:Date.now() }))); } catch (err) { toast('Could not save: ' + (err.code || err.message)); }
 }
 const upISO = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 const upDay = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); };
@@ -1809,6 +1822,7 @@ function upList(days, opt){
     if (pt){ if (withPaid && r.date >= t0) keep.push(Object.assign(r, { paidTx:pt, amt:pt.amount })); continue; }
     if (r.date >= t0 || (r.inc && r.alt)) keep.push(r); else if (!r.inc && !dis.has(r.key)) missed.push(r);
   }
+  for (const r of [...keep, ...missed]){ const sid = upNameSid(r), n = (UP.names || {})[r.key] || (UP.snames || {})[sid]; r.sid = sid; r.label = n || r.desc; r.named = !!n; }   // Version 58
   UP_MISSED = missed.sort((a, b) => a.date - b.date);
   return keep.sort((a, b) => a.date - b.date || a.desc.localeCompare(b.desc));
 }
@@ -1866,11 +1880,19 @@ function detectIncome(){
   const now = new Date(), t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()), since = upISO(new Date(t0.getTime() - 180 * 864e5)), groups = {};
   for (const t of S.tx){ const c = catUsed(t); if (typeOf(c) !== 'Income' || t.date < since || t.amount <= 0) continue;
     const key = INCOME_RULES[c] ? 'rule|' + c : normDesc(t.desc) + '|' + c;
-    (groups[key] ||= { desc:t.desc, cat:c, tx:[] }).tx.push(t); if (INCOME_RULES[c]) groups[key].desc = t.desc; }
+    (groups[key] ||= { desc:t.desc, cat:c, tx:[], isRule:!!INCOME_RULES[c] }).tx.push(t); if (INCOME_RULES[c]) groups[key].desc = t.desc; }
+  /* Version 58 (Karl, November 3, 2026): a $0.70 Amazon author payment filed as Paycheck K became the name and amount of every projected paycheck. A pay
+     schedule now follows the category's main source, the description seen most often in the last 180 days; other deposits in that category are judged on
+     their own, like any other income, and only projected once they show a pattern. */
+  for (const [gk, g] of Object.entries(groups)){ if (!gk.startsWith('rule|')) continue;
+    const cnt = {}; for (const t of g.tx){ const k = normDesc(t.desc); cnt[k] = (cnt[k] || 0) + t.amount; }   // Version 59: the main source is the one that brought in the most money, not the most deposits
+    const main = Object.entries(cnt).sort((a, b) => b[1] - a[1] || 0)[0][0];
+    for (const t of g.tx.filter(t => normDesc(t.desc) !== main)) (groups[normDesc(t.desc) + '|' + g.cat] ||= { desc:t.desc, cat:g.cat, tx:[] }).tx.push(t);
+    g.tx = g.tx.filter(t => normDesc(t.desc) === main).sort((a, b) => a.date < b.date ? -1 : 1); g.desc = g.tx[g.tx.length - 1].desc; }
   const out = [], dayN = d => Math.round(d.getTime() / 864e5);
   for (const g of Object.values(groups)){
     const tx = g.tx.sort((a, b) => a.date < b.date ? -1 : 1), dates = tx.map(t => upDay(t.date));
-    const rule = INCOME_RULES[g.cat];
+    const rule = g.isRule ? INCOME_RULES[g.cat] : null;   // Version 58: only the main source follows the pay schedule
     if (rule){ const last = dates[dates.length - 1], recent = tx.filter(t => upDay(t.date) >= new Date(t0.getTime() - 60 * 864e5)).map(t => t.amount);
       out.push({ desc:g.desc, cat:g.cat, acct:tx[tx.length - 1].account, kind:rule.kind, rule:rule.label, alt:!!rule.alt, amt:median(recent.length >= 2 ? recent.slice(-3) : tx.slice(-3).map(t => t.amount)), last:tx[tx.length - 1].date, next:ruleDates(rule, dates, t0, last).sort((a, b) => a - b) });
       continue; }
@@ -2009,6 +2031,7 @@ function detectRepeats(){
 const upShare = (a, b) => { const x = new Set(rpTokens(a).filter(w => !w.startsWith('='))); return rpTokens(b).some(w => x.has(w)); };
 function upHandCovers(r){ if (r.kind !== 'weekly' && r.kind !== 'biweekly') return false;
   return UP.items.some(it => it.repeat && ((it.cat && it.cat === r.cat) || normDesc(it.desc) === r.key || upShare(it.desc, r.desc))); }
+const upNameSid = r => r.key.startsWith('m|') || r.key.startsWith('w|') ? 'h|' + (r.id || r.key.split('|')[1]) : upSeries(r.key);   // Version 58: one id per pattern for renaming
 const upSeries = key => key.split('|').slice(0, 3).join('|');   // one id per pattern, used by Not recurring
 const upFmt = d => d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
 /* Version 42: the running balance of Checking - PNC Shared down the Coming up list. It starts from that account's balance through today (pending entries included,
@@ -2025,7 +2048,7 @@ function upSharedStart(){
   return Math.round(b * 100) / 100;
 }
 /* Version 53: a bill already recorded, shown in green until its date; it is not in the totals or the running balance */
-const upPaidRow = r => `<tr class="uppaid"><td class="up-dcell"><span class="up-wd">${r.date.toLocaleDateString('en-US', { weekday:'short' })}</span>${fmtDate(upISO(r.date))}</td><td class="wrap">${esc(r.desc)}${r.account ? `<br><span class="note">${esc(r.account)}</span>` : ''}</td>`
+const upPaidRow = r => `<tr class="uppaid"><td class="up-dcell"><span class="up-wd">${r.date.toLocaleDateString('en-US', { weekday:'short' })}</span>${fmtDate(upISO(r.date))}</td><td class="wrap">${esc(r.label || r.desc)}${r.account ? `<br><span class="note">${esc(r.account)}</span>` : ''}</td>`
   + `<td class="n">${r.typical !== null && r.typical !== undefined ? money(r.typical, true) : ''}</td><td class="n"><b>${money(r.amt, true)}</b></td><td class="n up-bal"><span class="note">Paid, not counted</span></td><td>${esc(r.cat)}</td>`
   + `<td><span class="tag ok">Paid${r.paidTx && r.paidTx.date ? ' ' + fmtDate(r.paidTx.date) : ''}</span>${r.pattern ? `<br><span class="note">${esc(r.pattern)}</span>` : ''}</td><td></td></tr>`;
 function renderUpcoming(){
@@ -2035,8 +2058,8 @@ function renderUpcoming(){
   const nPaid = rows.filter(r => r.paidTx).length, bills = rows.filter(r => !r.inc && !r.paidTx), incs = rows.filter(r => r.inc), total = bills.reduce((s, r) => s + r.amt, 0), itot = incs.reduce((s, r) => s + r.amt, 0), nChanged = rows.filter(r => r.changed).length, nMoved = rows.filter(r => r.moved).length, nAdded = rows.filter(r => r.source !== 'Recurring').length;
   $('upSum').innerHTML = rows.length ? `<b class="pos">${money(itot, true)}</b> of income expected (${incs.length} deposit${incs.length === 1 ? '' : 's'}) and <b>${money(total, true)}</b> of bills (${bills.length} payment${bills.length === 1 ? '' : 's'}), for a net of <b class="${itot - total >= 0 ? 'pos' : 'neg'}">${itot - total >= 0 ? '+' : '−'}${money(Math.abs(itot - total), true)}</b>${nAdded ? `; ${nAdded} added by you` : ''}${nChanged ? `; ${nChanged} with an amount you changed` : ''}${nMoved ? `; ${nMoved} with a date you changed` : ''}${nPaid ? `; ${nPaid} already paid, shown in green and not counted` : ''}.` + shSent : `Nothing expected in the next ${UP_DAYS} days.` + shSent;
   let ms = $('upMissed'); if (!ms){ ms = document.createElement('div'); ms.id = 'upMissed'; $('upInsert').parentElement.insertAdjacentElement('afterend', ms); }
-  ms.innerHTML = UP_MISSED.length ? `<div class="up-missed"><b>Expected in the last week but not recorded yet.</b> Record it if it was paid, or mark it Not needed.` + UP_MISSED.map(r => `<div class="up-miss-row"><span>${upFmt(r.date)} · ${esc(r.desc)} · ${money(r.amt, true)}${r.account ? ' · ' + esc(r.account) : ''}</span> <span><button class="btn small" type="button" data-uprec="${esc(r.key)}">Record it</button> <button class="btn sec small" type="button" data-updis="${esc(r.key)}">Not needed</button></span></div>`).join('') + `</div>` : '';
-  $('upBody').innerHTML = rows.length ? (start === null ? '' : `<tr class="tot"><td></td><td>${UP_SHARED} today</td><td></td><td></td><td class="n">${money(start, true)}</td><td></td><td></td><td></td></tr>`) + rows.map((r, ri) => r.paidTx ? upPaidRow(r) : `<tr class="${r.inc ? 'upinc' : ''}${r.changed || r.moved ? ' upchg' : ''}${r.source !== 'Recurring' ? ' upadd' : ''}${r.past ? ' uppast' : ''}"><td class="up-dcell"><span class="up-wd">${r.date.toLocaleDateString('en-US', { weekday:'short' })}${r.alt ? ' or ' + new Date(r.date.getTime() + 864e5).toLocaleDateString('en-US', { weekday:'short' }) : ''}</span><input class="up-date${r.moved ? ' set' : ''}" type="date" data-upd="${esc(r.key)}" value="${upISO(r.date)}" aria-label="Date for ${esc(r.desc)}">${r.moved ? `<br><span class="note">Moved from ${upFmt(r.orig)}</span>` : ''}${r.past ? '<br><span class="tag bad">Date passed</span>' : ''}</td><td class="wrap">${esc(r.desc)}${r.account ? `<br><span class="note">${esc(r.account)}</span>` : ''}</td><td class="n">${r.typical !== null ? (r.inc ? '+' : '') + money(r.typical, true) : ''}</td><td class="n"><input class="up-amt${r.changed ? ' set' : ''}" type="number" step="0.01" inputmode="decimal" data-upk="${esc(r.key)}" value="${r.changed || r.source !== 'Recurring' ? (+r.amt).toFixed(2) : ''}" placeholder="${(+r.amt).toFixed(2)}" aria-label="Amount for ${esc(r.desc)}"></td><td class="n up-bal">${start === null ? '' : bal[ri].counts ? `<b class="${bal[ri].v < 0 ? 'neg' : ''}">${money(bal[ri].v, true)}</b>` : `<span class="muted">${money(bal[ri].v, true)}</span><br><span class="note">${r.account ? 'Other account, not counted' : 'No account chosen, not counted'}</span>`}</td><td>${r.inc ? '<span class="tag ok">Income</span> ' : ''}${esc(r.cat)}</td><td>${r.source === 'Recurring' ? (r.inc ? (r.rule ? esc(r.rule) + '<br>' : '') + 'Last received ' : (r.pattern ? esc(r.pattern) + '<br>' : '') + 'Last paid ') + fmtDate(r.last) : '<span class="tag">Added by you</span>' + (r.repeat ? `<br><span class="note">${upRepLabel(r)}</span>` : '')}</td><td>${r.repeat && (r.changed || r.moved) ? `<button class="btn sec small" type="button" data-upreset="${esc(r.key)}">Undo changes</button> ` : ''}${r.id ? `<button class="btn sec small" type="button" data-updel="${r.id}"${r.repeat ? ' data-upweekly="1"' : ''}>${r.repeat ? 'Stop repeating' : 'Remove'}</button>` : (r.changed || r.moved ? `<button class="btn sec small" type="button" data-upreset="${esc(r.key)}">Undo changes</button> ` : '') + (!r.inc && r.source === 'Recurring' ? `<button class="btn sec small" type="button" data-upnot="${esc(upSeries(r.key))}" data-updesc="${esc(r.desc)}">Not recurring</button>` : '')}</td></tr>`).join('')
+  ms.innerHTML = UP_MISSED.length ? `<div class="up-missed"><b>Expected in the last week but not recorded yet.</b> Record it if it was paid, or mark it Not needed.` + UP_MISSED.map(r => `<div class="up-miss-row"><span>${upFmt(r.date)} · ${esc(r.label || r.desc)} · ${money(r.amt, true)}${r.account ? ' · ' + esc(r.account) : ''}</span> <span><button class="btn small" type="button" data-uprec="${esc(r.key)}">Record it</button> <button class="btn sec small" type="button" data-updis="${esc(r.key)}">Not needed</button></span></div>`).join('') + `</div>` : '';
+  $('upBody').innerHTML = rows.length ? (start === null ? '' : `<tr class="tot"><td></td><td>${UP_SHARED} today</td><td></td><td></td><td class="n">${money(start, true)}</td><td></td><td></td><td></td></tr>`) + rows.map((r, ri) => r.paidTx ? upPaidRow(r) : `<tr class="${r.inc ? 'upinc' : ''}${r.changed || r.moved ? ' upchg' : ''}${r.source !== 'Recurring' ? ' upadd' : ''}${r.past ? ' uppast' : ''}"><td class="up-dcell"><span class="up-wd">${r.date.toLocaleDateString('en-US', { weekday:'short' })}${r.alt ? ' or ' + new Date(r.date.getTime() + 864e5).toLocaleDateString('en-US', { weekday:'short' }) : ''}</span><input class="up-date${r.moved ? ' set' : ''}" type="date" data-upd="${esc(r.key)}" value="${upISO(r.date)}" aria-label="Date for ${esc(r.desc)}">${r.moved ? `<br><span class="note">Moved from ${upFmt(r.orig)}</span>` : ''}${r.past ? '<br><span class="tag bad">Date passed</span>' : ''}</td><td class="wrap"><input class="t up-desc${r.named ? ' set' : ''}" data-upn="${esc(r.key)}" value="${esc(r.label || r.desc)}" aria-label="Item" title="Change the name of this item">${r.account ? `<br><span class="note">${esc(r.account)}</span>` : ''}</td><td class="n">${r.typical !== null ? (r.inc ? '+' : '') + money(r.typical, true) : ''}</td><td class="n"><input class="up-amt${r.changed ? ' set' : ''}" type="number" step="0.01" inputmode="decimal" data-upk="${esc(r.key)}" value="${r.changed || r.source !== 'Recurring' ? (+r.amt).toFixed(2) : ''}" placeholder="${(+r.amt).toFixed(2)}" aria-label="Amount for ${esc(r.desc)}"></td><td class="n up-bal">${start === null ? '' : bal[ri].counts ? `<b class="${bal[ri].v < 0 ? 'neg' : ''}">${money(bal[ri].v, true)}</b>` : `<span class="muted">${money(bal[ri].v, true)}</span><br><span class="note">${r.account ? 'Other account, not counted' : 'No account chosen, not counted'}</span>`}</td><td>${r.inc ? '<span class="tag ok">Income</span> ' : ''}${esc(r.cat)}</td><td>${r.source === 'Recurring' ? (r.inc ? (r.rule ? esc(r.rule) + '<br>' : '') + 'Last received ' : (r.pattern ? esc(r.pattern) + '<br>' : '') + 'Last paid ') + fmtDate(r.last) : '<span class="tag">Added by you</span>' + (r.repeat ? `<br><span class="note">${upRepLabel(r)}</span>` : '')}</td><td>${r.repeat && (r.changed || r.moved || (UP.names || {})[r.key]) ? `<button class="btn sec small" type="button" data-upreset="${esc(r.key)}">Undo changes</button> ` : ''}${r.id ? `<button class="btn sec small" type="button" data-updel="${r.id}"${r.repeat ? ' data-upweekly="1"' : ''}>${r.repeat ? 'Stop repeating' : 'Remove'}</button>` : (r.changed || r.moved || (UP.names || {})[r.key] ? `<button class="btn sec small" type="button" data-upreset="${esc(r.key)}">Undo changes</button> ` : '') + (!r.inc && r.source === 'Recurring' ? `<button class="btn sec small" type="button" data-upnot="${esc(upSeries(r.key))}" data-updesc="${esc(r.desc)}">Not recurring</button>` : '')}</td></tr>`).join('')
     + `<tr class="tot"><td></td><td>Income expected</td><td></td><td class="n pos">+${money(itot, true)}</td><td></td><td></td><td></td><td></td></tr>`
     + `<tr class="tot"><td></td><td>Bills expected</td><td></td><td class="n">${money(total, true)}</td><td></td><td></td><td></td><td></td></tr>`
     + `<tr class="tot"><td></td><td>Net for the ${UP_DAYS} days</td><td></td><td class="n ${itot - total >= 0 ? 'pos' : 'neg'}">${itot - total >= 0 ? '+' : '−'}${money(Math.abs(itot - total), true)}</td><td></td><td></td><td></td><td></td></tr>`
@@ -2065,6 +2088,16 @@ document.addEventListener('change', e => {
       if (!v || (r && upISO(r.orig) === v)) delete UP.dates[key]; else UP.dates[key] = v; }
     upSave(); renderUpcoming(); if (!$('tab-bills').classList.contains('hidden')) render.bills();
     const far = v && upDay(v) > new Date(Date.now() + UP_DAYS * 864e5); toast(far ? `Date saved; it leaves this list until it is ${UP_DAYS} days away` : 'Date saved'); return; }
+  const nm = e.target.closest('[data-upn]');
+  if (nm){   // Version 58: rename one date, or every date of a repeating item
+    const key = nm.dataset.upn, v = nm.value.trim().replace(/\s+/g, ' '), r = [...upList(60, { paid:true }), ...UP_MISSED].find(x => x.key === key); if (!r) return;
+    const old = r.label || r.desc, it = r.id ? UP.items.find(x => x.id === r.id) : null;
+    if (v === old) return;
+    if (!v){ delete UP.names[key]; delete UP.snames[r.sid]; upSave(); renderUpcoming(); toast('Name set back'); return; }
+    if (key.startsWith('m|') && it){ it.desc = v; }
+    else if (confirm(`Call every ${old} “${v}” from now on? Choose Cancel to rename only this one.`)){ if (it){ it.desc = v; delete UP.snames[r.sid]; } else UP.snames = Object.assign({}, UP.snames, { [r.sid]:v }); Object.keys(UP.names).forEach(k => { if (k.startsWith(r.sid + '|')) delete UP.names[k]; }); }
+    else UP.names = Object.assign({}, UP.names, { [key]:v });
+    upSave(); renderUpcoming(); if (!$('tab-bills').classList.contains('hidden')) render.bills(); toast('Name saved'); return; }
   const i = e.target.closest('[data-upk]'); if (!i) return;
   const key = i.dataset.upk, v = i.value.trim();
   if (key.startsWith('m|')){ const it = UP.items.find(x => 'm|' + x.id === key); if (!it) return; if (v === '' || isNaN(+v)){ toast('Enter an amount'); renderUpcoming(); return; } it.amount = Math.round(+v * 100) / 100; }
@@ -2076,7 +2109,7 @@ document.addEventListener('change', e => {
 document.addEventListener('click', e => {
   const del = e.target.closest('[data-updel]'), rs = e.target.closest('[data-upreset]');
   if (del){ if (!confirm(del.dataset.upweekly ? 'Stop this repeating item? Every future date of it leaves the list.' : 'Remove this item?')) return; UP.items = UP.items.filter(x => x.id !== del.dataset.updel); upSave(); renderUpcoming(); }
-  if (rs){ delete UP.overrides[rs.dataset.upreset]; delete UP.dates[rs.dataset.upreset]; upSave(); renderUpcoming(); }
+  if (rs){ delete UP.overrides[rs.dataset.upreset]; delete UP.dates[rs.dataset.upreset]; delete UP.names[rs.dataset.upreset]; upSave(); renderUpcoming(); }
   const rc = e.target.closest('[data-uprec]'), ds = e.target.closest('[data-updis]');
   if (ds){ UP.dismissed = [...new Set([...(UP.dismissed || []), ds.dataset.updis])]; upSave(); renderUpcoming(); toast('Removed from the reminder'); }
   if (rc){ const r = UP_MISSED.find(x => x.key === rc.dataset.uprec); if (r){   // fill the Add a transaction form on Home with what was expected
@@ -2788,6 +2821,7 @@ async function migrations(){
   try { await christmasRename(); } catch (e) { console.error('Christmas rename', e); }   // Version 51
   try { await fuelEvery8(); } catch (e) { console.error('Fuel every 8 days', e); }   // Version 52
   try { await v55days(); } catch (e) { console.error('Version 55 days', e); }
+  try { await v59fix(); } catch (e) { console.error('Version 59 fixes', e); }
   /* Version 41, one time: the weekly Friday Walmart trip in Coming up (part5l). */
   try { await walmartWeekly(); } catch (e) { console.error('Walmart weekly', e); }
   setTimeout(showNotices, 900);
@@ -4410,7 +4444,7 @@ function axExport(period){
   sect('Coming up', () => {
     const up = upList(UP_DAYS);
     L.push(`## Coming up, next ${UP_DAYS} days`, ``, `| Date | Item | Amount | Category | Account | Source | Pattern ID |`, `|---|---|---:|---|---|---|---|`);
-    for (const r of up) L.push(`| ${fmtDate(upISO(r.date))} | ${cell(r.desc)} | ${r.inc ? '+' : ''}${m2(r.amt)}${r.changed ? ' (changed from ' + m2(r.typical) + ')' : ''} | ${cell(r.cat)} | ${cell(r.account)} | ${r.source === 'Recurring' ? (r.inc ? 'Income schedule' : r.pattern || 'Monthly bill') : 'Added by you' + (r.repeat ? ', ' + upRepLabel(r).replace(/^Every/, 'every') : '')}${r.moved ? ', date moved' : ''} | ${r.source === 'Recurring' && !r.inc ? cell(upSeries(r.key)) : ''} |`);
+    for (const r of up) L.push(`| ${fmtDate(upISO(r.date))} | ${cell(r.label || r.desc)} | ${r.inc ? '+' : ''}${m2(r.amt)}${r.changed ? ' (changed from ' + m2(r.typical) + ')' : ''} | ${cell(r.cat)} | ${cell(r.account)} | ${r.source === 'Recurring' ? (r.inc ? 'Income schedule' : r.pattern || 'Monthly bill') : 'Added by you' + (r.repeat ? ', ' + upRepLabel(r).replace(/^Every/, 'every') : '')}${r.moved ? ', date moved' : ''} | ${r.source === 'Recurring' && !r.inc ? cell(upSeries(r.key)) : ''} |`);
     L.push(``);
     const ign = UP.ignore || []; if (ign.length) L.push(`Marked not recurring: ${ign.map(x => `${cell(x.desc)} (${cell(x.id)})`).join('; ')}.`, ``);
     if (UP.items.length) L.push(`Added by hand (all dates): ${UP.items.map(it => `${cell(it.desc)}, ${it.type === 'income' ? '+' : ''}${m2(+it.amount)}, ${it.repeat ? upRepLabel({ repeat:it.repeat, orig:upDay(it.date) }).replace(/^Every/, 'every') + ' from' : 'on'} ${fmtDate(it.date)}`).join('; ')}.`, ``);
@@ -4810,6 +4844,7 @@ function ctUse(name, year){
 }
 const ctSel = (list, v, attrs) => `<select ${attrs || 'class="t"'}>${list.map(x => `<option${x === v ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select>`;
 render.cats = () => {
+  if (typeof mvRender === 'function') setTimeout(mvRender, 0);   // Version 59: the move panel lists the categories too
   const years = [...new Set([...S.tx.map(t => +t.date.slice(0, 4)), ...S.budget.rows.map(r => +r.year), new Date().getFullYear()])].sort((a, b) => b - a);
   const ys = $('ctYear'), keepY = +ys.value || new Date().getFullYear(); ys.innerHTML = years.map(y => `<option${y === keepY ? ' selected' : ''}>${y}</option>`).join('');
   const year = +ys.value, groups = ctGroups(), q = $('ctFind').value.trim().toLowerCase();
@@ -5041,6 +5076,122 @@ function hcInstall(){
 }
 hcInstall();
 window.__hc = { hcSet, HC_IDS };
+
+/* ================= Version 59: move transactions between categories (Karl, November 4, 2026) =================
+   On the Categories tab: every transaction in one category, or only those matching a description text or a date range, moves to another category. The
+   last move is kept in meta/catMoves with each transaction's previous category, so Undo puts it back exactly. */
+const MV = { last:null };
+async function mvLoad(){ try { const d = await getDoc(ref('meta','catMoves')); MV.last = d.exists() ? d.data().last || null : null; } catch (e) {} }
+function mvPick(){
+  const from = $('mvFrom').value, q = $('mvText').value.trim().toLowerCase(), a = $('mvStart').value, z = $('mvEnd').value;
+  return S.tx.filter(t => catUsed(t) === from && (!q || (t.desc || '').toLowerCase().includes(q)) && (!a || t.date >= a) && (!z || t.date <= z));
+}
+async function mvWrite(changes){   // changes: { id: newCat }
+  const batch = writeBatch(db);
+  for (const [k, rows] of Object.entries(S.months)){
+    let hit = false; const next = rows.map(t => { if (!(t.id in changes)) return t; hit = true; return Object.assign({}, t, { cat:changes[t.id] }); });
+    if (hit){ S.months[k] = next; batch.set(ref('months', k), { rows:next }); }
+  }
+  await batch.commit(); rebuildTx();
+}
+function mvRender(){
+  const names = S.config.categories.map(c => c.name).sort((a, b) => a.localeCompare(b)), keepF = $('mvFrom').value, keepT = $('mvTo').value;
+  $('mvFrom').innerHTML = names.map(n => `<option${n === keepF ? ' selected' : ''}>${esc(n)}</option>`).join('');
+  $('mvTo').innerHTML = names.map(n => `<option${n === keepT ? ' selected' : ''}>${esc(n)}</option>`).join('');
+  if (!keepT && names.length > 1) $('mvTo').selectedIndex = 1;
+  mvPreview();
+  $('mvUndo').hidden = !MV.last; if (MV.last) $('mvUndo').textContent = `Undo the last move (${MV.last.n} from ${MV.last.from} to ${MV.last.to})`;
+}
+function mvPreview(){
+  const list = mvPick(), tot = list.reduce((s, t) => s + t.amount, 0), from = $('mvFrom').value, to = $('mvTo').value;
+  $('mvPreview').textContent = from === to ? 'Choose two different categories.' : list.length ? `${list.length} transaction${list.length === 1 ? '' : 's'}, ${money(tot, true)}, from ${fmtDate(list.map(t => t.date).sort()[0])} to ${fmtDate(list.map(t => t.date).sort().pop())}, will move from ${from} to ${to}.` : 'No transactions match.';
+}
+['mvFrom', 'mvTo', 'mvText', 'mvStart', 'mvEnd'].forEach(id => $(id).addEventListener(id === 'mvText' ? 'input' : 'change', mvPreview));
+$('mvGo').addEventListener('click', async () => {
+  const from = $('mvFrom').value, to = $('mvTo').value, list = mvPick(); $('mvErr').textContent = '';
+  if (from === to){ $('mvErr').textContent = 'Choose two different categories.'; return; }
+  if (!list.length){ $('mvErr').textContent = 'No transactions match.'; return; }
+  const ft = typeOf(from), tt = typeOf(to);
+  if (ft !== tt && !confirm(`${from} is ${ft} and ${to} is ${tt}. Moving changes how these count (and the balances if one is a transfer). Move anyway?`)) return;
+  if (!confirm(`Move ${list.length} transaction${list.length === 1 ? '' : 's'} from ${from} to ${to}?`)) return;
+  const prev = {}, changes = {}; for (const t of list){ prev[t.id] = t.cat || ''; changes[t.id] = to; }
+  let rulesMoved = [];
+  try {
+    await mvWrite(changes);
+    if ($('mvRules').checked){ rulesMoved = S.config.rules.filter(r => r.cat === from).map(r => r.key); S.config.rules.forEach(r => { if (r.cat === from) r.cat = to; }); await setDoc(ref('meta','config'), S.config); }
+    MV.last = { from, to, n:list.length, prev, rules:rulesMoved, at:Date.now() }; await setDoc(ref('meta','catMoves'), JSON.parse(JSON.stringify({ last:MV.last })));
+  } catch (e) { $('mvErr').textContent = 'Could not save: ' + (e.code || e.message); return; }
+  renderAll(); render.cats(); toast(`Moved ${list.length} to ${to}${rulesMoved.length ? ` and ${rulesMoved.length} rule${rulesMoved.length === 1 ? '' : 's'}` : ''}`);
+});
+$('mvUndo').addEventListener('click', async () => {
+  const L = MV.last; if (!L || !confirm(`Put the ${L.n} transactions back in ${L.from}?`)) return;
+  try {
+    await mvWrite(L.prev);
+    if (L.rules && L.rules.length){ S.config.rules.forEach(r => { if (L.rules.includes(r.key) && r.cat === L.to) r.cat = L.from; }); await setDoc(ref('meta','config'), S.config); }
+    MV.last = null; await setDoc(ref('meta','catMoves'), { last:null });
+  } catch (e) { $('mvErr').textContent = 'Could not undo: ' + (e.code || e.message); return; }
+  renderAll(); render.cats(); toast('Move undone');
+});
+
+/* ================= Version 59, one time at sign-in (flag v59fix; Karl, November 4, 2026) =================
+   1. Amazon author payments leave Paycheck K for their own Author Income category, any name override that turned the FSE paycheck rows into the author
+      payment is cleared, and a monthly Amazon author paycheck row is added to Coming up, so both show.
+   2. The address 205 Ali Dr is removed from every description, note, name, and setting.
+   3. Medical moves into the prescriptions and co-pays category (or becomes it, if there is none) and Medical is removed. */
+const V59_ADDR = /\s*(?:[-–,]\s*|\b(?:at|for|on)\s+)?205\s+Ali\s+D(?:r|rive)\b\.?/gi;
+const v59Scrub = s => typeof s !== 'string' || !/205\s+Ali/i.test(s) ? s : s.replace(V59_ADDR, '').replace(/\s+-\s+-\s+/g, ' - ').replace(/\s+-\s*$/, '').replace(/^\s*-\s+/, '').replace(/\s{2,}/g, ' ').trim();
+const v59Key = k => k.replace(/ ?ali dr(?=[ |]|$)/g, '');
+function v59Deep(o){
+  if (typeof o === 'string') return v59Scrub(o);
+  if (Array.isArray(o)) return o.map(v59Deep);
+  if (o && typeof o === 'object'){ const n = {}; for (const [k, v] of Object.entries(o)) n[v59Key(v59Scrub(k))] = v59Deep(v); return n; }
+  return o;
+}
+async function v59fix(){
+  const F = S.config.flags = S.config.flags || {};
+  if (F.v59fix || !S.tx.length) return;
+  const said = [];
+  /* 1. author payments */
+  const authorRe = /\bauthor\b|\bkdp\b|amazon.*royalt/i, auth = S.tx.filter(t => catUsed(t) === 'Paycheck K' && authorRe.test(t.desc || ''));
+  if (auth.length){
+    const pk = S.config.categories.find(c => c.name === 'Paycheck K');
+    if (!S.config.categories.some(c => c.name === 'Author Income')) S.config.categories.push({ name:'Author Income', type:'Income', group:pk ? pk.group : 'Income' });
+    await setDoc(ref('meta','config'), S.config);
+    const ch = {}; for (const t of auth) ch[t.id] = 'Author Income'; await mvWrite(ch);
+    const last = auth.sort((a, b) => a.date < b.date ? -1 : 1)[auth.length - 1], d = upDay(last.date), nx = new Date(d.getFullYear(), d.getMonth() + 1, Math.min(d.getDate(), new Date(d.getFullYear(), d.getMonth() + 2, 0).getDate()));
+    if (!UP.items.some(it => authorRe.test(it.desc || '')))
+      UP.items.push({ id:uid(), type:'income', date:upISO(nx), desc:last.desc, amount:last.amount, cat:'Author Income', account:last.account, repeat:'monthly', created:Date.now(), from:'Version 59' });
+    said.push(`${auth.length} Amazon author payment${auth.length === 1 ? '' : 's'} moved from Paycheck K to a new Author Income category, with a monthly row in Coming up from ${fmtDate(upISO(nx))}; the FSE paycheck is back on every other Thursday`);
+  }
+  for (const box of ['names', 'snames']){ const o = UP[box] || {}; for (const k of Object.keys(o)) if (k.startsWith('i|') && authorRe.test(o[k])){ delete o[k]; said.push('a name that had turned the FSE paycheck rows into the author payment was cleared'); } }
+  /* 2. the address */
+  let nTx = 0; const batch = writeBatch(db);
+  for (const [k, rows] of Object.entries(S.months)){
+    let hit = false; const next = rows.map(t => { const n = Object.assign({}, t, { desc:v59Scrub(t.desc), notes:v59Scrub(t.notes), cat:v59Scrub(t.cat), account:v59Scrub(t.account), to:v59Scrub(t.to) });
+      if (n.desc !== t.desc || n.notes !== t.notes || n.cat !== t.cat || n.account !== t.account || n.to !== t.to){ hit = true; nTx++; } return n; });
+    if (hit){ S.months[k] = next; batch.set(ref('months', k), { rows:next }); }
+  }
+  if (nTx) await batch.commit();
+  const cfgS = JSON.stringify(S.config); S.config = v59Deep(S.config); const cfgHit = JSON.stringify(S.config) !== cfgS;
+  S.budget.rows = v59Deep(S.budget.rows);
+  for (const k of Object.keys(UP)) UP[k] = v59Deep(UP[k]);
+  const docs = [['vehicles', typeof VH !== 'undefined' ? VH : null], ['retirement', typeof RS !== 'undefined' ? RS : null], ['markets', typeof MK !== 'undefined' ? MK : null], ['christmas', typeof XM !== 'undefined' ? XM : null]];
+  for (const [name, obj] of docs){ if (!obj) continue; const before = JSON.stringify(obj); if (!/205\s+Ali/i.test(before)) continue; const clean = v59Deep(JSON.parse(before)); Object.keys(obj).forEach(k => delete obj[k]); Object.assign(obj, clean); try { await setDoc(ref('meta', name), JSON.parse(JSON.stringify(obj))); } catch (e) {} }
+  try { const d = await getDoc(ref('meta','claudeLog')); if (d.exists() && /205\s+Ali/i.test(JSON.stringify(d.data()))) await setDoc(ref('meta','claudeLog'), v59Deep(d.data())); } catch (e) {}
+  rebuildTx();
+  if (nTx || cfgHit) said.push(`the address 205 Ali Dr was removed from ${nTx} transaction${nTx === 1 ? '' : 's'}${cfgHit ? ' and the settings' : ''}`);
+  /* 3. Medical */
+  const med = S.config.categories.find(c => c.name === 'Medical');
+  if (med){
+    const target = S.config.categories.find(c => c.name !== 'Medical' && /prescri|co-?pay|medicin/i.test(c.name)), to = target ? target.name : 'Prescriptions, Co-pays, and Medicines', n = S.tx.filter(t => catUsed(t) === 'Medical').length;
+    await catMove('Medical', to); S.config.categories = S.config.categories.filter(c => c.name !== 'Medical');
+    said.push(`${n} Medical transaction${n === 1 ? '' : 's'}, its budget, and its rules moved to ${to}${target ? '' : ' (Medical renamed, since no such category existed)'}, and Medical was removed`);
+  }
+  F.v59fix = { on:todayISO() };
+  try { await setDoc(ref('meta','config'), S.config); await setDoc(ref('meta','budget'), { rows:S.budget.rows }); await upSave(); } catch (e) {}
+  if (said.length) NOTICES.push(`<b>Version 59 changes:</b> ${said.map(esc).join('; ')}.`);
+}
+window.__mv = { mvPick, MV, v59Scrub, v59fix };
 /* ---------- Data: import ---------- */
 function serialToISO(v){
   if (v == null || v === '') return '';
