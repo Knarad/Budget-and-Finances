@@ -326,6 +326,30 @@ body.show-desc .desc-page{margin-bottom:16px}
 #upBody input.up-desc{min-width:150px;width:100%;padding:5px 7px;font:inherit}
 #upBody input.up-desc.set{border-color:var(--ledger);font-weight:600}
 #upBody tr.upinc input.up-desc{color:var(--in);font-weight:600}
+
+/* Version 60: column filters on Last two weeks */
+.rf-btn{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-weight:600;white-space:nowrap}
+.rf-btn::after{content:"";width:6px;height:6px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-2px) rotate(45deg);opacity:.6}
+.rf-btn:focus-visible{outline:2px solid var(--ledger);outline-offset:2px;border-radius:3px}
+.rf-btn.on{color:var(--ledger)}
+.rf-btn.on::after{opacity:1}
+.rf-n:empty{display:none}
+.rf-n{font-size:11px;line-height:1;padding:2px 5px;border-radius:9px;background:var(--ledger);color:var(--surface)}
+#rfPop{position:fixed;z-index:60;width:280px;max-width:calc(100vw - 16px);max-height:min(420px,70vh);display:flex;flex-direction:column;background:var(--surface);color:var(--ink);border:1px solid var(--rule);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.22);box-sizing:border-box}
+#rfPop *{box-sizing:border-box}
+#rfPop[hidden]{display:none}
+#rfPop .rf-top{padding:10px 12px 6px;border-bottom:1px solid var(--rule)}
+#rfPop .rf-title{font-weight:600;margin-bottom:6px}
+#rfPop .rf-find{width:100%;padding:7px 10px;border:1px solid var(--rule);border-radius:6px;background:var(--paper)}
+#rfPop .rf-list{overflow-y:auto;padding:4px 0;flex:1 1 auto;min-height:0}
+#rfPop label{display:flex;align-items:flex-start;gap:8px;padding:7px 12px;cursor:pointer;line-height:1.3}
+#rfPop label:hover{background:var(--soft)}
+#rfPop label input{margin-top:2px;flex:0 0 auto}
+#rfPop label.rf-all{font-weight:600;border-bottom:1px solid var(--rule)}
+#rfPop .rf-foot{display:flex;gap:8px;justify-content:space-between;padding:8px 12px;border-top:1px solid var(--rule)}
+#rfPop .rf-none{padding:10px 12px;color:var(--muted)}
+#recentSum .rf-clear{margin-left:6px}
+@media (max-width:600px){#rfPop{left:8px !important;right:8px;width:auto;top:auto !important;bottom:8px;max-height:65vh}}
 </style>
 </head>
 <body>
@@ -362,7 +386,7 @@ body.show-desc .desc-page{margin-bottom:16px}
 <div id="app" class="hidden">
 <header class="top">
   <h1>Budget and Finances</h1>
-  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 59</span>
+  <span class="ver" title="If this does not match the version you were sent, refresh with Ctrl and F5">Version 60</span>
   <div class="sp"></div>
   <div class="zoom" role="group" aria-label="Page size"><button id="zOut" type="button" aria-label="Make everything smaller" title="Make everything smaller">&minus;</button><button id="zVal" type="button" title="Back to normal size">100%</button><button id="zIn" type="button" aria-label="Make everything bigger" title="Make everything bigger">+</button></div>
   <button id="signOutBtn" type="button">Sign out</button>
@@ -473,8 +497,8 @@ body.show-desc .desc-page{margin-bottom:16px}
   </div>
   <div class="hsec" id="hcRecent"><h3>Last two weeks, plus anything still pending</h3>
   <p class="note" id="recentSum" style="margin:-4px 0 10px"></p>
-  <div class="tbl"><table><thead><tr><th>Posted</th><th>Date</th><th>Account</th><th class="n">Amount</th><th>Description</th><th>Category</th></tr></thead><tbody id="recentBody"></tbody></table></div>
-  <p class="note">Every transaction dated in the last 14 days. New entries start as pending; check the box once the transaction has posted at the bank. Select anywhere else on a row to fix or delete it.</p></div>
+  <div class="tbl"><table><thead id="recentHead"><tr><th><button type="button" class="rf-btn" data-rf="posted" aria-haspopup="true">Posted<span class="rf-n"></span></button></th><th><button type="button" class="rf-btn" data-rf="date" aria-haspopup="true">Date<span class="rf-n"></span></button></th><th><button type="button" class="rf-btn" data-rf="account" aria-haspopup="true">Account<span class="rf-n"></span></button></th><th class="n"><button type="button" class="rf-btn" data-rf="amount" aria-haspopup="true">Amount<span class="rf-n"></span></button></th><th><button type="button" class="rf-btn" data-rf="desc" aria-haspopup="true">Description<span class="rf-n"></span></button></th><th><button type="button" class="rf-btn" data-rf="cat" aria-haspopup="true">Category<span class="rf-n"></span></button></th></tr></thead><tbody id="recentBody"></tbody></table></div>
+  <p class="note">Every transaction dated in the last 14 days. Tap a column title to filter by it; you can pick several values in each column, and the columns combine. New entries start as pending; check the box once the transaction has posted at the bank. Select anywhere else on a row to fix or delete it.</p></div>
 </section>
 
 <section id="view-details" class="hidden">
@@ -1520,15 +1544,124 @@ $('txForm').addEventListener('submit', async e => {
   finally { $('saveBtn').disabled = false; }
 });
 function postBox(t){ return `<input type="checkbox" class="post" data-post="${t.id}" aria-label="Posted at the bank"${isPosted(t) ? ' checked' : ''}>`; }
-function renderRecent(){
+/* Version 60 (Karl, November 9, 2026): every column title on Last two weeks is a filter with several choices, like an Excel filter.
+   Columns combine (Account and Category and Date), choices inside a column are either-or. A row counts for an account when it is paid from it or paid or
+   transferred into it (To account), the way that account's own statement lists it. Each list offers only the values left by the other columns' filters.
+   Filters are kept while the app is open and clear on reload. A filter is stored as the values kept ('in') or, when most are kept, the values left
+   out ('out'), so a new value added later still shows unless it was the kind left out. Pending entries over two weeks old hidden by a filter are counted. */
+const RF = {};
+const RF_COLS = {
+  posted:{ label:'Posted', vals:t => [isPosted(t) ? 'Posted' : 'Pending'], lab:v => v, sort:(a,b) => a < b ? 1 : -1 },
+  date:{ label:'Date', vals:t => [t.date], lab:v => fmtDate(v), sort:(a,b) => a < b ? 1 : -1 },
+  account:{ label:'Account', vals:t => t.to && t.to !== t.account ? [t.account, t.to] : [t.account], lab:v => v || '(no account)', sort:(a,b) => a.localeCompare(b) },
+  amount:{ label:'Amount', vals:t => [(+t.amount || 0).toFixed(2)], lab:v => money(+v, true), sort:(a,b) => (+b) - (+a) },
+  desc:{ label:'Description', vals:t => [t.desc || ''], lab:v => v || '(no description)', sort:(a,b) => a.localeCompare(b, undefined, { sensitivity:'base' }) },
+  cat:{ label:'Category', vals:t => [catUsed(t) || ''], lab:v => v || '(no category)', sort:(a,b) => a.localeCompare(b) }
+};
+const rfPass = (k, v) => { const f = RF[k]; return !f || (f.mode === 'in' ? f.vals.has(v) : !f.vals.has(v)); };
+const rfRow = (t, except) => Object.keys(RF_COLS).every(k => k === except || !RF[k] || RF_COLS[k].vals(t).some(v => rfPass(k, v)));
+const rfActive = () => Object.keys(RF_COLS).filter(k => RF[k]);
+let RF_ALL = [], RF_OPEN = '';
+function rfOptions(k){
+  const set = new Set(); for (const t of RF_ALL) if (rfRow(t, k)) for (const v of RF_COLS[k].vals(t)) set.add(v);
+  return [...set].sort(RF_COLS[k].sort);
+}
+function rfSet(k, opts, checked){
+  /* opts: the values listed; checked: the ones ticked. Everything ticked means no filter on this column. */
+  if (checked.length === opts.length){ delete RF[k]; return; }
+  const out = opts.filter(v => !checked.includes(v));
+  const prev = RF[k];
+  if (checked.length <= out.length) RF[k] = { mode:'in', vals:new Set(checked) };
+  else RF[k] = { mode:'out', vals:new Set(out.concat(prev && prev.mode === 'out' ? [...prev.vals].filter(v => !opts.includes(v)) : [])) };
+}
+function rfPopEl(){
+  let el = $('rfPop'); if (el) return el;
+  el = document.createElement('div'); el.id = 'rfPop'; el.hidden = true; el.setAttribute('role', 'dialog'); document.body.appendChild(el);
+  el.addEventListener('change', e => {
+    const k = RF_OPEN; if (!k) return;
+    const boxes = [...el.querySelectorAll('input[data-v]')], shown = boxes.filter(b => b.closest('label').style.display !== 'none');
+    if (e.target.classList.contains('rf-allbox')) shown.forEach(b => { b.checked = e.target.checked; });
+    rfSet(k, boxes.map(b => b.dataset.v), boxes.filter(b => b.checked).map(b => b.dataset.v));
+    rfSyncAll(); renderRecent(true);
+  });
+  el.addEventListener('input', e => {
+    if (!e.target.classList.contains('rf-find')) return;
+    const q = e.target.value.trim().toLowerCase();
+    el.querySelectorAll('input[data-v]').forEach(b => { const l = b.closest('label'); l.style.display = !q || l.textContent.toLowerCase().includes(q) ? '' : 'none'; });
+    rfSyncAll();
+  });
+  el.addEventListener('click', e => {
+    if (e.target.closest('.rf-done')) rfClose();
+    else if (e.target.closest('.rf-reset')){ delete RF[RF_OPEN]; renderRecent(true); rfFill(RF_OPEN); }
+  });
+  return el;
+}
+function rfSyncAll(){
+  const el = $('rfPop'); if (!el) return; const a = el.querySelector('.rf-allbox'); if (!a) return;
+  const shown = [...el.querySelectorAll('input[data-v]')].filter(b => b.closest('label').style.display !== 'none');
+  a.checked = shown.length > 0 && shown.every(b => b.checked); a.indeterminate = !a.checked && shown.some(b => b.checked);
+}
+function rfFill(k){
+  const el = rfPopEl(), c = RF_COLS[k], opts = rfOptions(k);
+  const find = el.querySelector('.rf-find'), q = find ? find.value : '';
+  el.innerHTML = `<div class="rf-top"><div class="rf-title">Filter by ${esc(c.label.toLowerCase())}</div>${opts.length > 8 ? `<input class="rf-find" type="search" placeholder="Search" aria-label="Search the ${esc(c.label.toLowerCase())} list" value="${esc(q)}">` : ''}</div>`
+    + `<div class="rf-list">${opts.length ? `<label class="rf-all"><input type="checkbox" class="rf-allbox"> (Select all)</label>` + opts.map(v => `<label><input type="checkbox" data-v="${esc(v)}"${rfPass(k, v) ? ' checked' : ''}> <span>${esc(c.lab(v))}</span></label>`).join('') : '<div class="rf-none">Nothing to choose with the other filters set.</div>'}</div>`
+    + `<div class="rf-foot"><button type="button" class="btn sec small rf-reset">Show all</button><button type="button" class="btn small rf-done">Done</button></div>`;
+  const f2 = el.querySelector('.rf-find'); if (f2 && q) f2.dispatchEvent(new Event('input', { bubbles:true }));
+  rfSyncAll();
+}
+function rfOpen(k, btn){
+  const el = rfPopEl(); RF_OPEN = k; el.innerHTML = ''; rfFill(k); el.hidden = false;
+  document.querySelectorAll('#recentHead .rf-btn').forEach(b => b.setAttribute('aria-expanded', b === btn ? 'true' : 'false'));
+  rfPlace();
+  const f = el.querySelector('.rf-find'); if (f && window.innerWidth > 600) f.focus({ preventScroll:true });
+}
+function rfPlace(){
+  /* On a computer the list hangs under its column title and follows it while the page scrolls; on a phone it is a sheet at the bottom of the screen. */
+  const el = $('rfPop'), btn = RF_OPEN && document.querySelector(`#recentHead .rf-btn[data-rf="${RF_OPEN}"]`); if (!el || !btn) return;
+  if (window.innerWidth <= 600){ el.style.left = ''; el.style.top = ''; return; }
+  const zk = typeof zoomScale === 'function' ? zoomScale() : 1, r = btn.getBoundingClientRect();
+  const w = el.offsetWidth, h = el.offsetHeight, vw = window.innerWidth / zk, vh = window.innerHeight / zk;
+  el.style.left = Math.max(8, Math.min(r.left / zk, vw - w - 8)) + 'px';
+  const below = r.bottom / zk + 6;
+  el.style.top = Math.max(8, below + h > vh - 8 ? Math.min(vh - h - 8, r.top / zk - h - 6 < 8 ? vh - h - 8 : r.top / zk - h - 6) : below) + 'px';
+}
+function rfClose(){ const el = $('rfPop'); if (el) el.hidden = true; RF_OPEN = ''; document.querySelectorAll('#recentHead .rf-btn').forEach(b => b.setAttribute('aria-expanded', 'false')); }
+document.addEventListener('click', e => {
+  const b = e.target.closest('#recentHead .rf-btn');
+  if (b){ e.stopPropagation(); if (RF_OPEN === b.dataset.rf) rfClose(); else rfOpen(b.dataset.rf, b); return; }
+  if (e.target.closest('.rf-clear')){ for (const k of Object.keys(RF)) delete RF[k]; rfClose(); renderRecent(); return; }
+  if (RF_OPEN && !e.target.closest('#rfPop')) rfClose();
+}, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && RF_OPEN) rfClose(); });
+window.__rf = { RF, RF_COLS, all:() => RF_ALL, rfRow };
+window.addEventListener('scroll', () => { if (RF_OPEN) rfPlace(); }, { passive:true });
+window.addEventListener('resize', () => { if (RF_OPEN) rfPlace(); });
+function renderRecent(keepPop){
   const d = new Date(); d.setDate(d.getDate() - 13); const from = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
   /* Rule (Version 23): pending entries stay on the list however old they are; pending entries more than two weeks old are flagged and shown first. */
   const isStale = t => !isPosted(t) && t.date < from;
-  const rows = S.tx.filter(t => t.date >= from || !isPosted(t)).sort((a,b) => (isStale(b) - isStale(a)) || (a.date === b.date ? (b.created || 0) - (a.created || 0) : (a.date < b.date ? 1 : -1)));
+  RF_ALL = S.tx.filter(t => t.date >= from || !isPosted(t));
+  const act = rfActive();
+  const rows = RF_ALL.filter(t => rfRow(t)).sort((a,b) => (isStale(b) - isStale(a)) || (a.date === b.date ? (b.created || 0) - (a.created || 0) : (a.date < b.date ? 1 : -1)));
   const pend = rows.filter(t => !isPosted(t)), stale = rows.filter(isStale);
-  $('recentSum').innerHTML = rows.length ? `${rows.length - stale.length} transactions since ${fmtDate(from)}. ${pend.length ? pend.length + ' still pending, totaling ' + money(pend.reduce((s,t) => s + t.amount, 0), true) + '.' : 'Everything has posted.'}${stale.length ? ` <b class="neg">${stale.length} pending for more than two weeks, shown first in red: check whether ${stale.length === 1 ? 'it' : 'they'} posted.</b>` : ''}` : '';
+  const hiddenStale = act.length ? RF_ALL.filter(t => isStale(t) && !rfRow(t)).length : 0;
+  document.querySelectorAll('#recentHead .rf-btn').forEach(b => {
+    const f = RF[b.dataset.rf]; b.classList.toggle('on', !!f);
+    const n = f ? (f.mode === 'in' ? f.vals.size : rfOptions(b.dataset.rf).filter(v => rfPass(b.dataset.rf, v)).length) : 0;
+    b.querySelector('.rf-n').textContent = f ? String(n) : '';
+    b.setAttribute('aria-label', RF_COLS[b.dataset.rf].label + (f ? ', filtered' : '') + ', tap to filter');
+  });
+  const acctOnly = RF.account && RF.account.mode === 'in' ? RF.account.vals : null;
+  const into = acctOnly ? rows.filter(t => !acctOnly.has(t.account)).length : 0;
+  const lead = act.length ? `<b>Filtered by ${act.map(k => RF_COLS[k].label.toLowerCase()).join(', ')}: ${rows.length} of ${RF_ALL.length} rows.</b> <button type="button" class="btn sec small rf-clear">Clear filters</button><br>` : '';
+  const intoTxt = into ? ` Includes ${into} payment${into === 1 ? '' : 's'} or transfer${into === 1 ? '' : 's'} into ${acctOnly.size === 1 ? 'that account' : 'those accounts'} from another account.` : '';
+  const hidTxt = hiddenStale ? ` <b class="neg">${hiddenStale} more pending for more than two weeks ${hiddenStale === 1 ? 'is' : 'are'} hidden by the filters.</b>` : '';
+  $('recentSum').innerHTML = (rows.length ? `${lead}${rows.length - stale.length} transaction${rows.length - stale.length === 1 ? "" : "s"} since ${fmtDate(from)}.${intoTxt} ${pend.length ? pend.length + ' still pending, totaling ' + money(pend.reduce((s,t) => s + t.amount, 0), true) + '.' : 'Everything has posted.'}${stale.length ? ` <b class="neg">${stale.length} pending for more than two weeks, shown first in red: check whether ${stale.length === 1 ? 'it' : 'they'} posted.</b>` : ''}` : lead) + hidTxt;
   const rcG = rcOrderTotals();
-  $('recentBody').innerHTML = rows.length ? rows.map(t => { const ac = acctColor(t.account); return `<tr class="click${isPosted(t) ? '' : ' pending'}${isStale(t) ? ' stale' : ''}${ac ? ' acolor' : ''}"${ac ? ` style="--ac:${ac}"` : ''} data-id="${t.id}"><td>${postBox(t)}</td><td>${fmtDate(t.date)}${isStale(t) ? `<span class="stale-tag">${Math.floor((Date.now() - upDay(t.date)) / 864e5)} days</span>` : ''}</td><td>${esc(t.account)}</td><td class="n">${rcAmtCell(t, rcG)}</td><td class="wrap">${rcDescCell(t, rcG)}</td><td>${esc(catUsed(t))}</td></tr>`; }).join('') : '<tr><td colspan="6" class="muted">No transactions in the last two weeks.</td></tr>';
+  $('recentBody').innerHTML = rows.length ? rows.map(t => { const ac = acctColor(t.account); return `<tr class="click${isPosted(t) ? '' : ' pending'}${isStale(t) ? ' stale' : ''}${ac ? ' acolor' : ''}"${ac ? ` style="--ac:${ac}"` : ''} data-id="${t.id}"><td>${postBox(t)}</td><td>${fmtDate(t.date)}${isStale(t) ? `<span class="stale-tag">${Math.floor((Date.now() - upDay(t.date)) / 864e5)} days</span>` : ''}</td><td>${esc(t.account)}${acctOnly && !acctOnly.has(t.account) && acctOnly.has(t.to) ? `<span class="muted" style="display:block;font-size:12px">into ${esc(t.to)}</span>` : ''}</td><td class="n">${rcAmtCell(t, rcG)}</td><td class="wrap">${rcDescCell(t, rcG)}</td><td>${esc(catUsed(t))}</td></tr>`; }).join('') : `<tr><td colspan="6" class="muted">${act.length ? 'No transactions match the filters.' : 'No transactions in the last two weeks.'}</td></tr>`;
+  if (RF_OPEN && keepPop !== true) rfFill(RF_OPEN);
+  else if (RF_OPEN && keepPop === true){ /* keep the open list as it is so ticks are not lost; only refresh counts above */ }
 }
 document.addEventListener('change', async e => {
   const cb = e.target.closest('input.post'); if (!cb) return;
